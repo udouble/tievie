@@ -1,0 +1,786 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.1">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="nl"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;Tievie&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Tailwind CSS for styling --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* Custom font and smooth transitions */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>body {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-family: 'Inter', sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background-color: #f0f4f8; /* Fallback */</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background-image: radial-gradient(circle at 10% 20%, rgb(0, 119, 182, 0.8) 0%, rgb(251, 133, 0, 0.6) 90%);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>min-height: 100vh;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap');</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* Glassmorphism Effect */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.glass-card {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(255, 255, 255, 0.15);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>backdrop-filter: blur(15px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>-webkit-backdrop-filter: blur(15px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid rgba(255, 255, 255, 0.2);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.modal-glass {</p>
+<p class="p1"><span class="Apple-converted-space">             </span>background: rgba(255, 255, 255, 0.4);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>backdrop-filter: blur(20px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>-webkit-backdrop-filter: blur(20px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid rgba(255, 255, 255, 0.3);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.transition-all {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>transition: all 0.3s ease-in-out;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* Styling for the loading spinner */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.loader {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 2px solid #f3f3f3;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-top: 2px solid #3498db;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>height: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>animation: spin 1s linear infinite;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>@keyframes spin {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>0% { transform: rotate(0deg); }</p>
+<p class="p1"><span class="Apple-converted-space">            </span>100% { transform: rotate(360deg); }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Firebase SDK --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script type="module"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Import the functions you need from the SDKs you need</p>
+<p class="p1"><span class="Apple-converted-space">        </span>import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Expose functions to the global scope so our app script can use them</p>
+<p class="p1"><span class="Apple-converted-space">        </span>window.firebase = {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>initializeApp,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body class=" text-slate-800"&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Main Container --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8"&gt;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Header --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;header class="text-center mb-8 flex flex-col sm:flex-row items-center justify-center gap-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="flex items-center gap-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;svg class="h-12 w-12 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"&gt;&lt;path d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z" fill="url(#paint0_linear_1_2)"/&gt;&lt;path d="M15.5 10.5L10.5 15.5L8.5 13.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/&gt;&lt;defs&gt;&lt;linearGradient id="paint0_linear_1_2" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"&gt;&lt;stop stop-color="#FB8500"/&gt;&lt;stop offset="1" stop-color="#0077B6"/&gt;&lt;/linearGradient&gt;&lt;/defs&gt;&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;h1 class="text-5xl font-bold text-white tracking-tight" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.2);"&gt;Tievie&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p class="text-white/80 sm:border-l-2 sm:pl-4 sm:ml-4 border-white/30"&gt;Uw persoonlijke film- en seriegids&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/header&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Search Controls --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="glass-card p-6 rounded-2xl shadow-lg mb-8 max-w-4xl mx-auto"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="flex flex-col md:flex-row gap-4 md:gap-6"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="relative flex-grow"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;input type="text" id="item-input" placeholder="Zoek een titel om toe te voegen..." autocomplete="off" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div id="suggestions-container" class="absolute z-30 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg hidden max-h-96 overflow-y-auto"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="relative flex-grow"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;input type="text" id="search-input" placeholder="Zoek in uw lijsten..." class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Filter Controls, Randomizer &amp; Sort --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="glass-card p-4 rounded-2xl max-w-6xl mx-auto mb-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="flex flex-col lg:flex-row justify-between items-center gap-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="flex justify-center items-center gap-2 flex-wrap" id="filter-controls"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="all" class="filter-btn active bg-indigo-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all"&gt;Alles&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80"&gt;Films&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80"&gt;Series&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="aan-het-kijken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80"&gt;Aan het kijken&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="herman-film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80"&gt;H-Film&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="herman-serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80"&gt;H-Serie&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                     </span>&lt;button data-filter="bekeken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80"&gt;Bekeken&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="flex items-center gap-2 flex-wrap justify-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div id="randomizer-container" class="hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>&lt;button id="random-btn" title="Kies een willekeurige titel" class="flex items-center gap-2 bg-white/80 text-slate-800 font-semibold px-3 py-2 rounded-full text-sm transition-all hover:bg-white border border-slate-300"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"&gt;&lt;path d="M12 2.5a.75.75 0 01.75.75v.313c0 .324.238.604.557.712a10.461 10.461 0 014.223 2.506c.21.18.496.222.753.107a.75.75 0 01.884 1.152 11.96 11.96 0 00-3.1 3.868c-.12.256-.07.567.123.758a10.461 10.461 0 012.506 4.223c.108.32.388.557.712.557h.313a.75.75 0 010 1.5h-.313c-.324 0-.604.238-.712.557a10.461 10.461 0 01-2.506 4.223c-.18.21-.222.496-.107.753a.75.75 0 01-1.152.884 11.96 11.96 0 00-3.868-3.1c-.256-.12-.567-.07-.758.123a10.461 10.461 0 01-4.223 2.506c-.32.108-.557.388-.557.712v.313a.75.75 0 01-1.5 0v-.313c0-.324-.238-.604-.557-.712a10.461 10.461 0 01-4.223-2.506c-.21-.18-.496-.222-.753-.107a.75.75 0 01-.884-1.152 11.96 11.96 0 003.1-3.868c.12-.256.07-.567-.123-.758a10.461 10.461 0 01-2.506-4.223c-.108-.32-.388-.557-.712-.557H3a.75.75 0 010-1.5h.313c.324 0 .604-.238.712-.557a10.461 10.461 0 012.506-4.223c.18-.21.222-.496.107-.753a.75.75 0 011.152-.884 11.96 11.96 0 003.868 3.1c.256.12.567.07.758-.123a10.461 10.461 0 014.223-2.506c.32-.108.557-.388.557-.712V3.25a.75.75 0 01.75-.75zM12 9a3 3 0 100 6 3 3 0 000-6z" /&gt;&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;span id="random-btn-text"&gt;Kies&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="flex items-center gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;select id="sort-by" class="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;option value="default"&gt;Sorteer: Nieuwste&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;option value="title-asc"&gt;Sorteer: Titel&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;option value="imdb-desc"&gt;Sorteer: IMDb Score&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;option value="ourscore-desc"&gt;Sorteer: Onze Score&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Random Item View --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="random-view-container" class="text-center hidden mb-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="show-full-list-btn" class="bg-amber-500 text-white font-semibold px-6 py-3 rounded-lg hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all shadow"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>Toon volledige lijst</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Item Grid --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="item-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;!-- Items will be dynamically inserted here --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p id="empty-state" class="text-center text-white/80 py-10 hidden col-span-full"&gt;Verbinden met de database...&lt;/p&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Modals --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-30 hidden z-40"&gt;&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="add-details-modal" class="modal-glass fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 max-w-lg w-full rounded-2xl shadow-2xl hidden transition-all z-50"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-2xl font-bold mb-2"&gt;Details Toevoegen&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p id="modal-item-title" class="font-semibold text-lg text-slate-700 mb-6"&gt;&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="space-y-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;label for="modal-type-select" class="block text-sm font-medium text-slate-700 mb-1"&gt;Categorie&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;select id="modal-type-select" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option value="film"&gt;Films&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option value="serie"&gt;Series&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option value="aan-het-kijken"&gt;Aan het kijken&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option value="herman-film"&gt;H-Film&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option value="herman-serie"&gt;H-Serie&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option value="bekeken"&gt;Bekeken&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;label for="modal-streaming-select" class="block text-sm font-medium text-slate-700 mb-1"&gt;Waar te bekijken&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;select id="modal-streaming-select" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flex justify-end gap-4 mt-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="cancel-add-btn" class="bg-slate-200 text-slate-800 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition-all"&gt;Annuleren&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="confirm-add-btn" class="bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-indigo-700 transition-all"&gt;Definitief Toevoegen&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="imdb-info-modal" class="modal-glass fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 max-w-2xl w-full rounded-2xl shadow-2xl hidden transition-all z-50 max-h-[80vh] overflow-y-auto"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;!-- Content will be injected here --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="delete-modal" class="modal-glass fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 max-w-sm w-full rounded-2xl shadow-2xl text-center hidden transition-all z-50"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-2xl font-bold mb-4"&gt;Weet je het zeker?&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p class="text-slate-600 mb-8"&gt;Dit item wordt permanent verwijderd.&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flex justify-center gap-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="cancel-delete" class="bg-slate-200 text-slate-800 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition-all"&gt;Annuleren&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="confirm-delete" class="bg-red-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-all"&gt;Verwijderen&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const app = {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Application State</p>
+<p class="p1"><span class="Apple-converted-space">            </span>state: {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>items: [],</p>
+<p class="p1"><span class="Apple-converted-space">                </span>filter: 'all',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>sortBy: 'default',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>searchTerm: '',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>randomlySelectedItem: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>itemToDelete: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>apiKey: '8a70a767',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>appId: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>searchTimeout: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>selectedItemForAddition: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>db: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>auth: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>userId: null,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>isDbReady: false,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// DOM Elements</p>
+<p class="p1"><span class="Apple-converted-space">            </span>elements: {},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Initialization</p>
+<p class="p1"><span class="Apple-converted-space">            </span>async init() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.bindElements();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.populateStreamingSelects();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.loadAppId();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.attachEventListeners();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>await this.initFirebase();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>bindElements() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements = {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>input: document.getElementById('item-input'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>searchInput: document.getElementById('search-input'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>list: document.getElementById('item-list'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>emptyState: document.getElementById('empty-state'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>filterControls: document.getElementById('filter-controls'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>sortBySelect: document.getElementById('sort-by'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>modalBackdrop: document.getElementById('modal-backdrop'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>addDetailsModal: document.getElementById('add-details-modal'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>modalItemTitle: document.getElementById('modal-item-title'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>modalTypeSelect: document.getElementById('modal-type-select'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>modalStreamingSelect: document.getElementById('modal-streaming-select'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>confirmAddBtn: document.getElementById('confirm-add-btn'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>cancelAddBtn: document.getElementById('cancel-add-btn'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>imdbInfoModal: document.getElementById('imdb-info-modal'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>deleteModal: document.getElementById('delete-modal'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>confirmDeleteBtn: document.getElementById('confirm-delete'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>cancelDeleteBtn: document.getElementById('cancel-delete'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>suggestionsContainer: document.getElementById('suggestions-container'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomBtn: document.getElementById('random-btn'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomBtnText: document.getElementById('random-btn-text'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomizerContainer: document.getElementById('randomizer-container'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomViewContainer: document.getElementById('random-view-container'),</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>showFullListBtn: document.getElementById('show-full-list-btn'),</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>getStreamingOptions() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>return ['Niet gespecificeerd', 'Apple TV+', 'Disney+', 'GoPlay', 'HBO Max', 'Netflix', 'Prime Video', 'Streamz', 'VTM GO', 'VRT MAX', 'Anders...'];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>populateStreamingSelects() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const optionsHTML = this.getStreamingOptions().map(opt =&gt; `&lt;option value="${opt}"&gt;${opt}&lt;/option&gt;`).join('');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalStreamingSelect.innerHTML = optionsHTML;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>loadAppId() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const permanentRecoveryId = 'c_cc0e5ff79b33a80f_index.html-763';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.appId = permanentRecoveryId;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async initFirebase() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const { initializeApp, getFirestore, getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!firebaseConfig.apiKey) throw new Error("Firebase config niet gevonden.");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const firebaseApp = initializeApp(firebaseConfig);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.state.db = getFirestore(firebaseApp);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.state.auth = getAuth(firebaseApp);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>onAuthStateChanged(this.state.auth, async (user) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>if (user) {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>this.state.userId = user.uid;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>this.state.isDbReady = true;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>await this.fetchAndRenderItems();<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>this.state.isDbReady = false;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>this.state.userId = null;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (initialAuthToken) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>await signInWithCustomToken(this.state.auth, initialAuthToken);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>await signInAnonymously(this.state.auth);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>console.error("Firebase Initialization Error:", error);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async fetchAndRenderItems() {</p>
+<p class="p1"><span class="Apple-converted-space">                 </span>if (!this.state.isDbReady) return;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.emptyState.textContent = "Lijst wordt geladen...";</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.emptyState.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.list.innerHTML = '';</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const itemsCollectionRef = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const querySnapshot = await window.firebase.getDocs(itemsCollectionRef);</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>let items = [];</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>querySnapshot.forEach((doc) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>items.push({ ...doc.data(), id: doc.id });</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.state.items = items;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.render();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>console.error("Error during data fetch:", error);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>attachEventListeners() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.input.addEventListener('input', (e) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>clearTimeout(this.state.searchTimeout);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.state.selectedItemForAddition = null;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.state.searchTimeout = setTimeout(() =&gt; this.searchOMDb(e.target.value), 300);<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.searchInput.addEventListener('input', (e) =&gt; this.setSearchTerm(e.target.value));</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>document.addEventListener('click', (e) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!this.elements.suggestionsContainer.contains(e.target)) this.clearSuggestions();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.list.addEventListener('click', (e) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const button = e.target.closest('button');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!button) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const id = button.dataset.id;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (button.dataset.action === 'delete') this.openDeleteModal(id);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (button.dataset.action === 'show-imdb') this.openImdbModal(button.dataset.imdbid);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.list.addEventListener('change', (e) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const target = e.target;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const id = target.dataset.id;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (target.matches('.our-score-input')) this.updateItemField(id, 'ourScore', target.value);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (target.matches('.date-seen-input')) this.updateItemField(id, 'dateSeen', target.value);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (target.matches('.streaming-service-select')) this.updateItemField(id, 'streamingOn', target.value);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (target.matches('.category-select')) this.updateItemField(id, 'type', target.value);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.filterControls.addEventListener('click', (e) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const target = e.target.closest('button');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (target &amp;&amp; target.dataset.filter) this.setFilter(target.dataset.filter);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.sortBySelect.addEventListener('change', (e) =&gt; this.setSortBy(e.target.value));</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.randomBtn.addEventListener('click', () =&gt; this.selectRandomItem());</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.showFullListBtn.addEventListener('click', () =&gt; this.clearRandomSelection());</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.confirmDeleteBtn.addEventListener('click', () =&gt; this.confirmDelete());</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.cancelDeleteBtn.addEventListener('click', () =&gt; this.closeDeleteModal());</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.confirmAddBtn.addEventListener('click', async () =&gt; await this.addItem());</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.cancelAddBtn.addEventListener('click', () =&gt; this.closeAddDetailsModal());</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.addEventListener('click', () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.closeAddDetailsModal();</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.closeDeleteModal();</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.closeImdbModal();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async searchOMDb(query) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (query.trim().length &lt; 3) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.clearSuggestions();</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.suggestionsContainer.innerHTML = `&lt;div class="flex justify-center items-center p-4"&gt;&lt;div class="loader"&gt;&lt;/div&gt;&lt;/div&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.suggestionsContainer.classList.remove('hidden');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const searchQuery = `${query.trim()}*`;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const listResponse = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(searchQuery)}&amp;apikey=${this.state.apiKey}`);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const listData = await listResponse.json();</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (listData.Response === "True" &amp;&amp; listData.Search) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>const detailedPromises = listData.Search.slice(0, 5).map(item =&gt;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                            </span>fetch(`https://www.omdbapi.com/?i=${item.imdbID}&amp;apikey=${this.state.apiKey}`).then(res =&gt; res.json())</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>const detailedResults = await Promise.all(detailedPromises);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>this.renderSuggestions(detailedResults);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>this.elements.suggestionsContainer.innerHTML = `&lt;div class="p-3 text-slate-500"&gt;Geen resultaten gevonden.&lt;/div&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>console.error("Error fetching from OMDb:", error);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.elements.suggestionsContainer.innerHTML = `&lt;div class="p-3 text-red-500"&gt;Kon geen verbinding maken.&lt;/div&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>renderSuggestions(suggestions) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.clearSuggestions();</p>
+<p class="p1"><span class="Apple-converted-space">                 </span>if (suggestions.length === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.elements.suggestionsContainer.innerHTML = `&lt;div class="p-3 text-slate-500"&gt;Geen resultaten gevonden.&lt;/div&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.elements.suggestionsContainer.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>suggestions.forEach(item =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!item || item.Response !== "True") return;<span class="Apple-converted-space"> </span></p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const suggestionEl = document.createElement('div');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>suggestionEl.className = 'p-3 hover:bg-orange-100 cursor-pointer border-b border-slate-100 last:border-b-0 flex gap-4 items-center';</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const posterSrc = item.Poster !== 'N/A' ? item.Poster : 'https://placehold.co/60x90/e2e8f0/94a3b8?text=Geen+poster';</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const typeText = item.Type === 'movie' ? 'Film' : (item.Type === 'series' ? 'Serie' : item.Type);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>suggestionEl.innerHTML = `</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;img src="${posterSrc}" alt="Poster" class="w-[60px] h-[90px] object-cover rounded-md flex-shrink-0 bg-slate-200" onerror="this.onerror=null;this.src='https://placehold.co/60x90/e2e8f0/94a3b8?text=Fout';"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="overflow-hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;p class="font-bold text-slate-800 truncate"&gt;${item.Title}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="text-sm text-slate-500 mt-1 flex flex-wrap gap-x-3 gap-y-1"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;span&gt;⭐ ${item.imdbRating || 'N/B'}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;span&gt;${typeText}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;span&gt;${item.Year || 'N/B'}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;span&gt;${item.Runtime || 'N/B'}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>`;</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>suggestionEl.addEventListener('click', () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>this.openAddDetailsModal(item);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.elements.suggestionsContainer.appendChild(suggestionEl);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.suggestionsContainer.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>clearSuggestions() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.suggestionsContainer.innerHTML = '';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.suggestionsContainer.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>openAddDetailsModal(item) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.selectedItemForAddition = item;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalItemTitle.textContent = item.Title;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.addDetailsModal.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.clearSuggestions();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>closeAddDetailsModal() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.selectedItemForAddition = null;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.addDetailsModal.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.input.value = '';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async addItem() {</p>
+<p class="p1"><span class="Apple-converted-space">                 </span>if (!this.state.isDbReady || !this.state.selectedItemForAddition) return;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const item = this.state.selectedItemForAddition;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const type = this.elements.modalTypeSelect.value;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const streamingOn = this.elements.modalStreamingSelect.value;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const newItemData = {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>imdbID: item.imdbID || null,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>title: item.Title,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>type: type,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>poster: item.Poster,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>imdbRating: item.imdbRating,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>year: item.Year,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>runtime: item.Runtime,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>ourScore: '',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>dateSeen: '',</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>streamingOn: streamingOn,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>createdAt: Date.now()</p>
+<p class="p1"><span class="Apple-converted-space">                </span>};</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const alreadyExists = this.state.items.some(i =&gt; i.imdbID &amp;&amp; i.imdbID === newItemData.imdbID);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (newItemData.imdbID &amp;&amp; alreadyExists) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.closeAddDetailsModal();</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const itemsCollection = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>await window.firebase.addDoc(itemsCollection, newItemData);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.closeAddDetailsModal();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>await this.fetchAndRenderItems();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async updateItemField(id, field, value) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!this.state.isDbReady) return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const itemRef = window.firebase.doc(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`, id);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>await window.firebase.updateDoc(itemRef, { [field]: value });</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const item = this.state.items.find(i =&gt; i.id === id);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (item) item[field] = value;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (field === 'type') {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>await this.fetchAndRenderItems();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async deleteItem(id) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!this.state.isDbReady) return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const itemRef = window.firebase.doc(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`, id);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>await window.firebase.deleteDoc(itemRef);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>await this.fetchAndRenderItems();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>setFilter(filterValue) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.randomlySelectedItem = null;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.filter = filterValue;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.searchInput.value = '';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.searchTerm = '';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.render();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>setSearchTerm(term) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.searchTerm = term.trim();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.render();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>setSortBy(sortByValue) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.sortBy = sortByValue;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.render();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>clearRandomSelection() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.randomlySelectedItem = null;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.render();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>selectRandomItem() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const category = this.state.filter;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const categoryItems = this.state.items.filter(item =&gt; item.type === category);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (categoryItems.length === 0) return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const randomIndex = Math.floor(Math.random() * categoryItems.length);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.randomlySelectedItem = categoryItems[randomIndex];</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.render();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>openDeleteModal(id) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.itemToDelete = id;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.deleteModal.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>closeDeleteModal() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.state.itemToDelete = null;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.deleteModal.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async confirmDelete() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (this.state.itemToDelete) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>await this.deleteItem(this.state.itemToDelete);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.closeDeleteModal();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>async openImdbModal(imdbID) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!imdbID) return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.imdbInfoModal.innerHTML = '&lt;div class="flex justify-center items-center p-4"&gt;&lt;div class="loader"&gt;&lt;/div&gt;&lt;/div&gt;';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.imdbInfoModal.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.classList.remove('hidden');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&amp;plot=full&amp;apikey=${this.state.apiKey}`);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const data = await response.json();</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (data.Response === "True") {</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>this.elements.imdbInfoModal.innerHTML = `</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;button id="close-imdb-modal" class="absolute top-4 right-4 text-slate-600 hover:text-slate-900"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /&gt;&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;h2 class="text-2xl font-bold mb-4"&gt;${data.Title} (${data.Year})&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;p class="mb-4 text-slate-600"&gt;${data.Plot}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;p&gt;&lt;strong&gt;Acteurs:&lt;/strong&gt; ${data.Actors}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;p&gt;&lt;strong&gt;Regisseur:&lt;/strong&gt; ${data.Director}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;p&gt;&lt;strong&gt;Genre:&lt;/strong&gt; ${data.Genre}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;p&gt;&lt;strong&gt;Score:&lt;/strong&gt; ⭐ ${data.imdbRating}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>`;</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>document.getElementById('close-imdb-modal').addEventListener('click', () =&gt; this.closeImdbModal());</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>this.elements.imdbInfoModal.innerHTML = `&lt;p class="text-red-500"&gt;Kon details niet ophalen.&lt;/p&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} catch(e) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>this.elements.imdbInfoModal.innerHTML = `&lt;p class="text-red-500"&gt;Fout bij het ophalen van informatie.&lt;/p&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>closeImdbModal() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.imdbInfoModal.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>this.elements.modalBackdrop.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>render() {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const { list, emptyState, filterControls, randomBtn, randomBtnText, randomizerContainer, randomViewContainer } = this.elements;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>list.innerHTML = '';</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>let itemsToDisplay;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (this.state.randomlySelectedItem) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>itemsToDisplay = [this.state.randomlySelectedItem];</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomViewContainer.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomViewContainer.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>let baseList = this.state.items;</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (this.state.searchTerm) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>const searchTermLower = this.state.searchTerm.toLowerCase();</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>baseList = this.state.items.filter(item =&gt; item.title.toLowerCase().includes(searchTermLower));</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>itemsToDisplay = baseList.filter(item =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>if (this.state.searchTerm) return true;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                        </span>if (this.state.filter === 'all') return true;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>return item.type === this.state.filter;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>switch (this.state.sortBy) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>case 'title-asc':</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>itemsToDisplay.sort((a, b) =&gt; a.title.localeCompare(b.title));</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>break;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>case 'imdb-desc':</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>itemsToDisplay.sort((a, b) =&gt; (parseFloat(b.imdbRating) || 0) - (parseFloat(a.imdbRating) || 0));</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>break;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>case 'ourscore-desc':</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>itemsToDisplay.sort((a, b) =&gt; (parseFloat(b.ourScore) || 0) - (parseFloat(a.ourScore) || 0));</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>break;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>default:</p>
+<p class="p1"><span class="Apple-converted-space">                             </span>itemsToDisplay.sort((a, b) =&gt; b.createdAt - a.createdAt);</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>break;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>filterControls.querySelectorAll('.filter-btn').forEach(btn =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const isActive = this.state.searchTerm ? false : (btn.dataset.filter === this.state.filter &amp;&amp; !this.state.randomlySelectedItem);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>btn.classList.toggle('active', isActive);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>btn.classList.toggle('bg-indigo-600', isActive);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>btn.classList.toggle('text-white', isActive);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>btn.classList.toggle('bg-white/50', !isActive);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>btn.classList.toggle('text-slate-800', !isActive);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>});</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const randomizableCategories = ['film', 'serie', 'herman-film', 'herman-serie'];</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const showRandomizer = randomizableCategories.includes(this.state.filter);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>randomizerContainer.classList.toggle('hidden', !showRandomizer || this.state.randomlySelectedItem);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(showRandomizer) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const textMap = {'film': 'Film', 'serie': 'Serie', 'herman-film': 'H-Film', 'herman-serie': 'H-Serie'};</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>randomBtnText.textContent = textMap[this.state.filter];</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (itemsToDisplay.length === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>list.appendChild(emptyState);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!this.state.isDbReady) {</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>emptyState.textContent = 'Verbinden met de database...';</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else if (this.state.items.length === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>emptyState.textContent = 'Je lijst is leeg.';</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>if(this.state.searchTerm) {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>emptyState.textContent = `Geen resultaten gevonden voor "${this.state.searchTerm}".`;</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>const filterTextMap = {<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                                </span>film: 'films', serie: 'series', 'aan-het-kijken': 'items die je aan het kijken bent',</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>'herman-film': 'H-Films', 'herman-serie': 'H-Series', bekeken: 'bekeken items',</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>};</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>emptyState.textContent = `Geen ${filterTextMap[this.state.filter] || 'items'} gevonden.`;</p>
+<p class="p1"><span class="Apple-converted-space">                         </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>emptyState.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>emptyState.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>itemsToDisplay.forEach((item, index) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>const itemElement = this.createItemElement(item, index + 1);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>list.appendChild(itemElement);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>});</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>createItemElement(item, index) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const div = document.createElement('div');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>div.className = `glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>div.dataset.itemId = item.id;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const posterSrc = (item.poster &amp;&amp; item.poster !== 'N/A') ? item.poster : 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const tagConfig = {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>film: { color: 'bg-sky-200/80 text-sky-900', text: 'Film' },<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>serie: { color: 'bg-amber-200/80 text-amber-900', text: 'Serie' },</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'herman-film': { color: 'bg-purple-200/80 text-purple-900', text: 'H-Film' },<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'herman-serie': { color: 'bg-pink-200/80 text-pink-900', text: 'H-Serie' },</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>'aan-het-kijken': { color: 'bg-blue-200/80 text-blue-900', text: 'Aan het kijken' },<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>bekeken: { color: 'bg-green-200/80 text-green-900', text: 'Bekeken' },</p>
+<p class="p1"><span class="Apple-converted-space">                </span>};</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const tag = tagConfig[item.type] || { color: 'bg-slate-200/80 text-slate-900', text: item.type };</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const streamingOptionsHTML = this.getStreamingOptions().map(opt =&gt; `&lt;option value="${opt}" ${item.streamingOn === opt ? 'selected' : ''}&gt;${opt}&lt;/option&gt;`).join('');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const categoryOptionsHTML = Object.keys(tagConfig).map(key =&gt; `&lt;option value="${key}" ${item.type === key ? 'selected' : ''}&gt;${tagConfig[key].text}&lt;/option&gt;`).join('');</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>let dateSeenHTML = '';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (item.type === 'bekeken') {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>dateSeenHTML = `</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="mt-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;label class="block text-xs font-medium text-slate-600 mb-0.5"&gt;Laatst gezien op&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;input type="date" data-id="${item.id}" value="${item.dateSeen || ''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>div.innerHTML = `</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="flex border-b border-white/20"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="w-1/2 flex-shrink-0 relative"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="aspect-[2/3] w-full"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="absolute top-2 left-2 bg-black bg-opacity-70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm"&gt;${index}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="p-3 flex flex-col flex-grow w-1/2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;h3 class="font-bold text-base leading-tight mb-2"&gt;${item.title}&lt;/h3&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div class="text-sm text-slate-700 space-y-0.5 mb-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;p&gt;&lt;strong&gt;IMDB:&lt;/strong&gt; ${item.imdbRating || 'N/B'}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;p&gt;&lt;strong&gt;Jaar:&lt;/strong&gt; ${item.year || 'N/B'}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;p&gt;&lt;strong&gt;Duur:&lt;/strong&gt; ${item.runtime || 'N/B'}&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                             </span>&lt;div class="mb-3 flex justify-between items-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.color}"&gt;${tag.text}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /&gt;&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="p-3 pt-2 text-xs space-y-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="grid grid-cols-2 gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="block font-medium text-slate-600 mb-0.5"&gt;Categorie&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                    </span>${categoryOptionsHTML}</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="block font-medium text-slate-600 mb-0.5"&gt;Waar te bekijken&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                   </span>${streamingOptionsHTML}</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;div class="grid grid-cols-2 gap-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="block font-medium text-slate-600 mb-0.5"&gt;Onze score&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;input type="text" data-id="${item.id}" value="${item.ourScore || ''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md" placeholder="bv. 8/10"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                             </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;label class="block font-medium text-slate-600 mb-0.5"&gt;&amp;nbsp;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;button data-id="${item.id}" data-imdbid="${item.imdbID}" data-action="show-imdb" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                    </span>&lt;svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"&gt;&lt;path d="M22.44 15.6c.33.58.17 1.32-.39 1.7-.56.38-1.3.22-1.68-.36L18 13.28V20a1 1 0 01-1 1H7a1 1 0 01-1-1v-6.72l-2.37 3.66c-.38.58-1.12.74-1.68.36-.56-.38-.73-1.12-.39-1.7L5.1 9.42c.3-.53.83-.85 1.4-.85h10c.57 0 1.1.32 1.4.85l3.54 6.18zM18 4h-5V3a1 1 0 00-1-1H7a1 1 0 00-1 1v1H2a1 1 0 00-1 1v2a1 1 0 001 1h16a1 1 0 001-1V5a1 1 0 00-1-1z"/&gt;&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                    </span>IMDB Info</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>${dateSeenHTML}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>return div;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>},</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.addEventListener('DOMContentLoaded', () =&gt; app.init());</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+<p class="p2"><br></p>
+</body>
+</html>
