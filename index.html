@@ -63,7 +63,7 @@
         };
 
         // Dit is de unieke configuratie voor jouw Tievie-project. 
-        // We injecteren deze direct als een globale variabele.
+        // BELANGRIJK: Zorg dat deze matchen met jouw Firebase Console instellingen
         window.__firebase_config = JSON.stringify({
             apiKey: "AIzaSyAOZYymPIgd_Y_G5ZYcfyid1Y1HCR4wCk8",
             authDomain: "tievie.firebaseapp.com",
@@ -73,6 +73,11 @@
             appId: "1:740661360533:web:bf16234d6b104aafd7289c",
             measurementId: "G-GLREHKYM9D"
         });
+        
+        // __app_id is een globale variabele die de app ID levert. 
+        // We stellen deze nu in op de projectId om correct te matchen met de Firestore regels.
+        window.__app_id = JSON.parse(window.__firebase_config).projectId;
+
     </script>
 </head>
 <body class=" text-slate-800">
@@ -263,9 +268,8 @@
             },
 
             loadAppId() {
-                // De `appId` wordt gebruikt om de Firebase Firestore-collectie uniek te maken in Canvas.
-                // We gebruiken de unieke projectId die in de firebase config zit om de data te isoleren.
-                const projectIdFromConfig = JSON.parse(window.__firebase_config).projectId;
+                // Gebruikt de projectId van de Firebase Config als App ID om te matchen met de Firestore regels.
+                const projectIdFromConfig = typeof __app_id !== 'undefined' ? __app_id : JSON.parse(window.__firebase_config).projectId;
                 this.state.appId = projectIdFromConfig || 'default-app-id';
             },
 
@@ -273,9 +277,7 @@
                 try {
                     const { initializeApp, getFirestore, getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
                     
-                    // We gebruiken window.__firebase_config die we hierboven hebben ingesteld
                     const firebaseConfig = JSON.parse(window.__firebase_config);
-                    // __initial_auth_token is een variabele die automatisch wordt verstrekt
                     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                     
                     if (!firebaseConfig.apiKey) throw new Error("Firebase config niet gevonden.");
@@ -288,6 +290,7 @@
                         if (user) {
                             this.state.userId = user.uid;
                             this.state.isDbReady = true;
+                            // Haal de data op na succesvolle authenticatie
                             await this.fetchAndRenderItems(); 
                         } else {
                             this.state.isDbReady = false;
@@ -298,7 +301,7 @@
                     if (initialAuthToken) {
                         await signInWithCustomToken(this.state.auth, initialAuthToken);
                     } else {
-                        // De anonieme login is belangrijk voor de eerste setup.
+                        // Anonieme login moet ingeschakeld zijn in Firebase Console
                         await signInAnonymously(this.state.auth);
                     }
                 } catch (error) {
@@ -320,7 +323,7 @@
                     
                     let items = [];
                     querySnapshot.forEach((doc) => {
-                        items.push({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt || 0 }); // Zorg voor een createdAt fallback
+                        items.push({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt || 0 });
                     });
                     
                     this.state.items = items;
@@ -505,24 +508,45 @@
                 }
                 
                 const itemsCollection = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);
-                await window.firebase.addDoc(itemsCollection, newItemData);
-
-                this.closeAddDetailsModal();
-                await this.fetchAndRenderItems(); // Herlaad de lijst om het nieuwe item te tonen
+                
+                // BELANGRIJK: Zonder de try-catch kon de app hier blijven hangen bij een DB fout.
+                try {
+                    await window.firebase.addDoc(itemsCollection, newItemData);
+                    this.closeAddDetailsModal();
+                    await this.fetchAndRenderItems(); // Herlaad de lijst om het nieuwe item te tonen
+                } catch (error) {
+                    console.error("Fout bij opslaan in Firebase:", error);
+                    // Hier zou een custom melding komen i.p.v. een alert
+                    this.closeAddDetailsModal(); 
+                    this.elements.emptyState.textContent = "Fout bij opslaan. Controleer de Firebase Console voor details.";
+                    this.elements.emptyState.classList.remove('hidden');
+                }
             },
 
             async updateItemField(id, field, value) {
                 if (!this.state.isDbReady) return;
                 const itemRef = window.firebase.doc(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`, id);
-                await window.firebase.updateDoc(itemRef, { [field]: value });
                 
-                const item = this.state.items.find(i => i.id === id);
-                if (item) item[field] = value;
-                
-                if (field === 'type') {
-                    // Forceer her-renderen bij verandering van categorie
-                    await this.fetchAndRenderItems();
+                // BELANGRIJK: Zonder de try-catch kon de app hier blijven hangen bij een DB fout.
+                try {
+                    await window.firebase.updateDoc(itemRef, { [field]: value });
+                    
+                    // Update state lokaal om een volledige herlaad te voorkomen
+                    const item = this.state.items.find(i => i.id === id);
+                    if (item) item[field] = value;
+                    
+                    if (field === 'type') {
+                        // Forceer her-renderen bij verandering van categorie
+                        await this.fetchAndRenderItems();
+                    } else {
+                         // Snelle lokale her-render indien nodig (bv. voor sortering)
+                         this.render();
+                    }
+
+                } catch (error) {
+                    console.error("Fout bij bijwerken in Firebase:", error);
                 }
+
             },
             
             async deleteItem(id) {
@@ -737,7 +761,7 @@
                 }
 
                 div.innerHTML = `
-                    <div class="flex border-b border-white/20">
+                    <div class="flex">
                         <div class="w-1/2 flex-shrink-0 relative">
                             <div class="aspect-[2/3] w-full">
                                 <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
