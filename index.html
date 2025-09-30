@@ -47,7 +47,7 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Stijl voor uitgeschakelde importknop */
+        /* Stijl voor uitgeschakelde importknop (niet meer nodig, maar als fallback) */
         #import-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -127,8 +127,8 @@
                         Posters Ophalen (Eenmalig)
                     </button>
 
-                    <!-- IMPORT KNOP VOOR DE REST VAN DE DATA (NU ALTIJD ZICHTBAAR, MAAR UITGESCHAKELD NA IMPORT) -->
-                    <button id="import-btn" class="bg-red-500/80 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-600/90">
+                    <!-- IMPORT KNOP VOOR DE REST VAN DE DATA (STANDAARD VERBORGEN. WORDT ALLEEN GETOOND ALS DE DATABASE LEEG IS.) -->
+                    <button id="import-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-700 hidden">
                         Importeer 13 Items (Aan het kijken)
                     </button>
                 </div>
@@ -376,21 +376,23 @@
                     app.state.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort by newest first (default)
                     app.renderItems();
                     
-                    // Nieuwe logica voor de Importknop (permanent zichtbaar, maar disabled bij data)
+                    // NIEUWE LOGICA: Toon de importknop ALLEEN als de database leeg is.
                     const listIsNotEmpty = app.state.items.length > 0;
                     
-                    app.elements.importBtn.disabled = listIsNotEmpty;
-                    app.elements.importBtn.textContent = listIsNotEmpty 
-                        ? `Import voltooid (${app.state.items.length} items geladen)`
-                        : `Importeer ${app.state.importData.length} Items (Aan het kijken)`;
-
-
                     if (listIsNotEmpty) {
+                        // Verberg importknop als er items zijn
+                        app.elements.importBtn.classList.add('hidden');
+                        
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.remove('hidden');
                         }
-                        app.elements.emptyState.classList.add('hidden'); // Verberg lege staat als er items zijn
+                        app.elements.emptyState.classList.add('hidden'); 
                     } else {
+                        // Toon importknop als de database leeg is
+                        app.elements.importBtn.classList.remove('hidden');
+                        app.elements.importBtn.textContent = `Importeer ${app.state.importData.length} Items (Aan het kijken)`;
+                        app.elements.importBtn.disabled = false; // Zorg ervoor dat hij aanklikbaar is
+                        
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.add('hidden');
                         }
@@ -856,10 +858,7 @@
             },
 
             async handleInitialImport() {
-                if (app.elements.importBtn.disabled) {
-                    return; // Import is al uitgevoerd
-                }
-
+                // Voorkom dubbelklikken door button direct te disablen
                 app.elements.importBtn.textContent = `Bezig met importeren (${app.state.importData.length} items)...`;
                 app.elements.importBtn.disabled = true;
                 
@@ -882,9 +881,11 @@
                     console.log("Bulk import successful.");
                 } catch (error) {
                     console.error("Error performing bulk import:", error);
+                    // Herstel knop bij fout
                     app.elements.importBtn.textContent = 'Fout bij importeren. Probeer opnieuw.';
                     app.elements.importBtn.disabled = false;
                 }
+                // De onSnapshot listener zal de knop na succesvolle import vanzelf verbergen
             },
 
 
