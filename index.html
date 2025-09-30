@@ -115,6 +115,11 @@
                     <button data-filter="herman-film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">H-Film</button>
                     <button data-filter="herman-serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">H-Serie</button>
                     <button data-filter="bekeken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Bekeken</button>
+                    
+                    <!-- NIEUWE IMPORT KNOP -->
+                    <button id="import-btn" class="bg-red-500/80 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-600/90">
+                        Importeer H-Series (Eenmalig)
+                    </button>
                 </div>
                 
                 <div class="flex items-center gap-2 flex-wrap justify-center">
@@ -202,7 +207,6 @@
                 items: [],
                 filter: 'all',
                 sortBy: 'default',
-                searchTerm: '',
                 randomlySelectedItem: null,
                 itemToDelete: null,
                 apiKey: '8a70a767', // OMDb API Key
@@ -213,6 +217,17 @@
                 auth: null,
                 userId: null,
                 isDbReady: false,
+                // Dit is de H-SERIE data voor eenmalige import
+                importData: [
+                    { "title": "Ray Donovan", "imdbID": "tt2249007", "type": "herman-serie", "streamingOn": "Streamz", "imdbRating": "8.3", "runtime": "60 mins", "year": "2013", "ourScore": "", "dateSeen": "", "createdAt": 1727725200000 },
+                    { "title": "The Handmaid's Tale", "imdbID": "tt5834204", "type": "herman-serie", "streamingOn": "Streamz", "imdbRating": "8.3", "runtime": "60 mins", "year": "2017", "ourScore": "", "dateSeen": "", "createdAt": 1727725200001 },
+                    { "title": "Black Rabbit", "imdbID": "tt23055142", "type": "herman-serie", "streamingOn": "Netflix", "imdbRating": "7.3", "runtime": "N/A", "year": "2025", "ourScore": "", "dateSeen": "", "createdAt": 1727725200002 },
+                    { "title": "Slow Horses", "imdbID": "tt5875444", "type": "herman-serie", "streamingOn": "Apple TV+", "imdbRating": "8.3", "runtime": "50 mins", "year": "2022", "ourScore": "", "dateSeen": "", "createdAt": 1727725200003 },
+                    { "title": "Shrinking", "imdbID": "tt15509918", "type": "herman-serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "30 mins", "year": "2023", "ourScore": "", "dateSeen": "", "createdAt": 1727725200004 },
+                    { "title": "Severance", "imdbID": "tt11280740", "type": "herman-serie", "streamingOn": "Apple TV+", "imdbRating": "8.7", "runtime": "55 mins", "year": "2022", "ourScore": "", "dateSeen": "", "createdAt": 1727725200005 },
+                    { "title": "Physical", "imdbID": "tt10998246", "type": "herman-serie", "streamingOn": "Apple TV+", "imdbRating": "7.5", "runtime": "30 mins", "year": "2021", "ourScore": "", "dateSeen": "", "createdAt": 1727725200006 },
+                    { "title": "Hijack", "imdbID": "tt19478358", "type": "herman-serie", "streamingOn": "Apple TV+", "imdbRating": "7.4", "runtime": "45 mins", "year": "2023", "ourScore": "", "dateSeen": "", "createdAt": 1727725200007 }
+                ],
             },
 
             // DOM Elements
@@ -252,6 +267,8 @@
                     randomizerContainer: document.getElementById('randomizer-container'),
                     randomViewContainer: document.getElementById('random-view-container'),
                     showFullListBtn: document.getElementById('show-full-list-btn'),
+                    // Nieuwe knop
+                    importBtn: document.getElementById('import-btn'),
                 }
             },
             
@@ -376,6 +393,9 @@
                 
                 this.elements.confirmAddBtn.addEventListener('click', async () => await this.addItem());
                 this.elements.cancelAddBtn.addEventListener('click', () => this.closeAddDetailsModal());
+                
+                // NIEUWE IMPORT FUNCTIE
+                this.elements.importBtn.addEventListener('click', () => this.bulkImportSeries());
 
                 this.elements.modalBackdrop.addEventListener('click', () => {
                     this.closeAddDetailsModal();
@@ -384,6 +404,44 @@
                 });
             },
             
+            // NIEUWE BULK IMPORT FUNCTIE
+            async bulkImportSeries() {
+                if (!this.state.isDbReady || !this.state.userId) return;
+
+                // Deactiveer de knop om dubbele import te voorkomen
+                this.elements.importBtn.disabled = true;
+                this.elements.importBtn.textContent = 'Bezig met importeren...';
+                this.elements.importBtn.classList.remove('bg-red-500/80', 'hover:bg-red-600/90');
+                this.elements.importBtn.classList.add('bg-gray-400');
+
+
+                try {
+                    const itemsCollection = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);
+                    const batch = window.firebase.writeBatch(this.state.db);
+
+                    this.state.importData.forEach(item => {
+                        // Creëer een nieuw document referentie
+                        const newDocRef = window.firebase.doc(itemsCollection);
+                        batch.set(newDocRef, item);
+                    });
+
+                    await batch.commit();
+                    
+                    // Succesvol geïmporteerd, verwijder de knop en herlaad de lijst
+                    this.elements.importBtn.remove();
+                    await this.fetchAndRenderItems();
+                } catch (error) {
+                    console.error("Fout bij bulk import:", error);
+                    // Bij fout, knop weer activeren
+                    this.elements.importBtn.disabled = false;
+                    this.elements.importBtn.textContent = 'Fout: Probeer opnieuw te importeren';
+                    this.elements.importBtn.classList.remove('bg-gray-400');
+                    this.elements.importBtn.classList.add('bg-red-500/80', 'hover:bg-red-600/90');
+
+                }
+            },
+            // EINDE NIEUWE BULK IMPORT FUNCTIE
+
             async searchOMDb(query) {
                 if (query.trim().length < 3) {
                     this.clearSuggestions();
@@ -645,7 +703,7 @@
             },
 
             render() {
-                const { list, emptyState, filterControls, randomBtn, randomBtnText, randomizerContainer, randomViewContainer } = this.elements;
+                const { list, emptyState, filterControls, randomBtn, randomBtnText, randomizerContainer, randomViewContainer, importBtn } = this.elements;
                 list.innerHTML = '';
                 
                 let itemsToDisplay;
@@ -701,6 +759,11 @@
                     const textMap = {'film': 'Film', 'serie': 'Serie', 'herman-film': 'H-Film', 'herman-serie': 'H-Serie'};
                     randomBtnText.textContent = textMap[this.state.filter];
                 }
+                
+                // Toon de importknop alleen als de lijst leeg is en de import nog niet is uitgevoerd
+                if (importBtn) {
+                     importBtn.classList.toggle('hidden', itemsToDisplay.length > 0);
+                }
 
 
                 if (itemsToDisplay.length === 0) {
@@ -708,7 +771,7 @@
                     if (!this.state.isDbReady) {
                          emptyState.textContent = 'Verbinden met de database...';
                     } else if (this.state.items.length === 0) {
-                        emptyState.textContent = 'Je lijst is leeg. Voeg je eerste film of serie toe via de zoekbalk!';
+                        emptyState.textContent = 'Je lijst is leeg. Klik op de rode importknop om te starten, of voeg je eerste film/serie toe via de zoekbalk!';
                     } else {
                          if(this.state.searchTerm) {
                             emptyState.textContent = `Geen resultaten gevonden voor "${this.state.searchTerm}".`;
