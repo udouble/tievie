@@ -424,6 +424,7 @@
                 // Randomizer
                 app.elements.randomBtn = document.getElementById('random-btn');
                 app.elements.randomBtnText = document.getElementById('random-btn-text');
+                app.elements.randomizerContainer = document.getElementById('randomizer-container'); // Corrected
                 app.elements.randomViewContainer = document.getElementById('random-view-container');
                 app.elements.showFullListBtn = document.getElementById('show-full-list-btn');
             },
@@ -505,26 +506,22 @@
                     app.state.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort by newest first (default)
                     app.renderItems();
                     
-                    // Show/hide import button after first load
+                    // PAS DEZE LOGICA AAN: toon de importknop ALLEEN als de lijst leeg is.
                     if (app.state.items.length > 0) {
                         app.elements.importBtn.classList.add('hidden');
-                        // Fix for TypeError: undefined is not an object (evaluating 'app.elements.randomizerContainer.classList')
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.remove('hidden');
                         }
+                        app.elements.emptyState.classList.add('hidden'); // Verberg lege staat als er items zijn
                     } else {
                         app.elements.importBtn.classList.remove('hidden');
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.add('hidden');
                         }
-                    }
-                    
-                    if (app.state.items.length === 0) {
                         app.elements.emptyState.textContent = 'Uw lijst is leeg. Zoek hierboven een titel om toe te voegen, of gebruik de import-knop.';
                         app.elements.emptyState.classList.remove('hidden');
-                    } else {
-                        app.elements.emptyState.classList.add('hidden');
                     }
+                    
                 }, (error) => {
                     console.error("Firestore listener failed:", error);
                     app.elements.emptyState.textContent = 'Fout bij het laden van data: ' + error.message;
@@ -983,14 +980,22 @@
             },
 
             async handleInitialImport() {
-                if (!app.state.db || app.state.items.length > 0) return;
+                // Controleer nogmaals of de lijst echt leeg is
+                const itemsCollection = firebase.collection(app.state.db, app.getCollectionPath());
+                const currentDocs = await firebase.getDocs(itemsCollection);
 
-                app.elements.importBtn.textContent = 'Bezig met importeren...';
+                if (currentDocs.size > 0) {
+                    console.log("Import geblokkeerd: lijst is niet leeg.");
+                    app.elements.importBtn.classList.add('hidden');
+                    return;
+                }
+
+
+                app.elements.importBtn.textContent = 'Bezig met importeren (136 items)...';
                 app.elements.importBtn.disabled = true;
 
                 try {
                     const batch = firebase.writeBatch(app.state.db);
-                    const itemsCollection = firebase.collection(app.state.db, app.getCollectionPath());
                     
                     for (const item of app.state.importData) {
                         const newDocRef = firebase.doc(itemsCollection); // Auto-generated ID
@@ -1002,7 +1007,8 @@
                     }
 
                     await batch.commit();
-                    app.elements.importBtn.classList.add('hidden');
+                    
+                    // Na succesvolle import, verberg de knop permanent via de listener
                     console.log("Bulk import successful.");
                 } catch (error) {
                     console.error("Error performing bulk import:", error);
