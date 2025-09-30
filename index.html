@@ -47,7 +47,7 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Stijl voor uitgeschakelde importknop (niet meer nodig, maar als fallback) */
+        /* Stijl voor uitgeschakelde importknop */
         #import-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -127,8 +127,8 @@
                         Posters Ophalen (Eenmalig)
                     </button>
 
-                    <!-- IMPORT KNOP VOOR DE REST VAN DE DATA (STANDAARD VERBORGEN. WORDT ALLEEN GETOOND ALS DE DATABASE LEEG IS.) -->
-                    <button id="import-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-700 hidden">
+                    <!-- IMPORT KNOP IS NU WEER HIER, EN ZOU ZICHTBAAR MOETEN BLIJVEN -->
+                    <button id="import-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-700">
                         Importeer 13 Items (Aan het kijken)
                     </button>
                 </div>
@@ -271,7 +271,7 @@
                 app.elements.filterControls = document.getElementById('filter-controls');
                 app.elements.sortBySelect = document.getElementById('sort-by');
                 app.elements.emptyState = document.getElementById('empty-state');
-                app.elements.importBtn = document.getElementById('import-btn');
+                app.elements.importBtn = document.getElementById('import-btn'); // Nu in filterbalk
                 app.elements.posterUpdateBtn = document.getElementById('poster-update-btn');
                 
                 // Modals
@@ -294,7 +294,7 @@
                 // Randomizer
                 app.elements.randomBtn = document.getElementById('random-btn');
                 app.elements.randomBtnText = document.getElementById('random-btn-text');
-                app.elements.randomizerContainer = document.getElementById('randomizer-container'); // Corrected
+                app.elements.randomizerContainer = document.getElementById('randomizer-container'); 
                 app.elements.randomViewContainer = document.getElementById('random-view-container');
                 app.elements.showFullListBtn = document.getElementById('show-full-list-btn');
             },
@@ -359,6 +359,7 @@
                 return `artifacts/${app.state.appId}/users/${app.state.userId}/items`;
             },
 
+            // Deze functie regelt de status van de importknop NA het laden van de data
             startDataListener() {
                 if (!app.state.db || !app.state.userId) {
                     console.warn("Database or User ID not ready for listener.");
@@ -376,22 +377,22 @@
                     app.state.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort by newest first (default)
                     app.renderItems();
                     
-                    // NIEUWE LOGICA: Toon de importknop ALLEEN als de database leeg is.
                     const listIsNotEmpty = app.state.items.length > 0;
                     
+                    // PAS DE KNOP AAN NADAT WE DE DEFINITIEVE STAAT WETEN
                     if (listIsNotEmpty) {
-                        // Verberg importknop als er items zijn
-                        app.elements.importBtn.classList.add('hidden');
+                        // Deactiveer de knop als er data is
+                        app.elements.importBtn.disabled = true;
+                        app.elements.importBtn.textContent = `Import voltooid (${app.state.items.length} items geladen)`;
                         
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.remove('hidden');
                         }
                         app.elements.emptyState.classList.add('hidden'); 
                     } else {
-                        // Toon importknop als de database leeg is
-                        app.elements.importBtn.classList.remove('hidden');
+                        // Zorg ervoor dat de knop actief blijft, en de tekst correct is
+                        app.elements.importBtn.disabled = false;
                         app.elements.importBtn.textContent = `Importeer ${app.state.importData.length} Items (Aan het kijken)`;
-                        app.elements.importBtn.disabled = false; // Zorg ervoor dat hij aanklikbaar is
                         
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.add('hidden');
@@ -858,6 +859,10 @@
             },
 
             async handleInitialImport() {
+                if (app.elements.importBtn.disabled) {
+                    return; // Import is al uitgevoerd
+                }
+
                 // Voorkom dubbelklikken door button direct te disablen
                 app.elements.importBtn.textContent = `Bezig met importeren (${app.state.importData.length} items)...`;
                 app.elements.importBtn.disabled = true;
@@ -885,7 +890,7 @@
                     app.elements.importBtn.textContent = 'Fout bij importeren. Probeer opnieuw.';
                     app.elements.importBtn.disabled = false;
                 }
-                // De onSnapshot listener zal de knop na succesvolle import vanzelf verbergen
+                // De onSnapshot listener zal de knop na succesvolle import vanzelf deactiveren/tekst aanpassen
             },
 
 
