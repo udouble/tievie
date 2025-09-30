@@ -50,20 +50,18 @@
     </style>
     <!-- Firebase SDK -->
     <script type="module">
-        // Import de benodigde Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         
-        // Maak de Firebase-functies beschikbaar voor het globale script
+        // Expose Firebase functions to the global script
         window.firebase = {
             initializeApp,
             getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs,
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged
         };
 
-        // Dit is de unieke configuratie voor jouw Tievie-project. 
-        // BELANGRIJK: Zorg dat deze matchen met jouw Firebase Console instellingen
+        // Unique configuration for the Tievie project
         window.__firebase_config = JSON.stringify({
             apiKey: "AIzaSyAOZYymPIgd_Y_G5ZYcfyid1Y1HCR4wCk8",
             authDomain: "tievie.firebaseapp.com",
@@ -74,8 +72,7 @@
             measurementId: "G-GLREHKYM9D"
         });
         
-        // __app_id is een globale variabele die de app ID levert. 
-        // We stellen deze nu in op de projectId om correct te matchen met de Firestore regels.
+        // Set the global App ID based on the projectId for Firestore path matching
         window.__app_id = JSON.parse(window.__firebase_config).projectId;
 
     </script>
@@ -268,7 +265,7 @@
             },
 
             loadAppId() {
-                // Gebruikt de projectId van de Firebase Config als App ID om te matchen met de Firestore regels.
+                // Uses the projectId from the Firebase Config as App ID to match the Firestore rules.
                 const projectIdFromConfig = typeof __app_id !== 'undefined' ? __app_id : JSON.parse(window.__firebase_config).projectId;
                 this.state.appId = projectIdFromConfig || 'default-app-id';
             },
@@ -277,6 +274,7 @@
                 try {
                     const { initializeApp, getFirestore, getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
                     
+                    // Use the globally exposed config
                     const firebaseConfig = JSON.parse(window.__firebase_config);
                     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                     
@@ -290,7 +288,7 @@
                         if (user) {
                             this.state.userId = user.uid;
                             this.state.isDbReady = true;
-                            // Haal de data op na succesvolle authenticatie
+                            // Fetch data after successful authentication
                             await this.fetchAndRenderItems(); 
                         } else {
                             this.state.isDbReady = false;
@@ -301,7 +299,7 @@
                     if (initialAuthToken) {
                         await signInWithCustomToken(this.state.auth, initialAuthToken);
                     } else {
-                        // Anonieme login moet ingeschakeld zijn in Firebase Console
+                        // Anonymous login must be enabled in Firebase Console
                         await signInAnonymously(this.state.auth);
                     }
                 } catch (error) {
@@ -317,7 +315,7 @@
                 this.elements.list.innerHTML = '';
                 
                 try {
-                    // Collectiepad: /artifacts/{appId}/users/{userId}/items
+                    // Collection path: /artifacts/{appId}/users/{userId}/items
                     const itemsCollectionRef = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);
                     const querySnapshot = await window.firebase.getDocs(itemsCollectionRef);
                     
@@ -462,7 +460,7 @@
                 this.state.selectedItemForAddition = item;
                 this.elements.modalItemTitle.textContent = item.Title;
                 
-                // Stel de categorie correct in op basis van het type (film of serie)
+                // Set the category correctly based on the type (film or serie)
                 const itemType = item.Type === 'movie' ? 'film' : (item.Type === 'series' ? 'serie' : 'film');
                 this.elements.modalTypeSelect.value = itemType;
 
@@ -499,24 +497,24 @@
                     createdAt: Date.now()
                 };
                 
-                // Controleer of de titel al bestaat
+                // Check if title already exists
                 const alreadyExists = this.state.items.some(i => i.imdbID && i.imdbID === newItemData.imdbID);
                 if (newItemData.imdbID && alreadyExists) {
                     this.closeAddDetailsModal();
-                    // Optioneel: toon een melding dat het item al bestaat
+                    // Optional: show a notification that the item already exists
                     return;
                 }
                 
                 const itemsCollection = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);
                 
-                // BELANGRIJK: Zonder de try-catch kon de app hier blijven hangen bij een DB fout.
+                // IMPORTANT: The try-catch block prevents the app from hanging on a DB error.
                 try {
                     await window.firebase.addDoc(itemsCollection, newItemData);
                     this.closeAddDetailsModal();
-                    await this.fetchAndRenderItems(); // Herlaad de lijst om het nieuwe item te tonen
+                    await this.fetchAndRenderItems(); // Reload the list to show the new item
                 } catch (error) {
                     console.error("Fout bij opslaan in Firebase:", error);
-                    // Hier zou een custom melding komen i.p.v. een alert
+                    // Show a custom error message
                     this.closeAddDetailsModal(); 
                     this.elements.emptyState.textContent = "Fout bij opslaan. Controleer de Firebase Console voor details.";
                     this.elements.emptyState.classList.remove('hidden');
@@ -527,19 +525,19 @@
                 if (!this.state.isDbReady) return;
                 const itemRef = window.firebase.doc(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`, id);
                 
-                // BELANGRIJK: Zonder de try-catch kon de app hier blijven hangen bij een DB fout.
+                // IMPORTANT: The try-catch block prevents the app from hanging on a DB error.
                 try {
                     await window.firebase.updateDoc(itemRef, { [field]: value });
                     
-                    // Update state lokaal om een volledige herlaad te voorkomen
+                    // Update state locally to avoid a full reload
                     const item = this.state.items.find(i => i.id === id);
                     if (item) item[field] = value;
                     
                     if (field === 'type') {
-                        // Forceer her-renderen bij verandering van categorie
+                        // Force re-rendering on category change
                         await this.fetchAndRenderItems();
                     } else {
-                         // Snelle lokale her-render indien nodig (bv. voor sortering)
+                         // Quick local re-render if necessary (e.g., for sorting)
                          this.render();
                     }
 
