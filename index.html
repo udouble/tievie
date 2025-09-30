@@ -25,7 +25,7 @@
         }
 
         .modal-glass {
-             background: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.4);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -50,17 +50,29 @@
     </style>
     <!-- Firebase SDK -->
     <script type="module">
-        // Import the functions you need from the SDKs you need
+        // Import de benodigde Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         
-        // Expose functions to the global scope so our app script can use them
+        // Maak de Firebase-functies beschikbaar voor het globale script
         window.firebase = {
             initializeApp,
             getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs,
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged
         };
+
+        // Dit is de unieke configuratie voor jouw Tievie-project. 
+        // We injecteren deze direct als een globale variabele.
+        window.__firebase_config = JSON.stringify({
+            apiKey: "AIzaSyAOZYymPIgd_Y_G5ZYcfyid1Y1HCR4wCk8",
+            authDomain: "tievie.firebaseapp.com",
+            projectId: "tievie",
+            storageBucket: "tievie.firebasestorage.app",
+            messagingSenderId: "740661360533",
+            appId: "1:740661360533:web:bf16234d6b104aafd7289c",
+            measurementId: "G-GLREHKYM9D"
+        });
     </script>
 </head>
 <body class=" text-slate-800">
@@ -94,21 +106,21 @@
         <div class="glass-card p-4 rounded-2xl max-w-6xl mx-auto mb-8">
             <div class="flex flex-col lg:flex-row justify-between items-center gap-4">
                 <div class="flex justify-center items-center gap-2 flex-wrap" id="filter-controls">
-                     <button data-filter="all" class="filter-btn active bg-indigo-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all">Alles</button>
-                     <button data-filter="film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Films</button>
-                     <button data-filter="serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Series</button>
-                     <button data-filter="aan-het-kijken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Aan het kijken</button>
-                     <button data-filter="herman-film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">H-Film</button>
-                     <button data-filter="herman-serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">H-Serie</button>
-                     <button data-filter="bekeken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Bekeken</button>
+                    <button data-filter="all" class="filter-btn active bg-indigo-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all">Alles</button>
+                    <button data-filter="film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Films</button>
+                    <button data-filter="serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Series</button>
+                    <button data-filter="aan-het-kijken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Aan het kijken</button>
+                    <button data-filter="herman-film" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">H-Film</button>
+                    <button data-filter="herman-serie" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">H-Serie</button>
+                    <button data-filter="bekeken" class="filter-btn bg-white/50 text-slate-800 font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-white/80">Bekeken</button>
                 </div>
                 
                 <div class="flex items-center gap-2 flex-wrap justify-center">
                     <div id="randomizer-container" class="hidden">
                          <button id="random-btn" title="Kies een willekeurige titel" class="flex items-center gap-2 bg-white/80 text-slate-800 font-semibold px-3 py-2 rounded-full text-sm transition-all hover:bg-white border border-slate-300">
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a.75.75 0 01.75.75v.313c0 .324.238.604.557.712a10.461 10.461 0 014.223 2.506c.21.18.496.222.753.107a.75.75 0 01.884 1.152 11.96 11.96 0 00-3.1 3.868c-.12.256-.07.567.123.758a10.461 10.461 0 012.506 4.223c.108.32.388.557.712.557h.313a.75.75 0 010 1.5h-.313c-.324 0-.604.238-.712.557a10.461 10.461 0 01-2.506 4.223c-.18.21-.222.496-.107.753a.75.75 0 01-1.152.884 11.96 11.96 0 00-3.868-3.1c-.256-.12-.567-.07-.758.123a10.461 10.461 0 01-4.223 2.506c-.32.108-.557.388-.557.712v.313a.75.75 0 01-1.5 0v-.313c0-.324-.238-.604-.557-.712a10.461 10.461 0 01-4.223-2.506c-.21-.18-.496-.222-.753-.107a.75.75 0 01-.884-1.152 11.96 11.96 0 003.1-3.868c.12-.256.07-.567-.123-.758a10.461 10.461 0 01-2.506-4.223c-.108-.32-.388-.557-.712-.557H3a.75.75 0 010-1.5h.313c.324 0 .604-.238.712-.557a10.461 10.461 0 012.506-4.223c.18-.21.222-.496.107-.753a.75.75 0 011.152-.884 11.96 11.96 0 003.868 3.1c.256.12.567.07.758-.123a10.461 10.461 0 014.223-2.506c.32-.108.557-.388.557-.712V3.25a.75.75 0 01.75-.75zM12 9a3 3 0 100 6 3 3 0 000-6z" /></svg>
-                            <span id="random-btn-text">Kies</span>
-                        </button>
+                             <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a.75.75 0 01.75.75v.313c0 .324.238.604.557.712a10.461 10.461 0 014.223 2.506c.21.18.496.222.753.107a.75.75 0 01.884 1.152 11.96 11.96 0 00-3.1 3.868c-.12.256-.07.567.123.758a10.461 10.461 0 012.506 4.223c.108.32.388.557.712.557h.313a.75.75 0 010 1.5h-.313c-.324 0-.604.238-.712.557a10.461 10.461 0 01-2.506 4.223c-.18.21-.222.496-.107.753a.75.75 0 01-1.152.884 11.96 11.96 0 00-3.868-3.1c-.256-.12-.567-.07-.758.123a10.461 10.461 0 01-4.223 2.506c-.32.108-.557.388-.557.712v.313a.75.75 0 01-1.5 0v-.313c0-.324-.238-.604-.557-.712a10.461 10.461 0 01-4.223-2.506c-.21-.18-.496-.222-.753-.107a.75.75 0 01-.884-1.152 11.96 11.96 0 003.1-3.868c.12-.256.07-.567-.123-.758a10.461 10.461 0 01-2.506-4.223c-.108-.32-.388-.557-.712-.557H3a.75.75 0 010-1.5h.313c.324 0 .604-.238.712-.557a10.461 10.461 0 012.506-4.223c.18-.21.222-.496.107-.753a.75.75 0 011.152-.884 11.96 11.96 0 003.868 3.1c.256.12.567.07.758-.123a10.461 10.461 0 014.223-2.506c.32-.108.557-.388.557-.712V3.25a.75.75 0 01.75-.75zM12 9a3 3 0 100 6 3 3 0 000-6z"/></svg>
+                             <span id="random-btn-text">Kies</span>
+                         </button>
                     </div>
                     <div class="flex items-center gap-2">
                         <select id="sort-by" class="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none">
@@ -191,7 +203,7 @@
                 searchTerm: '',
                 randomlySelectedItem: null,
                 itemToDelete: null,
-                apiKey: '8a70a767',
+                apiKey: '8a70a767', // OMDb API Key
                 appId: null,
                 searchTimeout: null,
                 selectedItemForAddition: null,
@@ -251,14 +263,19 @@
             },
 
             loadAppId() {
-                const permanentRecoveryId = 'c_cc0e5ff79b33a80f_index.html-763';
-                this.state.appId = permanentRecoveryId; 
+                // De `appId` wordt gebruikt om de Firebase Firestore-collectie uniek te maken in Canvas.
+                // We gebruiken de unieke projectId die in de firebase config zit om de data te isoleren.
+                const projectIdFromConfig = JSON.parse(window.__firebase_config).projectId;
+                this.state.appId = projectIdFromConfig || 'default-app-id';
             },
 
             async initFirebase() {
                 try {
                     const { initializeApp, getFirestore, getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } = window.firebase;
-                    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                    
+                    // We gebruiken window.__firebase_config die we hierboven hebben ingesteld
+                    const firebaseConfig = JSON.parse(window.__firebase_config);
+                    // __initial_auth_token is een variabele die automatisch wordt verstrekt
                     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                     
                     if (!firebaseConfig.apiKey) throw new Error("Firebase config niet gevonden.");
@@ -281,6 +298,7 @@
                     if (initialAuthToken) {
                         await signInWithCustomToken(this.state.auth, initialAuthToken);
                     } else {
+                        // De anonieme login is belangrijk voor de eerste setup.
                         await signInAnonymously(this.state.auth);
                     }
                 } catch (error) {
@@ -289,19 +307,20 @@
             },
             
             async fetchAndRenderItems() {
-                 if (!this.state.isDbReady) return;
+                 if (!this.state.isDbReady || !this.state.userId) return;
                 
                 this.elements.emptyState.textContent = "Lijst wordt geladen...";
                 this.elements.emptyState.classList.remove('hidden');
                 this.elements.list.innerHTML = '';
                 
                 try {
+                    // Collectiepad: /artifacts/{appId}/users/{userId}/items
                     const itemsCollectionRef = window.firebase.collection(this.state.db, `/artifacts/${this.state.appId}/users/${this.state.userId}/items`);
                     const querySnapshot = await window.firebase.getDocs(itemsCollectionRef);
                     
                     let items = [];
                     querySnapshot.forEach((doc) => {
-                        items.push({ ...doc.data(), id: doc.id });
+                        items.push({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt || 0 }); // Zorg voor een createdAt fallback
                     });
                     
                     this.state.items = items;
@@ -321,7 +340,7 @@
                 this.elements.searchInput.addEventListener('input', (e) => this.setSearchTerm(e.target.value));
                 
                 document.addEventListener('click', (e) => {
-                    if (!this.elements.suggestionsContainer.contains(e.target)) this.clearSuggestions();
+                    if (!this.elements.suggestionsContainer.contains(e.target) && e.target !== this.elements.input) this.clearSuggestions();
                 });
 
                 this.elements.list.addEventListener('click', (e) => {
@@ -374,7 +393,7 @@
                 this.elements.suggestionsContainer.classList.remove('hidden');
 
                 try {
-                    const searchQuery = `${query.trim()}*`;
+                    const searchQuery = `${query.trim()}`;
                     const listResponse = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(searchQuery)}&apikey=${this.state.apiKey}`);
                     const listData = await listResponse.json();
                     
@@ -439,6 +458,11 @@
             openAddDetailsModal(item) {
                 this.state.selectedItemForAddition = item;
                 this.elements.modalItemTitle.textContent = item.Title;
+                
+                // Stel de categorie correct in op basis van het type (film of serie)
+                const itemType = item.Type === 'movie' ? 'film' : (item.Type === 'series' ? 'serie' : 'film');
+                this.elements.modalTypeSelect.value = itemType;
+
                 this.elements.addDetailsModal.classList.remove('hidden');
                 this.elements.modalBackdrop.classList.remove('hidden');
                 this.clearSuggestions();
@@ -472,9 +496,11 @@
                     createdAt: Date.now()
                 };
                 
+                // Controleer of de titel al bestaat
                 const alreadyExists = this.state.items.some(i => i.imdbID && i.imdbID === newItemData.imdbID);
                 if (newItemData.imdbID && alreadyExists) {
                     this.closeAddDetailsModal();
+                    // Optioneel: toon een melding dat het item al bestaat
                     return;
                 }
                 
@@ -482,7 +508,7 @@
                 await window.firebase.addDoc(itemsCollection, newItemData);
 
                 this.closeAddDetailsModal();
-                await this.fetchAndRenderItems();
+                await this.fetchAndRenderItems(); // Herlaad de lijst om het nieuwe item te tonen
             },
 
             async updateItemField(id, field, value) {
@@ -494,6 +520,7 @@
                 if (item) item[field] = value;
                 
                 if (field === 'type') {
+                    // Forceer her-renderen bij verandering van categorie
                     await this.fetchAndRenderItems();
                 }
             },
@@ -568,16 +595,19 @@
                     
                     if (data.Response === "True") {
                          this.elements.imdbInfoModal.innerHTML = `
-                            <button id="close-imdb-modal" class="absolute top-4 right-4 text-slate-600 hover:text-slate-900">
-                                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                            <h2 class="text-2xl font-bold mb-4">${data.Title} (${data.Year})</h2>
-                            <p class="mb-4 text-slate-600">${data.Plot}</p>
-                            <p><strong>Acteurs:</strong> ${data.Actors}</p>
-                            <p><strong>Regisseur:</strong> ${data.Director}</p>
-                            <p><strong>Genre:</strong> ${data.Genre}</p>
-                            <p><strong>Score:</strong> ⭐ ${data.imdbRating}</p>
-                         `;
+                             <button id="close-imdb-modal" class="absolute top-4 right-4 text-slate-600 hover:text-slate-900">
+                                 <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                             </button>
+                             <h2 class="text-2xl font-bold mb-4">${data.Title} (${data.Year})</h2>
+                             <p class="mb-4 text-slate-600">${data.Plot}</p>
+                             <p><strong>Acteurs:</strong> ${data.Actors}</p>
+                             <p><strong>Regisseur:</strong> ${data.Director}</p>
+                             <p><strong>Genre:</strong> ${data.Genre}</p>
+                             <p><strong>Score:</strong> ⭐ ${data.imdbRating}</p>
+                             <p class="mt-4">
+                                <a href="https://www.imdb.com/title/${imdbID}/" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-semibold underline">Bekijk op IMDb</a>
+                             </p>
+                           `;
                          document.getElementById('close-imdb-modal').addEventListener('click', () => this.closeImdbModal());
                     } else {
                         this.elements.imdbInfoModal.innerHTML = `<p class="text-red-500">Kon details niet ophalen.</p>`;
@@ -627,6 +657,7 @@
                             itemsToDisplay.sort((a, b) => (parseFloat(b.ourScore) || 0) - (parseFloat(a.ourScore) || 0));
                             break;
                         default:
+                            // Sorteren op createdAt (nieuwste eerst)
                              itemsToDisplay.sort((a, b) => b.createdAt - a.createdAt);
                             break;
                     }
@@ -655,7 +686,7 @@
                     if (!this.state.isDbReady) {
                          emptyState.textContent = 'Verbinden met de database...';
                     } else if (this.state.items.length === 0) {
-                        emptyState.textContent = 'Je lijst is leeg.';
+                        emptyState.textContent = 'Je lijst is leeg. Voeg je eerste film of serie toe via de zoekbalk!';
                     } else {
                          if(this.state.searchTerm) {
                             emptyState.textContent = `Geen resultaten gevonden voor "${this.state.searchTerm}".`;
@@ -679,7 +710,7 @@
 
             createItemElement(item, index) {
                 const div = document.createElement('div');
-                div.className = `glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800`;
+                div.className = `glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800 transition-all duration-300 transform hover:scale-[1.01]`;
                 div.dataset.itemId = item.id;
                 const posterSrc = (item.poster && item.poster !== 'N/A') ? item.poster : 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';
                 
@@ -706,7 +737,7 @@
                 }
 
                 div.innerHTML = `
-                    <div class="flex">
+                    <div class="flex border-b border-white/20">
                         <div class="w-1/2 flex-shrink-0 relative">
                             <div class="aspect-[2/3] w-full">
                                 <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
@@ -739,7 +770,7 @@
                             <div>
                                 <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
                                 <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
-                                   ${streamingOptionsHTML}
+                                    ${streamingOptionsHTML}
                                 </select>
                             </div>
                         </div>
@@ -767,4 +798,3 @@
     </script>
 </body>
 </html>
-
