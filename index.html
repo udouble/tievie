@@ -503,7 +503,19 @@
                     }));
                     app.state.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort by newest first (default)
                     
-                    // --- Cruciale Wijziging 1: Onmiddellijke Rendering ---
+                    // --- Cruciale Wijziging 1: Reset Filter Status ---
+                    app.state.filter = 'all'; 
+                    // Zorg ervoor dat de 'Alles' knop de actieve staat heeft
+                    app.elements.filterControls.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('active', 'bg-indigo-600', 'text-white');
+                        b.classList.add('bg-white/50', 'text-slate-800', 'hover:bg-white/80');
+                    });
+                    const allBtn = document.querySelector('[data-filter="all"]');
+                    if (allBtn) {
+                        allBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+                        allBtn.classList.remove('bg-white/50', 'text-slate-800');
+                    }
+                    
                     app.renderItems(); 
                     // ----------------------------------------------------
 
@@ -725,17 +737,22 @@
                 if (sorted.length === 0) {
                     // Pas de lege status aan op basis van de filter/zoekstatus
                     if (app.state.items.length > 0) {
-                        app.elements.itemList.innerHTML = `<p class="text-center text-white/80 py-10 col-span-full">Geen items gevonden die overeenkomen met de huidige filters of zoekopdracht.</p>`;
+                        // De lijst bevat items, maar de huidige filter toont niets
+                        app.elements.itemList.innerHTML = `<p class="text-center text-white/80 py-10 col-span-full">Geen items gevonden die overeenkomen met de huidige filters of zoekopdracht. De database bevat ${app.state.items.length} records in totaal.</p>`;
                     } else {
+                        // De lijst is leeg (0 items)
                         app.elements.itemList.innerHTML = `<p class="text-center text-white/80 py-10 col-span-full">Uw lijst is leeg. Zoek hierboven een titel om toe te voegen, of gebruik de import-knop.</p>`;
                     }
+                    app.elements.emptyState.classList.add('hidden'); // Verberg de 'Laden' status
+                } else {
+                    // Items gevonden, toon ze
+                    app.elements.emptyState.classList.add('hidden');
+                    sorted.forEach(item => {
+                        const card = document.createElement('div');
+                        card.innerHTML = app.renderItemCard(item);
+                        app.elements.itemList.appendChild(card.firstChild);
+                    });
                 }
-                
-                sorted.forEach(item => {
-                    const card = document.createElement('div');
-                    card.innerHTML = app.renderItemCard(item);
-                    app.elements.itemList.appendChild(card.firstChild);
-                });
                 
                 // Re-attach event listeners after rendering
                 app.attachCardListeners();
