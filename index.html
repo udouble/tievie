@@ -129,7 +129,7 @@
 
                     <!-- IMPORT KNOP IS NU WEER HIER, EN ZOU ZICHTBAAR MOETEN BLIJVEN -->
                     <button id="import-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-700">
-                        Importeer 136 Items (Series & Kijken)
+                        Importeer 13 Items (Aan het kijken)
                     </button>
 
                     <!-- NIEUWE WIS ALLES KNOP VOOR CORRUPTE DATA -->
@@ -239,10 +239,8 @@
                 auth: null,
                 userId: null,
                 isDbReady: false,
-                // COMBINATIE VAN AAN HET KIJKEN (13) + SERIES (123) = 136 items
-                // Poster URLs zijn vervangen door de veilige placeholder om rendering crashes te voorkomen
+                // ENKEL AAN HET KIJKEN (13 items)
                 importData: [
-                    // AAN HET KIJKEN (13 items)
                     { "title": "Apple Cider Vinegar", "imdbID": "tt30428143", "type": "aan-het-kijken", "streamingOn": "Netflix", "imdbRating": "7.2", "runtime": "60 mins", "year": "2025", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400000 },
                     { "title": "Dag & nacht", "imdbID": "tt27192052", "type": "aan-het-kijken", "streamingOn": "Streamz", "imdbRating": "8.2", "runtime": "N/A", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400001 },
                     { "title": "Holy Sh!t", "imdbID": "tt35067773", "type": "aan-het-kijken", "streamingOn": "Streamz", "imdbRating": "8.0", "runtime": "N/A", "year": "2025", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400002 },
@@ -255,133 +253,7 @@
                     { "title": "The Last Kingdom", "imdbID": "tt4179452", "type": "aan-het-kijken", "streamingOn": "Netflix", "imdbRating": "8.5", "runtime": "60 mins", "year": "2015", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400009 },
                     { "title": "The Big Door Prize", "imdbID": "tt14828690", "type": "aan-het-kijken", "streamingOn": "Apple TV+", "imdbRating": "7.1", "runtime": "30 mins", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400010 },
                     { "title": "Pachinko", "imdbID": "tt8887968", "type": "aan-het-kijken", "streamingOn": "Apple TV+", "imdbRating": "8.5", "runtime": "60 mins", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400011 },
-                    { "title": "Foundation", "imdbID": "tt2080373", "type": "aan-het-kijken", "streamingOn": "Apple TV+", "imdbRating": "7.5", "runtime": "60 mins", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400012 },
-
-                    // SERIES (123 items) - Op basis van Series.xlsx
-                    { "title": "Arcane: League of Legends", "imdbID": "tt11126994", "type": "serie", "streamingOn": "Netflix", "imdbRating": "9.0", "runtime": "40", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500000 },
-                    { "title": "A Man on the Inside", "imdbID": "tt26670955", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.6", "runtime": "30", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500001 },
-                    { "title": "No Good Deed", "imdbID": "tt19891306", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.0", "runtime": "30", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500002 },
-                    { "title": "Baby Reindeer", "imdbID": "tt22914100", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "30", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500003 },
-                    { "title": "The Gentlemen", "imdbID": "tt13214950", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500004 },
-                    { "title": "Ripley", "imdbID": "tt13917852", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500005 },
-                    { "title": "The Witcher", "imdbID": "tt5180504", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500006 },
-                    { "title": "The Last of Us", "imdbID": "tt3581920", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.7", "runtime": "50", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500007 },
-                    { "title": "The Boys", "imdbID": "tt1190634", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.7", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500008 },
-                    { "title": "Reacher", "imdbID": "tt9288030", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.1", "runtime": "60", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500009 },
-                    { "title": "The Mandalorian", "imdbID": "tt8111080", "type": "serie", "streamingOn": "Disney+", "imdbRating": "8.7", "runtime": "40", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500010 },
-                    { "title": "Shōgun", "imdbID": "tt27873752", "type": "serie", "streamingOn": "Disney+", "imdbRating": "8.6", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500011 },
-                    { "title": "Tokyo Vice", "imdbID": "tt11094056", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.0", "runtime": "50", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500012 },
-                    { "title": "Bridgerton", "imdbID": "tt8740790", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.4", "runtime": "60", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500013 },
-                    { "title": "Invincible", "imdbID": "tt6741278", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.7", "runtime": "45", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500014 },
-                    { "title": "Gen V", "imdbID": "tt13159924", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.8", "runtime": "60", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500015 },
-                    { "title": "Our Flag Means Death", "imdbID": "tt11000902", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.8", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500016 },
-                    { "title": "The Morning Show", "imdbID": "tt7237936", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.1", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500017 },
-                    { "title": "The Crown", "imdbID": "tt4786824", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.6", "runtime": "60", "year": "2016", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500018 },
-                    { "title": "The Good Place", "imdbID": "tt4955642", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.2", "runtime": "22", "year": "2016", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500019 },
-                    { "title": "Shadow and Bone", "imdbID": "tt2404435", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.5", "runtime": "60", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500020 },
-                    { "title": "Russian Doll", "imdbID": "tt7520794", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.8", "runtime": "25", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500021 },
-                    { "title": "Peacemaker", "imdbID": "tt13146488", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.3", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500022 },
-                    { "title": "Severance", "imdbID": "tt11280740", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.7", "runtime": "50", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500023 },
-                    { "title": "The Great", "imdbID": "tt2235773", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.2", "runtime": "50", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500024 },
-                    { "title": "The Flight Attendant", "imdbID": "tt7001458", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.1", "runtime": "45", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500025 },
-                    { "title": "Outer Range", "imdbID": "tt10744958", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.1", "runtime": "50", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500026 },
-                    { "title": "The Devil's Hour", "imdbID": "tt15264352", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.6", "runtime": "50", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500027 },
-                    { "title": "A Murder at the End of the World", "imdbID": "tt15246754", "type": "serie", "streamingOn": "Disney+", "imdbRating": "7.1", "runtime": "60", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500028 },
-                    { "title": "Yellowjackets", "imdbID": "tt1024460", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.9", "runtime": "50", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500029 },
-                    { "title": "Fargo", "imdbID": "tt2802850", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.9", "runtime": "50", "year": "2014", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500030 },
-                    { "title": "The White Lotus", "imdbID": "tt13404772", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.9", "runtime": "60", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500031 },
-                    { "title": "Black Mirror", "imdbID": "tt2085059", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.8", "runtime": "60", "year": "2011", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500032 },
-                    { "title": "Fallout", "imdbID": "tt12637870", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.6", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500033 },
-                    { "title": "Killing Eve", "imdbID": "tt7019188", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.1", "runtime": "45", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500034 },
-                    { "title": "Carnival Row", "imdbID": "tt6558226", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.8", "runtime": "50", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500035 },
-                    { "title": "The Peripheral", "imdbID": "tt1267295", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.6", "runtime": "60", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500036 },
-                    { "title": "Mrs. Maisel", "imdbID": "tt5788792", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.7", "runtime": "50", "year": "2017", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500037 },
-                    { "title": "Slow Horses", "imdbID": "tt15886386", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500038 },
-                    { "title": "See", "imdbID": "tt7939228", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.6", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500039 },
-                    { "title": "Silo", "imdbID": "tt18323784", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.1", "runtime": "60", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500040 },
-                    { "title": "Hijack", "imdbID": "tt19853316", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.4", "runtime": "45", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500041 },
-                    { "title": "The Killing", "imdbID": "tt1526395", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.4", "runtime": "45", "year": "2011", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500042 },
-                    { "title": "House of the Dragon", "imdbID": "tt11198330", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.4", "runtime": "60", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500043 },
-                    { "title": "The Bear", "imdbID": "tt14452776", "type": "serie", "streamingOn": "Disney+", "imdbRating": "8.6", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500044 },
-                    { "title": "The Queen's Gambit", "imdbID": "tt10048342", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.5", "runtime": "60", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500045 },
-                    { "title": "The Watcher", "imdbID": "tt14856408", "type": "serie", "streamingOn": "Netflix", "imdbRating": "6.4", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500046 },
-                    { "title": "The Recruit", "imdbID": "tt14777592", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.4", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500047 },
-                    { "title": "Heartstopper", "imdbID": "tt10638036", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.6", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500048 },
-                    { "title": "Dahmer - Monster: The Jeffrey Dahmer Story", "imdbID": "tt15409414", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500049 },
-                    { "title": "Wednesday", "imdbID": "tt13160218", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.1", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500050 },
-                    { "title": "The Last Thing He Told Me", "imdbID": "tt13745850", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "6.6", "runtime": "", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500051 },
-                    { "title": "Dark Matter", "imdbID": "tt19231492", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.6", "runtime": "", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500052 },
-                    { "title": "The Shrink Next Door", "imdbID": "tt4301160", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.0", "runtime": "", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500053 },
-                    { "title": "The Afterparty", "imdbID": "tt12878670", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.2", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500054 },
-                    { "title": "For All Mankind", "imdbID": "tt7772588", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500055 },
-                    { "title": "The Buccaneers", "imdbID": "tt17523288", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "50", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500056 },
-                    { "title": "Shrinking", "imdbID": "tt15510254", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "30", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500057 },
-                    { "title": "The Resort", "imdbID": "tt15248168", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.4", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500058 },
-                    { "title": "The Haunting of Hill House", "imdbID": "tt6763662", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.6", "runtime": "60", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500059 },
-                    { "title": "The Haunting of Bly Manor", "imdbID": "tt10007550", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.4", "runtime": "60", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500060 },
-                    { "title": "The Fall of the House of Usher", "imdbID": "tt17420572", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "60", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500061 },
-                    { "title": "Derry Girls", "imdbID": "tt7196660", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.5", "runtime": "25", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500062 },
-                    { "title": "Sex Education", "imdbID": "tt7767422", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.3", "runtime": "45", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500063 },
-                    { "title": "You", "imdbID": "tt7335184", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.7", "runtime": "45", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500064 },
-                    { "title": "Lupin", "imdbID": "tt25091762", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.5", "runtime": "45", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500065 },
-                    { "title": "The Umbrella Academy", "imdbID": "tt1312171", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "45", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500066 },
-                    { "title": "Élite", "imdbID": "tt7820844", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.2", "runtime": "50", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500067 },
-                    { "title": "Outlander", "imdbID": "tt300644", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.4", "runtime": "60", "year": "2014", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500068 },
-                    { "title": "The Big Bang Theory", "imdbID": "tt0898266", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.2", "runtime": "22", "year": "2007", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500069 },
-                    { "title": "Gossip Girl", "imdbID": "tt0903962", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.4", "runtime": "42", "year": "2007", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500070 },
-                    { "title": "Suits", "imdbID": "tt1632701", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.5", "runtime": "44", "year": "2011", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500071 },
-                    { "title": "Downton Abbey", "imdbID": "tt1606375", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.7", "runtime": "58", "year": "2010", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500072 },
-                    { "title": "The Sinner", "imdbID": "tt6185150", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "45", "year": "2017", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500073 },
-                    { "title": "The Alienist", "imdbID": "tt4616250", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.7", "runtime": "60", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500074 },
-                    { "title": "The Night Agent", "imdbID": "tt13984570", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.4", "runtime": "45", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500075 },
-                    { "title": "The Lincoln Lawyer", "imdbID": "tt14253424", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.7", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500076 },
-                    { "title": "Alice in Borderland", "imdbID": "tt10795682", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.7", "runtime": "50", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500077 },
-                    { "title": "The Sandman", "imdbID": "tt1751634", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.7", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500078 },
-                    { "title": "The Witcher: Blood Origin", "imdbID": "tt14585180", "type": "serie", "streamingOn": "Netflix", "imdbRating": "5.7", "runtime": "40", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500079 },
-                    { "title": "The Umbrella Academy", "imdbID": "tt1312171", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "45", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500080 },
-                    { "title": "Orange Is the New Black", "imdbID": "tt2372162", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "59", "year": "2013", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500081 },
-                    { "title": "Better Call Saul", "imdbID": "tt3032476", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.9", "runtime": "46", "year": "2015", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500082 },
-                    { "title": "Ozark", "imdbID": "tt5071412", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.5", "runtime": "60", "year": "2017", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500083 },
-                    { "title": "The Diplomat", "imdbID": "tt14603912", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "50", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500084 },
-                    { "title": "The Gentlemen", "imdbID": "tt13214950", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.0", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500085 },
-                    { "title": "Ripley", "imdbID": "tt13917852", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500086 },
-                    { "title": "The Last of Us", "imdbID": "tt3581920", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.7", "runtime": "50", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500087 },
-                    { "title": "Tokyo Vice", "imdbID": "tt11094056", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.0", "runtime": "50", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500088 },
-                    { "title": "The White Lotus", "imdbID": "tt13404772", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.9", "runtime": "60", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500089 },
-                    { "title": "Fargo", "imdbID": "tt2802850", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.9", "runtime": "50", "year": "2014", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500090 },
-                    { "title": "Our Flag Means Death", "imdbID": "tt11000902", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.8", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500091 },
-                    { "title": "The Flight Attendant", "imdbID": "tt7001458", "type": "serie", "streamingOn": "Streamz", "imdbRating": "7.1", "runtime": "45", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500092 },
-                    { "title": "The Night Of", "imdbID": "tt2401256", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.5", "runtime": "70", "year": "2016", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500093 },
-                    { "title": "This Is Going to Hurt", "imdbID": "tt10863818", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.4", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500094 },
-                    { "title": "The Boys", "imdbID": "tt1190634", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.7", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500095 },
-                    { "title": "Reacher", "imdbID": "tt9288030", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.1", "runtime": "60", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500096 },
-                    { "title": "Invincible", "imdbID": "tt6741278", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.7", "runtime": "45", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500097 },
-                    { "title": "Gen V", "imdbID": "tt13159924", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.8", "runtime": "60", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500098 },
-                    { "title": "Fallout", "imdbID": "tt12637870", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.6", "runtime": "60", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500099 },
-                    { "title": "Killing Eve", "imdbID": "tt7019188", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.1", "runtime": "45", "year": "2018", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500100 },
-                    { "title": "Carnival Row", "imdbID": "tt6558226", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.8", "runtime": "50", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500101 },
-                    { "title": "The Peripheral", "imdbID": "tt1267295", "type": "serie", "streamingOn": "Prime", "imdbRating": "7.6", "runtime": "60", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500102 },
-                    { "title": "Mrs. Maisel", "imdbID": "tt5788792", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.7", "runtime": "50", "year": "2017", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500103 },
-                    { "title": "Slow Horses", "imdbID": "tt15886386", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500104 },
-                    { "title": "See", "imdbID": "tt7939228", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.6", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500105 },
-                    { "title": "Silo", "imdbID": "tt18323784", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.1", "runtime": "60", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500106 },
-                    { "title": "Hijack", "imdbID": "tt19853316", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.4", "runtime": "45", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500107 },
-                    { "title": "The Killing", "imdbID": "tt1526395", "type": "serie", "streamingOn": "Prime", "imdbRating": "8.4", "runtime": "45", "year": "2011", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500108 },
-                    { "title": "House of the Dragon", "imdbID": "tt11198330", "type": "serie", "streamingOn": "Streamz", "imdbRating": "8.4", "runtime": "60", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500109 },
-                    { "title": "The Bear", "imdbID": "tt14452776", "type": "serie", "streamingOn": "Disney+", "imdbRating": "8.6", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500110 },
-                    { "title": "The Queen's Gambit", "imdbID": "tt10048342", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.5", "runtime": "60", "year": "2020", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500111 },
-                    { "title": "The Watcher", "imdbID": "tt14856408", "type": "serie", "streamingOn": "Netflix", "imdbRating": "6.4", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500112 },
-                    { "title": "The Recruit", "imdbID": "tt14777592", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.4", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500113 },
-                    { "title": "Heartstopper", "imdbID": "tt10638036", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.6", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500114 },
-                    { "title": "Dahmer - Monster: The Jeffrey Dahmer Story", "imdbID": "tt15409414", "type": "serie", "streamingOn": "Netflix", "imdbRating": "7.9", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500115 },
-                    { "title": "Wednesday", "imdbID": "tt13160218", "type": "serie", "streamingOn": "Netflix", "imdbRating": "8.1", "runtime": "45", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500116 },
-                    { "title": "The Last Thing He Told Me", "imdbID": "tt13745850", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "6.6", "runtime": "", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500117 },
-                    { "title": "Dark Matter", "imdbID": "tt19231492", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.6", "runtime": "", "year": "2024", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500118 },
-                    { "title": "The Shrink Next Door", "imdbID": "tt4301160", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.0", "runtime": "", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500119 },
-                    { "title": "The Afterparty", "imdbID": "tt12878670", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "7.2", "runtime": "30", "year": "2022", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500120 },
-                    { "title": "For All Mankind", "imdbID": "tt7772588", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "60", "year": "2019", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500121 },
-                    { "title": "The Buccaneers", "imdbID": "tt17523288", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "50", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500122 },
-                    { "title": "Shrinking", "imdbID": "tt15510254", "type": "serie", "streamingOn": "Apple TV+", "imdbRating": "8.0", "runtime": "30", "year": "2023", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732500123 }
+                    { "title": "Foundation", "imdbID": "tt2080373", "type": "aan-het-kijken", "streamingOn": "Apple TV+", "imdbRating": "7.5", "runtime": "60 mins", "year": "2021", "poster": SAFE_PLACEHOLDER_POSTER, "ourScore": "", "dateSeen": "", "createdAt": 1727732400012 }
                 ],
             },
 
@@ -478,21 +350,21 @@
                     app.state.db = firebase.getFirestore(firebaseApp);
                     app.state.auth = firebase.getAuth(firebaseApp);
 
-                    firebase.onAuthStateChanged(app.state.auth, async (user) => {
-                        if (user) {
-                            app.state.userId = user.uid;
-                        } else {
-                            const anonymousUser = await firebase.signInAnonymously(app.state.auth);
-                            app.state.userId = anonymousUser.user.uid;
-                        }
-                        app.state.isDbReady = true;
-                        app.elements.emptyState.textContent = 'Laden van uw filmcollectie...';
-                        app.elements.emptyState.classList.remove('hidden');
-                        app.startDataListener();
-                    });
+                    // --- KRITIEKE FIX VOOR AUTHENTICATIE/CUSTOM-TOKEN-MISMATCH ---
+                    // Schakel terug naar anoniem inloggen om de custom-token-mismatch te vermijden.
+                    await firebase.signInAnonymously(app.state.auth); 
+                    console.log("Authenticated using signInAnonymously (Custom token disabled).");
+                    // ----------------------------------------------------
+                    
+                    app.state.userId = app.state.auth.currentUser.uid;
+                    app.state.isDbReady = true;
+                    app.elements.emptyState.textContent = 'Laden van uw filmcollectie...';
+                    app.elements.emptyState.classList.remove('hidden');
+                    app.startDataListener();
+
                 } catch (error) {
                     console.error("Firebase init failed:", error);
-                    app.elements.emptyState.textContent = 'Fout bij het verbinden met database.';
+                    app.elements.emptyState.textContent = 'Fout bij het verbinden met database: ' + error.message;
                 }
             },
 
@@ -554,7 +426,7 @@
                     } else {
                         // Zorg ervoor dat de knop actief blijft, en de tekst correct is
                         app.elements.importBtn.disabled = false;
-                        app.elements.importBtn.textContent = `Importeer ${app.state.importData.length} Items (Series & Kijken)`; // Updated count and text
+                        app.elements.importBtn.textContent = `Importeer ${app.state.importData.length} Items (Aan het kijken)`; // Updated count and text
                         app.elements.importBtn.classList.remove('hidden'); // Toon de import knop
                         app.elements.massDeleteBtn.classList.add('hidden'); // Verberg mass delete als leeg
                         
