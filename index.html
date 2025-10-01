@@ -57,13 +57,13 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs, getDoc, getDocsFromCache } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         
         // Expose Firebase functions to the global script
         window.firebase = {
             initializeApp,
-            getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs,
+            getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, writeBatch, getDocs, getDoc, getDocsFromCache,
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged
         };
 
@@ -131,6 +131,11 @@
                     <button id="import-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-red-700">
                         Importeer 136 Items (Series & Kijken)
                     </button>
+
+                    <!-- NIEUWE WIS ALLES KNOP VOOR CORRUPTE DATA -->
+                    <button id="mass-delete-btn" class="bg-slate-500 text-white font-semibold px-4 py-2 rounded-full text-sm transition-all hover:bg-slate-600">
+                        Wis ALLE data
+                    </button>
                 </div>
                 
                 <div class="flex items-center gap-2 flex-wrap justify-center">
@@ -170,7 +175,18 @@
     
     <!-- Modals -->
     <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-30 hidden z-40"></div>
-
+    
+    <!-- Delete Modal (Aangepast voor mass delete) -->
+    <div id="delete-modal" class="modal-glass fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 max-w-sm w-full rounded-2xl shadow-2xl text-center hidden transition-all z-50">
+        <h2 id="delete-modal-title" class="text-2xl font-bold mb-4">Weet je het zeker?</h2>
+        <p id="delete-modal-text" class="text-slate-600 mb-8">Dit item wordt permanent verwijderd.</p>
+        <div class="flex justify-center gap-4">
+            <button id="cancel-delete" class="bg-slate-200 text-slate-800 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition-all">Annuleren</button>
+            <button id="confirm-delete" class="bg-red-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-all">Verwijderen</button>
+        </div>
+    </div>
+    
+    <!-- Modals (Bestaande Modals - Eerder in de code) -->
     <div id="add-details-modal" class="modal-glass fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 max-w-lg w-full rounded-2xl shadow-2xl hidden transition-all z-50">
         <h2 class="text-2xl font-bold mb-2">Details Toevoegen</h2>
         <p id="modal-item-title" class="font-semibold text-lg text-slate-700 mb-6"></p>
@@ -202,15 +218,6 @@
         <!-- Content will be injected here -->
     </div>
 
-    <div id="delete-modal" class="modal-glass fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 max-w-sm w-full rounded-2xl shadow-2xl text-center hidden transition-all z-50">
-        <h2 class="text-2xl font-bold mb-4">Weet je het zeker?</h2>
-        <p class="text-slate-600 mb-8">Dit item wordt permanent verwijderd.</p>
-        <div class="flex justify-center gap-4">
-            <button id="cancel-delete" class="bg-slate-200 text-slate-800 font-semibold px-6 py-3 rounded-lg hover:bg-slate-300 transition-all">Annuleren</button>
-            <button id="confirm-delete" class="bg-red-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-all">Verwijderen</button>
-        </div>
-    </div>
-
     <script>
         const app = {
             // Application State
@@ -220,6 +227,7 @@
                 sortBy: 'default',
                 randomlySelectedItem: null,
                 itemToDelete: null,
+                isMassDelete: false, // NIEUW: state voor mass delete
                 apiKey: '8a70a767', // OMDb API Key
                 appId: null,
                 searchTimeout: null,
@@ -399,6 +407,7 @@
                 app.elements.sortBySelect = document.getElementById('sort-by');
                 app.elements.emptyState = document.getElementById('empty-state');
                 app.elements.importBtn = document.getElementById('import-btn'); // Nu in filterbalk
+                app.elements.massDeleteBtn = document.getElementById('mass-delete-btn'); // NIEUW
                 app.elements.posterUpdateBtn = document.getElementById('poster-update-btn');
                 
                 // Modals
@@ -406,6 +415,8 @@
                 app.elements.addDetailsModal = document.getElementById('add-details-modal');
                 app.elements.imdbInfoModal = document.getElementById('imdb-info-modal');
                 app.elements.deleteModal = document.getElementById('delete-modal');
+                app.elements.deleteModalTitle = document.getElementById('delete-modal-title'); // NIEUW
+                app.elements.deleteModalText = document.getElementById('delete-modal-text'); // NIEUW
                 
                 // Add Details Modal Controls
                 app.elements.modalItemTitle = document.getElementById('modal-item-title');
@@ -527,7 +538,11 @@
                         // Deactiveer de knop als er data is
                         app.elements.importBtn.disabled = true;
                         app.elements.importBtn.textContent = `Import voltooid (${app.state.items.length} records geladen)`; // Updated text to "records"
+                        app.elements.importBtn.classList.add('hidden'); // Verberg de knop na de eerste import
                         
+                        // Toon mass delete knop indien nodig (voor debugging)
+                        app.elements.massDeleteBtn.classList.remove('hidden');
+
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.remove('hidden');
                         }
@@ -536,6 +551,8 @@
                         // Zorg ervoor dat de knop actief blijft, en de tekst correct is
                         app.elements.importBtn.disabled = false;
                         app.elements.importBtn.textContent = `Importeer ${app.state.importData.length} Items (Series & Kijken)`; // Updated count and text
+                        app.elements.importBtn.classList.remove('hidden'); // Toon de import knop
+                        app.elements.massDeleteBtn.classList.add('hidden'); // Verberg mass delete als leeg
                         
                         if (app.elements.randomizerContainer) {
                             app.elements.randomizerContainer.classList.add('hidden');
@@ -582,6 +599,47 @@
                     console.error("Error updating document: ", error);
                 }
             },
+            
+            // NIEUWE MASS DELETE FUNCTIE
+            handleMassDeleteConfirmation() {
+                app.state.isMassDelete = true;
+                app.elements.deleteModalTitle.textContent = "LET OP: ALLE DATA VERWIJDEREN";
+                app.elements.deleteModalText.textContent = `Weet je zeker dat je alle ${app.state.items.length} records permanent wilt verwijderen? Dit kan niet ongedaan gemaakt worden.`;
+                app.elements.confirmDeleteBtn.textContent = 'WIS ALLES DEFINITIEF';
+                app.elements.confirmDeleteBtn.classList.add('bg-red-800');
+                app.showModal(app.elements.deleteModal);
+            },
+            
+            async handleMassDelete() {
+                if (!app.state.db || !app.state.userId) return;
+                
+                app.elements.confirmDeleteBtn.disabled = true;
+                app.elements.deleteModalText.textContent = `Bezig met verwijderen van ${app.state.items.length} records...`;
+                
+                try {
+                    const itemsCollection = firebase.collection(app.state.db, app.getCollectionPath());
+                    const snapshot = await firebase.getDocs(itemsCollection);
+                    
+                    const batch = firebase.writeBatch(app.state.db);
+                    snapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+                    
+                    console.log(`Mass delete successful: ${snapshot.size} documents deleted.`);
+                    app.hideModal(app.elements.deleteModal);
+                    // De onSnapshot listener handelt de UI-update af
+                } catch (error) {
+                    console.error("Error performing mass delete:", error);
+                    app.elements.deleteModalText.textContent = 'Fout bij massale verwijdering. Probeer later opnieuw.';
+                    app.elements.confirmDeleteBtn.disabled = false;
+                } finally {
+                    app.state.isMassDelete = false;
+                    app.elements.confirmDeleteBtn.classList.remove('bg-red-800');
+                    app.elements.confirmDeleteBtn.textContent = 'Verwijderen';
+                }
+            },
+
 
             // --- OMDb API & Search Logic ---
 
@@ -661,11 +719,13 @@
                 // --- Cruciale Wijziging 2: Sanity Check voor Rendering & Data Patching ---
                 if (!item || !item.id || !item.type) {
                     console.error("Rendering failed: Item missing ID or type.", item);
+                    // De 'Verwijder Corrupt Record' knop is nu essentieel. We geven de ID door als deze bestaat.
+                    const deleteId = item?.id || 'ONBEKEND';
                     return `
                         <div class="glass-card flex flex-col rounded-xl overflow-hidden shadow-xl p-4 bg-red-100 border-red-500 border-2">
                             <h3 class="text-xl font-bold text-red-700">Fout bij laden kaart</h3>
-                            <p class="text-sm text-red-600">Dit record is corrupt of mist een ID/type in de database. ID: ${item?.id || 'ONBEKEND'}.</p>
-                            <button data-id="${item?.id}" data-action="delete" class="w-full text-left px-4 py-2 mt-4 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors">Verwijder Corrupt Record</button>
+                            <p class="text-sm text-red-600">Dit record is corrupt of mist een ID/type in de database. ID: ${deleteId}.</p>
+                            ${deleteId !== 'ONBEKEND' ? `<button data-id="${deleteId}" data-action="delete" class="w-full px-4 py-2 mt-4 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors">Verwijder Corrupt Record</button>` : `<p class="text-xs mt-2">Geen ID gevonden om te verwijderen.</p>`}
                         </div>
                     `;
                 }
@@ -682,8 +742,8 @@
                     streamingOn: item.streamingOn || 'Niet gespecificeerd',
                 };
                 
-                // Debugging Log voor elk item
-                console.log(`[RENDER] Rendering item: ${safeItem.title} (Type: ${safeItem.type}, ID: ${safeItem.id})`);
+                // Debugging Log voor elk item (dit heeft geholpen de crash te diagnosticeren)
+                // console.log(`[RENDER] Rendering item: ${safeItem.title} (Type: ${safeItem.type}, ID: ${safeItem.id})`);
                 
                 // --------------------------------------------------------
 
@@ -797,7 +857,8 @@
 
                 const filteredByList = items.filter(item => {
                     if (filter === 'all') return true;
-                    return item.type === filter;
+                    // Zorg dat de item.type bestaat om crashes te voorkomen
+                    return (item.type || 'onbekend') === filter;
                 });
 
                 if (searchTerm === '') return filteredByList;
@@ -877,7 +938,9 @@
             },
 
             handleConfirmDelete() {
-                if (app.state.itemToDelete) {
+                if (app.state.isMassDelete) {
+                    app.handleMassDelete();
+                } else if (app.state.itemToDelete) {
                     app.deleteItem(app.state.itemToDelete);
                     app.hideModal(app.elements.deleteModal);
                     app.state.itemToDelete = null;
@@ -1101,6 +1164,7 @@
                     };
                 });
                 
+                // Luisteraar voor alle delete knoppen (ook die op de rode foutkaarten)
                 document.querySelectorAll('.options-menu button, .glass-card button[data-action="delete"]').forEach(menuBtn => {
                     menuBtn.onclick = (e) => {
                         e.stopPropagation();
@@ -1112,7 +1176,13 @@
                         const menu = menuBtn.closest('.options-menu');
                         if (menu) menu.classList.add('hidden');
                         
-                        // We hoeven niet te checken op "if (!item)" omdat de delete-knop op de rode foutkaart deze actie toelaat.
+                        // Reset modal state to single delete (Mass Delete wordt afzonderlijk opgeroepen)
+                        app.state.isMassDelete = false;
+                        app.elements.confirmDeleteBtn.classList.remove('bg-red-800');
+                        app.elements.confirmDeleteBtn.textContent = 'Verwijderen';
+                        app.elements.deleteModalTitle.textContent = "Weet je het zeker?";
+                        app.elements.deleteModalText.textContent = "Dit item wordt permanent verwijderd.";
+
 
                         if (action === 'delete') {
                             app.state.itemToDelete = id;
@@ -1157,13 +1227,15 @@
                     // Reset confirm button handler to original state
                     app.elements.confirmAddBtn.textContent = 'Definitief Toevoegen';
                     app.elements.confirmAddBtn.onclick = app.handleConfirmAdd;
+                    
+                    // Reset mass delete state
+                    app.state.isMassDelete = false;
                 };
 
-                // Add Details Modal listeners
-                app.elements.confirmAddBtn.onclick = app.handleConfirmAdd;
-                app.elements.cancelAddBtn.onclick = () => app.elements.modalBackdrop.click(); // Reuse backdrop click logic
+                // Mass Delete Confirmation listener
+                app.elements.massDeleteBtn.onclick = app.handleMassDeleteConfirmation;
 
-                // Delete Modal listeners
+                // Delete Modal confirmation listener
                 app.elements.confirmDeleteBtn.onclick = app.handleConfirmDelete;
                 app.elements.cancelDeleteBtn.onclick = () => app.elements.modalBackdrop.click();
                 
