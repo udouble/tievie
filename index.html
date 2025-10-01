@@ -504,8 +504,9 @@
                     app.state.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort by newest first (default)
                     
                     // --- Cruciale Wijziging 1: Reset Filter Status ---
+                    // Dwing de filter op "all" en markeer de knop als actief
                     app.state.filter = 'all'; 
-                    // Zorg ervoor dat de 'Alles' knop de actieve staat heeft
+                    
                     app.elements.filterControls.querySelectorAll('.filter-btn').forEach(b => {
                         b.classList.remove('active', 'bg-indigo-600', 'text-white');
                         b.classList.add('bg-white/50', 'text-slate-800', 'hover:bg-white/80');
@@ -657,6 +658,19 @@
             },
 
             renderItemCard(item) {
+                // --- Cruciale Wijziging 2: Sanity Check voor Rendering ---
+                if (!item || !item.id || !item.type) {
+                    console.error("Rendering failed: Item missing ID or type.", item);
+                    // Return a placeholder element for debugging visibility
+                    return `
+                        <div class="glass-card flex flex-col rounded-xl overflow-hidden shadow-xl p-4 bg-red-100 border-red-500 border-2">
+                            <h3 class="text-xl font-bold text-red-700">Fout bij laden kaart</h3>
+                            <p class="text-sm text-red-600">Dit record is corrupt of mist een ID/type in de database. Contacteer ondersteuning (ID: ${item?.id || 'ONBEKEND'}).</p>
+                        </div>
+                    `;
+                }
+                // --------------------------------------------------------
+
                 const pillar = app.getPillarClass(item.type);
                 const pillarLabel = app.getPillarLabel(item.type);
                 const ourScoreColor = app.getScoreColor(item.ourScore);
@@ -748,8 +762,10 @@
                     // Items gevonden, toon ze
                     app.elements.emptyState.classList.add('hidden');
                     sorted.forEach(item => {
+                        // Voeg direct de HTML toe, met de eerder ingebouwde veiligheidscheck
+                        const cardHtml = app.renderItemCard(item);
                         const card = document.createElement('div');
-                        card.innerHTML = app.renderItemCard(item);
+                        card.innerHTML = cardHtml;
                         app.elements.itemList.appendChild(card.firstChild);
                     });
                 }
@@ -911,7 +927,7 @@
                     <div class="flex flex-col md:flex-row gap-6 items-start">
                         <img src="${mergedItem.poster}" alt="${mergedItem.title}" class="w-32 h-auto object-cover rounded-lg shadow-xl shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
                         <div>
-                            <h2 class="text-3xl font-bold text-slate-800 mb-2">${mergedItem.title} (${mergedItem.year})</h2>
+                            <h2 class="3xl font-bold text-slate-800 mb-2">${mergedItem.title} (${mergedItem.year})</h2>
                             <div class="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-4">
                                 <span class="font-semibold ${app.getScoreColor(mergedItem.imdbRating)} text-white px-3 py-1 rounded-full shadow">IMDb: ${mergedItem.imdbRating || 'N/A'}</span>
                                 <span>${mergedItem.runtime || 'N/A'}</span>
