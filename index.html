@@ -658,29 +658,45 @@
             },
 
             renderItemCard(item) {
-                // --- Cruciale Wijziging 2: Sanity Check voor Rendering ---
+                // --- Cruciale Wijziging 2: Sanity Check voor Rendering & Data Patching ---
                 if (!item || !item.id || !item.type) {
                     console.error("Rendering failed: Item missing ID or type.", item);
-                    // Return a placeholder element for debugging visibility
                     return `
                         <div class="glass-card flex flex-col rounded-xl overflow-hidden shadow-xl p-4 bg-red-100 border-red-500 border-2">
                             <h3 class="text-xl font-bold text-red-700">Fout bij laden kaart</h3>
-                            <p class="text-sm text-red-600">Dit record is corrupt of mist een ID/type in de database. Contacteer ondersteuning (ID: ${item?.id || 'ONBEKEND'}).</p>
+                            <p class="text-sm text-red-600">Dit record is corrupt of mist een ID/type in de database. ID: ${item?.id || 'ONBEKEND'}.</p>
+                            <button data-id="${item?.id}" data-action="delete" class="w-full text-left px-4 py-2 mt-4 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors">Verwijder Corrupt Record</button>
                         </div>
                     `;
                 }
+
+                // **Defensief programmeren:** Garandeer dat alle gebruikte velden bestaan, zelfs als ze leeg zijn.
+                const safeItem = {
+                    ...item,
+                    poster: item.poster || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster',
+                    runtime: item.runtime || 'N/A',
+                    imdbRating: item.imdbRating || 'N/A',
+                    ourScore: item.ourScore || '',
+                    year: item.year || 'N/A',
+                    createdAt: item.createdAt || 0,
+                    streamingOn: item.streamingOn || 'Niet gespecificeerd',
+                };
+                
+                // Debugging Log voor elk item
+                console.log(`[RENDER] Rendering item: ${safeItem.title} (Type: ${safeItem.type}, ID: ${safeItem.id})`);
+                
                 // --------------------------------------------------------
 
-                const pillar = app.getPillarClass(item.type);
-                const pillarLabel = app.getPillarLabel(item.type);
-                const ourScoreColor = app.getScoreColor(item.ourScore);
-                const imdbScoreColor = app.getScoreColor(item.imdbRating);
+                const pillar = app.getPillarClass(safeItem.type);
+                const pillarLabel = app.getPillarLabel(safeItem.type);
+                const ourScoreColor = app.getScoreColor(safeItem.ourScore);
+                const imdbScoreColor = app.getScoreColor(safeItem.imdbRating);
                 
                 // Show score edit field only if category is 'bekeken' (watched)
-                const scoreField = item.type === 'bekeken' ? `
+                const scoreField = safeItem.type === 'bekeken' ? `
                     <div class="relative w-full">
-                        <input type="number" min="1" max="10" step="0.1" value="${item.ourScore || ''}" 
-                            data-id="${item.id}" data-field="ourScore" 
+                        <input type="number" min="1" max="10" step="0.1" value="${safeItem.ourScore}" 
+                            data-id="${safeItem.id}" data-field="ourScore" 
                             placeholder="Score (1-10)"
                             class="edit-score-input p-1.5 w-full text-center text-xs font-semibold rounded-lg ${ourScoreColor} text-white transition-all focus:ring-2 focus:ring-white/80 focus:outline-none placeholder-white/80"
                         >
@@ -688,15 +704,15 @@
                 
                 // Set default action button based on list type
                 let actionBtnHTML = '';
-                if (item.type !== 'bekeken') {
+                if (safeItem.type !== 'bekeken') {
                     actionBtnHTML = `
-                        <button data-id="${item.id}" class="move-to-watched flex-1 bg-green-500/80 text-white font-semibold text-xs py-2 rounded-lg hover:bg-green-600 transition-all">
+                        <button data-id="${safeItem.id}" class="move-to-watched flex-1 bg-green-500/80 text-white font-semibold text-xs py-2 rounded-lg hover:bg-green-600 transition-all">
                             Bekeken
                         </button>`;
                 }
 
                 const cardHTML = `
-                    <div id="card-${item.id}" class="glass-card flex flex-col rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all relative">
+                    <div id="card-${safeItem.id}" class="glass-card flex flex-col rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all relative">
                         <!-- Type Pillar -->
                         <div class="absolute top-0 left-0 ${pillar} text-white text-xs font-bold px-3 py-1 rounded-br-lg z-10 shadow-md">
                             ${pillarLabel}
@@ -704,28 +720,29 @@
                         
                         <!-- Actions Menu (dots) -->
                         <div class="absolute top-2 right-2 z-20">
-                            <button data-id="${item.id}" class="options-btn text-white bg-black/30 p-1 rounded-full hover:bg-black/50 transition-all">
+                            <button data-id="${safeItem.id}" class="options-btn text-white bg-black/30 p-1 rounded-full hover:bg-black/50 transition-all">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                             </button>
-                            <div data-id="${item.id}" class="options-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl hidden z-30 overflow-hidden">
-                                <button data-id="${item.id}" data-action="details" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors">Toon Details (IMDb)</button>
-                                <button data-id="${item.id}" data-action="edit" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors">Wijzig Categorie</button>
-                                <button data-id="${item.id}" data-action="delete" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">Verwijder</button>
+                            <div data-id="${safeItem.id}" class="options-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl hidden z-30 overflow-hidden">
+                                <button data-id="${safeItem.id}" data-action="details" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors">Toon Details (IMDb)</button>
+                                <button data-id="${safeItem.id}" data-action="edit" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors">Wijzig Categorie</button>
+                                <button data-id="${safeItem.id}" data-action="delete" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">Verwijder</button>
                             </div>
                         </div>
 
                         <!-- Poster and Info -->
                         <div class="relative">
-                            <img src="${item.poster}" alt="${item.title}" class="w-full h-96 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
+                            <img src="${safeItem.poster}" alt="${safeItem.title}" class="w-full h-96 object-cover" 
+                                onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
                             
                             <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent p-4 flex flex-col justify-end">
-                                <h3 class="text-xl font-bold text-white mb-1 leading-tight">${item.title} (${item.year})</h3>
-                                <p class="text-xs text-white/80 mb-2">${item.runtime || 'N/A'}</p>
+                                <h3 class="text-xl font-bold text-white mb-1 leading-tight">${safeItem.title} (${safeItem.year})</h3>
+                                <p class="text-xs text-white/80 mb-2">${safeItem.runtime}</p>
                             </div>
 
                              <!-- IMDb Rating Badge -->
                             <span class="absolute bottom-4 right-4 ${imdbScoreColor} text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md z-10">
-                                IMDb: ${item.imdbRating || 'N/A'}
+                                IMDb: ${safeItem.imdbRating}
                             </span>
                         </div>
 
@@ -735,7 +752,7 @@
                                 ${scoreField}
                                 ${actionBtnHTML}
                             </div>
-                            <p class="text-xs text-slate-500 mt-2 text-center">Toegevoegd: ${new Date(item.createdAt).toLocaleDateString()}</p>
+                            <p class="text-xs text-slate-500 mt-2 text-center">Toegevoegd: ${new Date(safeItem.createdAt).toLocaleDateString()}</p>
                         </div>
                     </div>
                 `;
@@ -786,11 +803,11 @@
                 if (searchTerm === '') return filteredByList;
 
                 return filteredByList.filter(item => {
-                    const titleMatch = item.title.toLowerCase().includes(searchTerm);
-                    const yearMatch = item.year.includes(searchTerm);
-                    const streamingMatch = item.streamingOn.toLowerCase().includes(searchTerm);
+                    const titleMatch = (item.title || '').toLowerCase().includes(searchTerm);
+                    const yearMatch = (item.year || '').includes(searchTerm);
+                    const streamingMatch = (item.streamingOn || '').toLowerCase().includes(searchTerm);
                     // Cruciale check: Is de categorie-label ook matchend?
-                    const categoryMatch = app.getPillarLabel(item.type).toLowerCase().includes(searchTerm);
+                    const categoryMatch = app.getPillarLabel(item.type || '').toLowerCase().includes(searchTerm);
                     
                     return titleMatch || yearMatch || streamingMatch || categoryMatch;
                 });
@@ -802,7 +819,7 @@
                 return [...items].sort((a, b) => {
                     switch (sortBy) {
                         case 'title-asc':
-                            return a.title.localeCompare(b.title);
+                            return (a.title || '').localeCompare(b.title || '');
                         case 'imdb-desc':
                             return (parseFloat(b.imdbRating) || 0) - (parseFloat(a.imdbRating) || 0);
                         case 'ourscore-desc':
@@ -900,7 +917,7 @@
                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                         </button>
                         <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <img src="${item.poster}" alt="${item.title}" class="w-32 h-auto object-cover rounded-lg shadow-xl shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
+                            <img src="${item.poster || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'}" alt="${item.title}" class="w-32 h-auto object-cover rounded-lg shadow-xl shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
                             <div>
                                 <h2 class="text-3xl font-bold text-slate-800 mb-2">${item.title} (${item.year})</h2>
                                 <div class="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-4">
@@ -925,7 +942,7 @@
                         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                     </button>
                     <div class="flex flex-col md:flex-row gap-6 items-start">
-                        <img src="${mergedItem.poster}" alt="${mergedItem.title}" class="w-32 h-auto object-cover rounded-lg shadow-xl shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
+                        <img src="${mergedItem.poster || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'}" alt="${mergedItem.title}" class="w-32 h-auto object-cover rounded-lg shadow-xl shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+Poster'">
                         <div>
                             <h2 class="3xl font-bold text-slate-800 mb-2">${mergedItem.title} (${mergedItem.year})</h2>
                             <div class="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-4">
@@ -1084,27 +1101,27 @@
                     };
                 });
                 
-                document.querySelectorAll('.options-menu button').forEach(menuBtn => {
+                document.querySelectorAll('.options-menu button, .glass-card button[data-action="delete"]').forEach(menuBtn => {
                     menuBtn.onclick = (e) => {
                         e.stopPropagation();
                         const id = menuBtn.dataset.id;
                         const action = menuBtn.dataset.action;
                         const item = app.state.items.find(i => i.id === id);
                         
-                        // Hide the menu immediately
-                        menuBtn.closest('.options-menu').classList.add('hidden');
+                        // Hide the menu immediately (if applicable)
+                        const menu = menuBtn.closest('.options-menu');
+                        if (menu) menu.classList.add('hidden');
                         
-                        if (!item) return;
+                        // We hoeven niet te checken op "if (!item)" omdat de delete-knop op de rode foutkaart deze actie toelaat.
 
                         if (action === 'delete') {
                             app.state.itemToDelete = id;
                             app.showModal(app.elements.deleteModal);
                         } else if (action === 'details') {
-                            // The implementation of handleShowImdbInfo now fetches data internally
-                            app.handleShowImdbInfo(item);
+                            if (item) app.handleShowImdbInfo(item);
                         
                         } else if (action === 'edit') {
-                            app.handleEditCategory(item);
+                            if (item) app.handleEditCategory(item);
                         }
                     };
                 });
