@@ -502,8 +502,11 @@
                         ...doc.data()
                     }));
                     app.state.items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // Sort by newest first (default)
-                    app.renderItems();
                     
+                    // --- Cruciale Wijziging 1: Onmiddellijke Rendering ---
+                    app.renderItems(); 
+                    // ----------------------------------------------------
+
                     const listIsNotEmpty = app.state.items.length > 0;
                     
                     // PAS DE KNOP AAN NADAT WE DE DEFINITIEVE STAAT WETEN
@@ -719,8 +722,13 @@
                 
                 app.elements.itemList.innerHTML = '';
                 
-                if (sorted.length === 0 && app.state.items.length > 0) {
-                    app.elements.itemList.innerHTML = `<p class="text-center text-white/80 py-10 col-span-full">Geen items gevonden die overeenkomen met de huidige filters of zoekopdracht.</p>`;
+                if (sorted.length === 0) {
+                    // Pas de lege status aan op basis van de filter/zoekstatus
+                    if (app.state.items.length > 0) {
+                        app.elements.itemList.innerHTML = `<p class="text-center text-white/80 py-10 col-span-full">Geen items gevonden die overeenkomen met de huidige filters of zoekopdracht.</p>`;
+                    } else {
+                        app.elements.itemList.innerHTML = `<p class="text-center text-white/80 py-10 col-span-full">Uw lijst is leeg. Zoek hierboven een titel om toe te voegen, of gebruik de import-knop.</p>`;
+                    }
                 }
                 
                 sorted.forEach(item => {
@@ -748,7 +756,10 @@
                     const titleMatch = item.title.toLowerCase().includes(searchTerm);
                     const yearMatch = item.year.includes(searchTerm);
                     const streamingMatch = item.streamingOn.toLowerCase().includes(searchTerm);
-                    return titleMatch || yearMatch || streamingMatch;
+                    // Cruciale check: Is de categorie-label ook matchend?
+                    const categoryMatch = app.getPillarLabel(item.type).toLowerCase().includes(searchTerm);
+                    
+                    return titleMatch || yearMatch || streamingMatch || categoryMatch;
                 });
             },
 
