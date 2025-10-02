@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'mfs-v1';
+const CACHE_NAME = 'mfs-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -9,12 +9,16 @@ const CORE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+    Promise.all([
+      caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))),
+      self.clients.claim()
+    ])
   );
 });
 

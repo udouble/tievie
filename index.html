@@ -21,9 +21,12 @@
   <div id="app" class="max-w-4xl mx-auto p-4 pb-24">
     <header class="mb-4 flex items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
-      <div class="flex gap-2">
+      <div class="flex gap-2 items-center">
         <button id="btn-import-json" class="tappable px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
         <button id="btn-add-demo" class="tappable px-3 py-2 rounded-xl bg-indigo-600 text-white shadow text-sm">Demo-items</button>
+        <button id="btn-fill-posters" class="tappable px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Posters aanvullen</button>
+        <!-- verborgen keyveld; wordt pas zichtbaar bij key-fout --> 
+        <input id="omdb-key" type="password" placeholder="OMDb API key" class="tappable px-3 py-2 rounded-xl bg-white/70 shadow text-sm w-44 hidden" />
       </div>
     </header>
 
@@ -55,7 +58,7 @@
   const DB_NAME = 'mfs-db';
   const DB_VERSION = 1;
   const STORE = 'items';
-
+  const OMDB_DEFAULT_KEY = '8a70a767'; // baked-in
   function openDB(){
     return new Promise((resolve, reject)=>{
       const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -107,6 +110,8 @@
       this.$clearRandom = document.getElementById('clearRandom');
       this.$btnImport = document.getElementById('btn-import-json');
       this.$btnDemo = document.getElementById('btn-add-demo');
+      this.$btnFillPosters = document.getElementById('btn-fill-posters');
+      this.$omdbKey = document.getElementById('omdb-key');
     },
 
     bindUI(){
@@ -139,7 +144,8 @@
             poster: raw.poster || '',
             streamingOn: raw.streamingOn || '',
             ourScore: raw.ourScore || '',
-            dateSeen: raw.dateSeen || ''
+            dateSeen: raw.dateSeen || '',
+            imdbID: raw.imdbID || raw.imdbId || ''
           }));
           await dbBulkPut(normalized);
           this.state.items = await dbGetAll();
@@ -150,8 +156,8 @@
       this.$btnDemo.addEventListener('click', async ()=>{
         const now = Date.now();
         const demo = [
-          {id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10'},
-          {id:`d-${now+1}`, title:'Dark', type:'serie', createdAt:now+1, imdbRating:'8.7', year:'2017', runtime:'3 seizoenen', poster:'', streamingOn:'Netflix', ourScore:'8/10'},
+          {id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10', imdbID:'tt1375666'},
+          {id:`d-${now+1}`, title:'Dark', type:'serie', createdAt:now+1, imdbRating:'8.7', year:'2017', runtime:'3 seizoenen', poster:'', streamingOn:'Netflix', ourScore:'8/10', imdbID:'tt5753856'},
         ];
         await dbBulkPut(demo);
         this.state.items = await dbGetAll();
@@ -178,10 +184,57 @@
         await dbPut(item);
         this.render();
       });
+
+      this.$omdbKey.addEventListener('change', ()=>{
+        const v = this.$omdbKey.value.trim();
+        if(v) localStorage.setItem('omdbKey', v);
+      });
+
+      this.$btnFillPosters.addEventListener('click', ()=> this.fillPosters());
     },
 
     getStreamingOptions(){
-      return ['', 'Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'];
+      return ['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'];
+    },
+
+    async fillPosters(){
+      // resolve active key: default baked-in unless user provided override after error
+      const key = (localStorage.getItem('omdbKey') || OMDB_DEFAULT_KEY).trim();
+      const items = await dbGetAll();
+      let updated = 0, tried = 0, hadKeyError = false;
+      for(const item of items){
+        if(item.poster && item.poster !== 'N/A') continue;
+        tried++;
+        try{
+          let url = `https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&plot=short&r=json`;
+          if(item.imdbID){ url += `&i=${encodeURIComponent(item.imdbID)}`; }
+          else { url += `&t=${encodeURIComponent(item.title)}${item.year?`&y=${encodeURIComponent(item.year)}`:''}`; }
+          const resp = await fetch(url);
+          const data = await resp.json();
+          if(data && data.Response === 'False' && String(data.Error||'').toLowerCase().includes('invalid api key')){
+            hadKeyError = true;
+            break;
+          }
+          if(data && data.Response !== 'False'){
+            if(!item.imdbID && data.imdbID) item.imdbID = data.imdbID;
+            if(data.Poster && data.Poster !== 'N/A'){
+              item.poster = data.Poster;
+              await dbPut(item);
+              updated++;
+            }
+          }
+          await new Promise(r=>setTimeout(r, 300));
+        }catch(err){ console.warn('OMDb fout', err); }
+      }
+      if(hadKeyError){
+        alert('OMDb: ongeldige API key. Vul je eigen key in en probeer opnieuw.');
+        this.$omdbKey.classList.remove('hidden');
+        this.$omdbKey.focus();
+      } else {
+        this.state.items = await dbGetAll();
+        this.render();
+        alert(`Posters aangevuld: ${updated}/${tried}`);
+      }
     },
 
     pickRandom(){
@@ -205,6 +258,50 @@
       if(this.state.sort === 'ourScoreDesc') arr.sort((a,b)=> (parseFloat(b.ourScore) || 0) - (parseFloat(a.ourScore) || 0));
       else arr.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
       return arr;
+    },
+
+    render(){
+      const list = this.$list;
+      const emptyState = this.$emptyState;
+      const filterControls = this.$filterControls;
+      const randomizerContainer = this.$randomizerContainer;
+      const randomBtnText = this.$randomBtnText;
+
+      list.innerHTML = '';
+      const itemsToDisplay = this.filtered();
+
+      filterControls.querySelectorAll('.filter-btn').forEach(btn => {
+        const isActive = this.state.searchTerm ? false : (btn.dataset.filter === this.state.filter && !this.state.randomlySelectedItem);
+        btn.classList.toggle('active', isActive);
+        btn.classList.toggle('bg-indigo-600', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('bg-white/50', !isActive);
+        btn.classList.toggle('text-slate-800', !isActive);
+      });
+      const randomizableCategories = ['film', 'serie', 'herman-film', 'herman-serie'];
+      const showRandomizer = randomizableCategories.includes(this.state.filter);
+      randomizerContainer.classList.toggle('hidden', !showRandomizer || this.state.randomlySelectedItem);
+      if(showRandomizer){
+        const textMap = {'film': 'Film', 'serie': 'Serie', 'herman-film': 'H-Film', 'herman-serie': 'H-Serie'};
+        randomBtnText.textContent = textMap[this.state.filter];
+      }
+
+      if(itemsToDisplay.length === 0){
+        list.appendChild(emptyState);
+        if(!this.state.isDbReady){ emptyState.textContent = 'Verbinden met de database…'; }
+        else if(this.state.items.length === 0){ emptyState.textContent = 'Je lijst is leeg.'; }
+        else {
+          if(this.state.searchTerm){ emptyState.textContent = `Geen resultaten gevonden voor "${this.state.searchTerm}".`; }
+          else {
+            const filterTextMap = { film:'films', serie:'series', 'aan-het-kijken':'items die je aan het kijken bent', 'herman-film':'H-Films', 'herman-serie':'H-Series', bekeken:'bekeken items' };
+            emptyState.textContent = `Geen ${filterTextMap[this.state.filter] || 'items'} gevonden.`;
+          }
+        }
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        itemsToDisplay.forEach((item, index)=>{ const el = this.createItemElement(item, index+1); list.appendChild(el); });
+      }
     },
 
     createItemElement(item, index){
@@ -286,50 +383,6 @@
         </div>
       `;
       return div;
-    },
-
-    render(){
-      const list = this.$list;
-      const emptyState = this.$emptyState;
-      const filterControls = this.$filterControls;
-      const randomizerContainer = this.$randomizerContainer;
-      const randomBtnText = this.$randomBtnText;
-
-      list.innerHTML = '';
-      const itemsToDisplay = this.filtered();
-
-      filterControls.querySelectorAll('.filter-btn').forEach(btn => {
-        const isActive = this.state.searchTerm ? false : (btn.dataset.filter === this.state.filter && !this.state.randomlySelectedItem);
-        btn.classList.toggle('active', isActive);
-        btn.classList.toggle('bg-indigo-600', isActive);
-        btn.classList.toggle('text-white', isActive);
-        btn.classList.toggle('bg-white/50', !isActive);
-        btn.classList.toggle('text-slate-800', !isActive);
-      });
-      const randomizableCategories = ['film', 'serie', 'herman-film', 'herman-serie'];
-      const showRandomizer = randomizableCategories.includes(this.state.filter);
-      randomizerContainer.classList.toggle('hidden', !showRandomizer || this.state.randomlySelectedItem);
-      if(showRandomizer){
-        const textMap = {'film': 'Film', 'serie': 'Serie', 'herman-film': 'H-Film', 'herman-serie': 'H-Serie'};
-        randomBtnText.textContent = textMap[this.state.filter];
-      }
-
-      if(itemsToDisplay.length === 0){
-        list.appendChild(emptyState);
-        if(!this.state.isDbReady){ emptyState.textContent = 'Verbinden met de database…'; }
-        else if(this.state.items.length === 0){ emptyState.textContent = 'Je lijst is leeg.'; }
-        else {
-          if(this.state.searchTerm){ emptyState.textContent = `Geen resultaten gevonden voor "${this.state.searchTerm}".`; }
-          else {
-            const filterTextMap = { film:'films', serie:'series', 'aan-het-kijken':'items die je aan het kijken bent', 'herman-film':'H-Films', 'herman-serie':'H-Series', bekeken:'bekeken items' };
-            emptyState.textContent = `Geen ${filterTextMap[this.state.filter] || 'items'} gevonden.`;
-          }
-        }
-        emptyState.classList.remove('hidden');
-      } else {
-        emptyState.classList.add('hidden');
-        itemsToDisplay.forEach((item, index)=>{ const el = this.createItemElement(item, index+1); list.appendChild(el); });
-      }
     },
   };
 
