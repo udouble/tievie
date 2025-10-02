@@ -30,6 +30,7 @@
         <input id="omdb-key" type="password" placeholder="OMDb API key" class="tappable px-3 py-2 rounded-xl bg-white/70 shadow text-sm w-44 hidden" />
       </div>
     </header>
+
     <section class="mb-3">
       <div id="filterControls" class="flex flex-wrap gap-2">
         <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="film">Films</button>
@@ -43,16 +44,280 @@
         <input id="search" type="search" placeholder="Zoeken…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48" />
       </div>
     </section>
+
     <main>
       <div id="list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
       <p id="emptyState" class="hidden text-center text-slate-600 py-10">Laden…</p>
     </main>
   </div>
-  <script>
-    // volledige JS app-code hier (om ruimte te sparen, niet volledig uitgeschreven)
-    document.addEventListener('DOMContentLoaded', ()=>{
-      document.getElementById('list').innerHTML='<div class="p-4 bg-white rounded-xl">App geladen - JS code actief</div>';
+
+<script>
+const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
+const OMDB_DEFAULT_KEY='8a70a767'; // ingebakken key
+
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type');}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE);}
+async function dbGetAll(){const db=await openDB();return new Promise((res,rej)=>{const r=tx(db).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
+async function dbPut(item){const db=await openDB();return new Promise((res,rej)=>{const r=tx(db,'readwrite').put(item);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+async function dbDelete(id){const db=await openDB();return new Promise((res,rej)=>{const r=tx(db,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+async function dbBulkPut(items){const db=await openDB();return new Promise((res,rej)=>{const s=tx(db,'readwrite');items.forEach(i=>s.put(i));s.transaction.oncomplete=()=>res();s.transaction.onerror=()=>rej(s.transaction.error);});}
+
+const app={
+  state:{items:[],filter:'all',searchTerm:'',randomlySelectedItem:null,isDbReady:false,sort:'createdAtDesc'},
+
+  async init(){
+    this.cacheEls(); this.bindUI();
+    try{ await openDB(); this.state.isDbReady=true; this.state.items=await dbGetAll(); this.render(); }
+    catch(e){ console.error('DB fout',e); this.$emptyState.textContent='Kon database niet openen.'; this.$emptyState.classList.remove('hidden'); }
+    if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(console.warn); }
+  },
+
+  cacheEls(){
+    this.$list=document.getElementById('list');
+    this.$emptyState=document.getElementById('emptyState');
+    this.$filterControls=document.getElementById('filterControls');
+    this.$search=document.getElementById('search');
+    this.$btnImport=document.getElementById('btn-import-json');
+    this.$btnImportCSV=document.getElementById('btn-import-csv');
+    this.$btnDemo=document.getElementById('btn-add-demo');
+    this.$btnFillPosters=document.getElementById('btn-fill-posters');
+    this.$omdbKey=document.getElementById('omdb-key');
+  },
+
+  bindUI(){
+    this.$filterControls.addEventListener('click',(e)=>{const btn=e.target.closest('.filter-btn'); if(!btn) return; this.state.filter=btn.dataset.filter; this.state.randomlySelectedItem=null; this.render();});
+    this.$search.addEventListener('input',(e)=>{this.state.searchTerm=e.target.value.trim(); this.render();});
+
+    // JSON import
+    this.$btnImport.addEventListener('click', async ()=>{
+      const input=document.createElement('input'); input.type='file'; input.accept='application/json';
+      input.onchange=async ()=>{
+        const file=input.files[0]; if(!file) return;
+        let arr=[]; try{ arr=JSON.parse(await file.text()); }catch{ alert('Geen geldige JSON.'); return; }
+        const now=Date.now();
+        const normalized=arr.map((raw,i)=>({
+          id:raw.id||`${now}-${i}`, title:raw.title||'Onbekend', type:raw.type||'film', createdAt:raw.createdAt||(now+i),
+          imdbRating:raw.imdbRating||'', year:raw.year||'', runtime:raw.runtime||'',
+          poster:raw.poster||'', streamingOn:raw.streamingOn||'', ourScore:raw.ourScore||'', dateSeen:raw.dateSeen||'',
+          imdbID:raw.imdbID||raw.imdbId||''
+        }));
+        await dbBulkPut(normalized); this.state.items=await dbGetAll(); this.render();
+      };
+      input.click();
     });
-  </script>
+
+    // CSV import (IMDb)
+    this.$btnImportCSV.addEventListener('click', async ()=>{
+      const input=document.createElement('input'); input.type='file'; input.accept='.csv,text/csv';
+      input.onchange=async ()=>{
+        const file=input.files[0]; if(!file) return;
+        Papa.parse(file, {
+          header:true, skipEmptyLines:true, transformHeader:h=>(h||'').toString().trim().toLowerCase(),
+          complete: async (res)=>{
+            const rows=res.data||[]; const now=Date.now();
+            const items=rows.map((r,i)=>{
+              const lower={}; Object.keys(r).forEach(k=>lower[(k||'').toString().trim().toLowerCase()]=r[k]);
+              const get=k=>lower[k]??'';
+              const imdbConst=(get('const')||'').toString().trim();
+              const title=(get('title')||get('original title')||'').toString().trim()||'Onbekend';
+              const year=(get('year')||'').toString().trim();
+              const rt=(get('runtime (min)')||get('runtime')||'').toString().trim();
+              const imdbRating=(get('imdb rating')||get('imdb_rating')||'').toString().trim();
+              const yourRating=(get('your rating')||get('your_rating')||'').toString().trim();
+              const dateRated=(get('date rated')||get('date_rated')||'').toString().trim();
+              const platform=(get('description')||get('where')||'').toString().trim();
+              return {
+                id:`${now}-${i}`, title, type:'aan-het-kijken', createdAt:now+i,
+                imdbRating, year, runtime: rt?(/(min|seizoen|aflever)/i.test(rt)?rt:`${rt} min`):'',
+                poster:'', streamingOn:platform, ourScore:yourRating, dateSeen:dateRated, imdbID:imdbConst
+              };
+            });
+            await dbBulkPut(items); app.state.items=await dbGetAll(); app.render();
+            alert(`CSV geïmporteerd: ${items.length} items`);
+          }
+        });
+      };
+      input.click();
+    });
+
+    // Demo
+    this.$btnDemo.addEventListener('click', async ()=>{
+      const now=Date.now();
+      const demo=[
+        {id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10', imdbID:'tt1375666'},
+        {id:`d-${now+1}`, title:'Dark', type:'serie', createdAt:now+1, imdbRating:'8.7', year:'2017', runtime:'3 seizoenen', poster:'', streamingOn:'Netflix', ourScore:'8/10', imdbID:'tt5753856'}
+      ];
+      await dbBulkPut(demo); this.state.items=await dbGetAll(); this.render();
+    });
+
+    // Posters
+    this.$btnFillPosters.addEventListener('click', ()=> this.fillPosters());
+
+    // Card interactions
+    this.$list.addEventListener('click', async (e)=>{
+      const del=e.target.closest('[data-action="delete"]');
+      const imdb=e.target.closest('[data-action="show-imdb"]');
+      if(del){ const id=del.dataset.id; await dbDelete(id); this.state.items=await dbGetAll(); this.render(); return; }
+      if(imdb){ const imdbID=imdb.dataset.imdbid; if(imdbID) window.open(`https://www.imdb.com/title/${imdbID}/`, '_blank'); return; }
+    });
+    this.$list.addEventListener('change', async (e)=>{
+      const id=e.target.getAttribute('data-id'); if(!id) return;
+      const item=this.state.items.find(i=>i.id==id); if(!item) return;
+      if(e.target.classList.contains('category-select')) item.type=e.target.value;
+      if(e.target.classList.contains('streaming-service-select')) item.streamingOn=e.target.value;
+      if(e.target.classList.contains('our-score-input')) item.ourScore=e.target.value;
+      if(e.target.classList.contains('date-seen-input')) item.dateSeen=e.target.value;
+      await dbPut(item); this.render();
+    });
+  },
+
+  getStreamingOptions(){ return ['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes']; },
+
+  async fillPosters(){
+    const key=(localStorage.getItem('omdbKey')||OMDB_DEFAULT_KEY).trim();
+    const items=await dbGetAll(); let updated=0,tried=0,hadKeyError=false;
+    for(const item of items){
+      if(item.poster && item.poster!=='N/A') continue; tried++;
+      try{
+        let url=`https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&plot=short&r=json`;
+        if(item.imdbID) url+=`&i=${encodeURIComponent(item.imdbID)}`;
+        else url+=`&t=${encodeURIComponent(item.title)}${item.year?`&y=${encodeURIComponent(item.year)}`:''}`;
+        const resp=await fetch(url); const data=await resp.json();
+        if(data && data.Response==='False' && String(data.Error||'').toLowerCase().includes('invalid api key')){ hadKeyError=true; break; }
+        if(data && data.Response!=='False'){
+          if(!item.imdbID && data.imdbID) item.imdbID=data.imdbID;
+          if(data.Poster && data.Poster!=='N/A'){ item.poster=data.Poster; await dbPut(item); updated++; }
+        }
+        await new Promise(r=>setTimeout(r,250));
+      }catch(err){ console.warn('OMDb fout',err); }
+    }
+    if(hadKeyError){
+      alert('OMDb: ongeldige API key. Vul je eigen key in en probeer opnieuw.');
+      this.$omdbKey.classList.remove('hidden'); this.$omdbKey.focus();
+    } else {
+      this.state.items=await dbGetAll(); this.render();
+      alert(`Posters aangevuld: ${updated}/${tried}`);
+    }
+  },
+
+  filtered(){
+    const term=this.state.searchTerm.toLowerCase();
+    let arr=this.state.items.slice();
+    if(this.state.filter!=='all') arr=arr.filter(i=> i.type===this.state.filter);
+    if(term) arr=arr.filter(i=> (i.title||'').toLowerCase().includes(term));
+    if(this.state.randomlySelectedItem){ arr=arr.filter(i=> i.id===this.state.randomlySelectedItem); }
+    if(this.state.sort==='ourScoreDesc') arr.sort((a,b)=> (parseFloat(b.ourScore)||0) - (parseFloat(a.ourScore)||0));
+    else arr.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+    return arr;
+  },
+
+  render(){
+    const list=this.$list, empty=this.$emptyState;
+
+    // style filter buttons
+    document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
+      const isActive=(btn.dataset.filter===this.state.filter);
+      btn.classList.toggle('bg-indigo-600',isActive);
+      btn.classList.toggle('text-white',isActive);
+      btn.classList.toggle('bg-white/50',!isActive);
+      btn.classList.toggle('text-slate-800',!isActive);
+    });
+
+    list.innerHTML='';
+    const items=this.filtered();
+    if(items.length===0){
+      empty.textContent = !this.state.isDbReady ? 'Verbinden met de database…'
+        : (this.state.items.length===0 ? 'Je lijst is leeg.' : 'Geen items in deze filter.');
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    items.forEach((item, index)=> list.appendChild(this.createItemElement(item, index+1)));
+  },
+
+  createItemElement(item, index){
+    const div=document.createElement('div');
+    div.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
+    div.dataset.itemId=item.id;
+    const posterSrc=(item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';
+
+    const tagConfig={
+      film:{color:'bg-sky-200/80 text-sky-900',text:'Film'},
+      serie:{color:'bg-amber-200/80 text-amber-900',text:'Serie'},
+      'herman-film':{color:'bg-purple-200/80 text-purple-900',text:'H-Film'},
+      'herman-serie':{color:'bg-pink-200/80 text-pink-900',text:'H-Serie'},
+      'aan-het-kijken':{color:'bg-blue-200/80 text-blue-900',text:'Aan het kijken'},
+      bekeken:{color:'bg-green-200/80 text-green-900',text:'Bekeken'}
+    };
+    const tag=tagConfig[item.type] || {color:'bg-slate-200/80 text-slate-900', text:item.type};
+
+    const streamingOptionsHTML=this.getStreamingOptions().map(opt=>`<option value="${opt}" ${item.streamingOn===opt?'selected':''}>${opt}</option>`).join('');
+    const categoryOptionsHTML=Object.keys(tagConfig).map(key=>`<option value="${key}" ${item.type===key?'selected':''}>${tagConfig[key].text}</option>`).join('');
+
+    let dateSeenHTML='';
+    if(item.type==='bekeken'){
+      dateSeenHTML=`<div class="mt-2">
+        <label class="block text-xs font-medium text-slate-600 mb-0.5">Laatst gezien op</label>
+        <input type="date" data-id="${item.id}" value="${item.dateSeen ? item.dateSeen : ''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md">
+      </div>`;
+    }
+
+    div.innerHTML=`
+      <div class="flex">
+        <div class="w-1/2 flex-shrink-0 relative">
+          <div class="aspect-[2/3] w-full">
+            <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
+          </div>
+          <div class="absolute top-2 left-2 bg-black bg-opacity-70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
+        </div>
+        <div class="p-3 flex flex-col flex-grow w-1/2">
+          <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
+          <div class="text-sm text-slate-700 space-y-0.5 mb-3">
+            <p><strong>IMDB:</strong> ${item.imdbRating || 'N/B'}</p>
+            <p><strong>Jaar:</strong> ${item.year || 'N/B'}</p>
+            <p><strong>Duur:</strong> ${item.runtime || 'N/B'}</p>
+          </div>
+          <div class="mb-3 flex justify-between items-center">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.color}">${tag.text}</span>
+            <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="tappable bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
+              <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="p-3 pt-2 text-xs space-y-2 border-t border-white/20">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
+            <select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">${categoryOptionsHTML}</select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+            <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">${streamingOptionsHTML}</select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">Onze score</label>
+            <input type="text" data-id="${item.id}" value="${item.ourScore || ''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md" placeholder="bv. 8/10">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-600 mb-0.5">&nbsp;</label>
+            <button data-id="${item.id}" data-imdbid="${item.imdbID || ''}" data-action="show-imdb" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.44 15.6c.33.58.17 1.32-.39 1.7-.56.38-1.3.22-1.68-.36L18 13.28V20a1 1 0 01-1 1H7a1 1 0 01-1-1v-6.72l-2.37 3.66c-.38.58-1.12.74-1.68.36-.56-.38-.73-1.12-.39-1.7L5.1 9.42c.3-.53.83-.85 1.4-.85h10c.57 0 1.1.32 1.4.85l3.54 6.18zM18 4h-5V3a1 1 0 00-1-1H7a1 1 0 00-1 1v1H2a1 1 0 00-1 1v2a1 1 0 001 1h16a1 1 0 001-1V5a1 1 0 00-1-1z"/></svg>
+              IMDB Info
+            </button>
+          </div>
+        </div>
+        ${dateSeenHTML}
+      </div>
+    `;
+    return div;
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => app.init());
+</script>
 </body>
 </html>
