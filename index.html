@@ -1,392 +1,51 @@
 <!doctype html>
-<html lang="nl" class="h-full bg-slate-100">
+<html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#0f172a" />
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-  <title>Mijn Films en Series (iPad)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(180%) blur(10px)}
-    .filter-btn{transition:all .15s ease}
-    input, select, button{touch-action:manipulation}
-    .tappable{min-height:44px; min-width:44px}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="manifest" href="./manifest.json" />
+<title>MFS v3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
-<body class="h-full text-slate-900">
-  <div id="app" class="max-w-4xl mx-auto p-4 pb-24">
-    <header class="mb-4 flex items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
-      <div class="flex gap-2 items-center">
-        <button id="btn-import-json" class="tappable px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
-        <button id="btn-add-demo" class="tappable px-3 py-2 rounded-xl bg-indigo-600 text-white shadow text-sm">Demo-items</button>
-        <button id="btn-fill-posters" class="tappable px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Posters aanvullen</button>
-        <!-- verborgen keyveld; wordt pas zichtbaar bij key-fout --> 
-        <input id="omdb-key" type="password" placeholder="OMDb API key" class="tappable px-3 py-2 rounded-xl bg-white/70 shadow text-sm w-44 hidden" />
-      </div>
-    </header>
-
-    <section class="mb-3">
-      <div id="filterControls" class="flex flex-wrap gap-2">
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="film">Films</button>
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="serie">Series</button>
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-film">H-Films</button>
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-serie">H-Series</button>
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="aan-het-kijken">Aan het kijken</button>
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="bekeken">Bekeken</button>
-        <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="all">Alles</button>
-        <div class="flex-1"></div>
-        <input id="search" type="search" placeholder="Zoeken…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48" />
-      </div>
-      <div id="randomizerContainer" class="mt-2 hidden">
-        <button id="randomBtn" class="tappable px-3 py-2 rounded-xl bg-fuchsia-600 text-white shadow text-sm">Kies een <span id="randomBtnText">Film</span> voor me</button>
-        <button id="clearRandom" class="tappable px-3 py-2 rounded-xl bg-white/70 shadow text-sm">Wis keuze</button>
-      </div>
-    </section>
-
-    <main>
-      <div id="list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-      <p id="emptyState" class="hidden text-center text-slate-600 py-10">Laden…</p>
-    </main>
+<body class="bg-slate-100">
+<div id="app" class="max-w-3xl mx-auto p-4">
+  <h1 class="text-2xl font-bold mb-4">Mijn Films en Series</h1>
+  <div class="flex gap-2 mb-4">
+    <button id="btn-import-json" class="px-3 py-2 rounded bg-white shadow">Importeer JSON</button>
+    <button id="btn-import-csv" class="px-3 py-2 rounded bg-white shadow">Importeer CSV (IMDb)</button>
+    <button id="btn-add-demo" class="px-3 py-2 rounded bg-indigo-600 text-white shadow">Demo-items</button>
+    <button id="btn-fill-posters" class="px-3 py-2 rounded bg-emerald-600 text-white shadow">Posters aanvullen</button>
+    <input id="omdb-key" type="password" placeholder="OMDb API key" class="px-3 py-2 rounded bg-white shadow w-44 hidden" />
   </div>
-
-  <script>
-  const DB_NAME = 'mfs-db';
-  const DB_VERSION = 1;
-  const STORE = 'items';
-  const OMDB_DEFAULT_KEY = '8a70a767'; // baked-in
-  function openDB(){
-    return new Promise((resolve, reject)=>{
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if(!db.objectStoreNames.contains(STORE)){
-          const store = db.createObjectStore(STORE, { keyPath: 'id' });
-          store.createIndex('createdAt', 'createdAt');
-          store.createIndex('type', 'type');
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  function tx(db, mode='readonly'){ return db.transaction(STORE, mode).objectStore(STORE); }
-  async function dbGetAll(){ const db = await openDB(); return new Promise((res,rej)=>{ const r = tx(db).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }
-  async function dbPut(item){ const db = await openDB(); return new Promise((res,rej)=>{ const r = tx(db,'readwrite').put(item); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-  async function dbDelete(id){ const db = await openDB(); return new Promise((res,rej)=>{ const r = tx(db,'readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-  async function dbBulkPut(items){ const db = await openDB(); return new Promise((res,rej)=>{ const store = tx(db,'readwrite'); items.forEach(i=>store.put(i)); store.transaction.oncomplete=()=>res(); store.transaction.onerror=()=>rej(store.transaction.error); }); }
-
-  const app = {
-    state: { items: [], filter: 'all', searchTerm: '', randomlySelectedItem: null, isDbReady: false, sort: 'createdAtDesc' },
-
-    async init(){
-      this.cacheEls();
-      this.bindUI();
-      try {
-        await openDB();
-        this.state.isDbReady = true;
-        this.state.items = await dbGetAll();
-        this.render();
-      } catch (e){
-        console.error('DB fout', e);
-        this.$emptyState.textContent = 'Kon database niet openen.';
-        this.$emptyState.classList.remove('hidden');
-      }
-      if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(console.warn); }
-    },
-
-    cacheEls(){
-      this.$list = document.getElementById('list');
-      this.$emptyState = document.getElementById('emptyState');
-      this.$filterControls = document.getElementById('filterControls');
-      this.$search = document.getElementById('search');
-      this.$randomizerContainer = document.getElementById('randomizerContainer');
-      this.$randomBtn = document.getElementById('randomBtn');
-      this.$randomBtnText = document.getElementById('randomBtnText');
-      this.$clearRandom = document.getElementById('clearRandom');
-      this.$btnImport = document.getElementById('btn-import-json');
-      this.$btnDemo = document.getElementById('btn-add-demo');
-      this.$btnFillPosters = document.getElementById('btn-fill-posters');
-      this.$omdbKey = document.getElementById('omdb-key');
-    },
-
-    bindUI(){
-      this.$filterControls.addEventListener('click', (e)=>{
-        const btn = e.target.closest('.filter-btn');
-        if(!btn) return;
-        this.state.filter = btn.dataset.filter;
-        this.state.randomlySelectedItem = null;
-        this.render();
-      });
-      this.$search.addEventListener('input', (e)=>{ this.state.searchTerm = e.target.value.trim(); this.render(); });
-      this.$randomBtn.addEventListener('click', ()=>{ this.pickRandom(); });
-      this.$clearRandom.addEventListener('click', ()=>{ this.state.randomlySelectedItem = null; this.render(); });
-      this.$btnImport.addEventListener('click', async ()=>{
-        const input = document.createElement('input'); input.type='file'; input.accept='application/json';
-        input.onchange = async ()=>{
-          const file = input.files[0]; if(!file) return;
-          const text = await file.text();
-          let arr = [];
-          try { arr = JSON.parse(text); } catch { alert('Geen geldige JSON.'); return; }
-          const now = Date.now();
-          const normalized = arr.map((raw,i)=>({
-            id: raw.id || `${now}-${i}`,
-            title: raw.title || 'Onbekend',
-            type: raw.type || 'film',
-            createdAt: raw.createdAt || (now+i),
-            imdbRating: raw.imdbRating || '',
-            year: raw.year || '',
-            runtime: raw.runtime || '',
-            poster: raw.poster || '',
-            streamingOn: raw.streamingOn || '',
-            ourScore: raw.ourScore || '',
-            dateSeen: raw.dateSeen || '',
-            imdbID: raw.imdbID || raw.imdbId || ''
-          }));
-          await dbBulkPut(normalized);
-          this.state.items = await dbGetAll();
-          this.render();
-        };
-        input.click();
-      });
-      this.$btnDemo.addEventListener('click', async ()=>{
-        const now = Date.now();
-        const demo = [
-          {id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10', imdbID:'tt1375666'},
-          {id:`d-${now+1}`, title:'Dark', type:'serie', createdAt:now+1, imdbRating:'8.7', year:'2017', runtime:'3 seizoenen', poster:'', streamingOn:'Netflix', ourScore:'8/10', imdbID:'tt5753856'},
-        ];
-        await dbBulkPut(demo);
-        this.state.items = await dbGetAll();
-        this.render();
-      });
-      this.$list.addEventListener('click', async (e)=>{
-        const del = e.target.closest('[data-action="delete"]');
-        const imdb = e.target.closest('[data-action="show-imdb"]');
-        if(del){ const id = del.dataset.id; await dbDelete(id); this.state.items = await dbGetAll(); this.render(); return; }
-        if(imdb){ const imdbID = imdb.dataset.imdbid; if(imdbID) window.open(`https://www.imdb.com/title/${imdbID}/`, '_blank'); return; }
-      });
-      this.$list.addEventListener('change', async (e)=>{
-        const category = e.target.closest('.category-select');
-        const streaming = e.target.closest('.streaming-service-select');
-        const score = e.target.closest('.our-score-input');
-        const dateSeen = e.target.closest('.date-seen-input');
-        if(!category && !streaming && !score && !dateSeen) return;
-        const id = e.target.getAttribute('data-id');
-        const item = this.state.items.find(i=>i.id==id); if(!item) return;
-        if(category){ item.type = category.value; }
-        if(streaming){ item.streamingOn = streaming.value; }
-        if(score){ item.ourScore = score.value; }
-        if(dateSeen){ item.dateSeen = dateSeen.value; }
-        await dbPut(item);
-        this.render();
-      });
-
-      this.$omdbKey.addEventListener('change', ()=>{
-        const v = this.$omdbKey.value.trim();
-        if(v) localStorage.setItem('omdbKey', v);
-      });
-
-      this.$btnFillPosters.addEventListener('click', ()=> this.fillPosters());
-    },
-
-    getStreamingOptions(){
-      return ['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'];
-    },
-
-    async fillPosters(){
-      // resolve active key: default baked-in unless user provided override after error
-      const key = (localStorage.getItem('omdbKey') || OMDB_DEFAULT_KEY).trim();
-      const items = await dbGetAll();
-      let updated = 0, tried = 0, hadKeyError = false;
-      for(const item of items){
-        if(item.poster && item.poster !== 'N/A') continue;
-        tried++;
-        try{
-          let url = `https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&plot=short&r=json`;
-          if(item.imdbID){ url += `&i=${encodeURIComponent(item.imdbID)}`; }
-          else { url += `&t=${encodeURIComponent(item.title)}${item.year?`&y=${encodeURIComponent(item.year)}`:''}`; }
-          const resp = await fetch(url);
-          const data = await resp.json();
-          if(data && data.Response === 'False' && String(data.Error||'').toLowerCase().includes('invalid api key')){
-            hadKeyError = true;
-            break;
-          }
-          if(data && data.Response !== 'False'){
-            if(!item.imdbID && data.imdbID) item.imdbID = data.imdbID;
-            if(data.Poster && data.Poster !== 'N/A'){
-              item.poster = data.Poster;
-              await dbPut(item);
-              updated++;
-            }
-          }
-          await new Promise(r=>setTimeout(r, 300));
-        }catch(err){ console.warn('OMDb fout', err); }
-      }
-      if(hadKeyError){
-        alert('OMDb: ongeldige API key. Vul je eigen key in en probeer opnieuw.');
-        this.$omdbKey.classList.remove('hidden');
-        this.$omdbKey.focus();
-      } else {
-        this.state.items = await dbGetAll();
-        this.render();
-        alert(`Posters aangevuld: ${updated}/${tried}`);
-      }
-    },
-
-    pickRandom(){
-      const poolTypes = ['film','serie','herman-film','herman-serie'];
-      if(!poolTypes.includes(this.state.filter)) return;
-      const pool = this.state.items.filter(i=> i.type===this.state.filter);
-      if(pool.length === 0){ alert('Geen items in deze categorie.'); return; }
-      const rnd = pool[Math.floor(Math.random()*pool.length)];
-      this.state.randomlySelectedItem = rnd.id;
-      this.render();
-      const el = this.$list.querySelector(`[data-item-id="${rnd.id}"]`);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
-    },
-
-    filtered(){
-      const term = this.state.searchTerm.toLowerCase();
-      let arr = this.state.items.slice();
-      if(this.state.filter!== 'all') arr = arr.filter(i=> i.type === this.state.filter);
-      if(term) arr = arr.filter(i => (i.title||'').toLowerCase().includes(term));
-      if(this.state.randomlySelectedItem){ arr = arr.filter(i=> i.id === this.state.randomlySelectedItem); }
-      if(this.state.sort === 'ourScoreDesc') arr.sort((a,b)=> (parseFloat(b.ourScore) || 0) - (parseFloat(a.ourScore) || 0));
-      else arr.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
-      return arr;
-    },
-
-    render(){
-      const list = this.$list;
-      const emptyState = this.$emptyState;
-      const filterControls = this.$filterControls;
-      const randomizerContainer = this.$randomizerContainer;
-      const randomBtnText = this.$randomBtnText;
-
-      list.innerHTML = '';
-      const itemsToDisplay = this.filtered();
-
-      filterControls.querySelectorAll('.filter-btn').forEach(btn => {
-        const isActive = this.state.searchTerm ? false : (btn.dataset.filter === this.state.filter && !this.state.randomlySelectedItem);
-        btn.classList.toggle('active', isActive);
-        btn.classList.toggle('bg-indigo-600', isActive);
-        btn.classList.toggle('text-white', isActive);
-        btn.classList.toggle('bg-white/50', !isActive);
-        btn.classList.toggle('text-slate-800', !isActive);
-      });
-      const randomizableCategories = ['film', 'serie', 'herman-film', 'herman-serie'];
-      const showRandomizer = randomizableCategories.includes(this.state.filter);
-      randomizerContainer.classList.toggle('hidden', !showRandomizer || this.state.randomlySelectedItem);
-      if(showRandomizer){
-        const textMap = {'film': 'Film', 'serie': 'Serie', 'herman-film': 'H-Film', 'herman-serie': 'H-Serie'};
-        randomBtnText.textContent = textMap[this.state.filter];
-      }
-
-      if(itemsToDisplay.length === 0){
-        list.appendChild(emptyState);
-        if(!this.state.isDbReady){ emptyState.textContent = 'Verbinden met de database…'; }
-        else if(this.state.items.length === 0){ emptyState.textContent = 'Je lijst is leeg.'; }
-        else {
-          if(this.state.searchTerm){ emptyState.textContent = `Geen resultaten gevonden voor "${this.state.searchTerm}".`; }
-          else {
-            const filterTextMap = { film:'films', serie:'series', 'aan-het-kijken':'items die je aan het kijken bent', 'herman-film':'H-Films', 'herman-serie':'H-Series', bekeken:'bekeken items' };
-            emptyState.textContent = `Geen ${filterTextMap[this.state.filter] || 'items'} gevonden.`;
-          }
-        }
-        emptyState.classList.remove('hidden');
-      } else {
-        emptyState.classList.add('hidden');
-        itemsToDisplay.forEach((item, index)=>{ const el = this.createItemElement(item, index+1); list.appendChild(el); });
-      }
-    },
-
-    createItemElement(item, index){
-      const div = document.createElement('div');
-      div.className = 'glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
-      div.dataset.itemId = item.id;
-      const posterSrc = (item.poster && item.poster !== 'N/A') ? item.poster : 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';
-
-      const tagConfig = {
-        film: { color: 'bg-sky-200/80 text-sky-900', text: 'Film' }, 
-        serie: { color: 'bg-amber-200/80 text-amber-900', text: 'Serie' },
-        'herman-film': { color: 'bg-purple-200/80 text-purple-900', text: 'H-Film' }, 
-        'herman-serie': { color: 'bg-pink-200/80 text-pink-900', text: 'H-Serie' },
-        'aan-het-kijken': { color: 'bg-blue-200/80 text-blue-900', text: 'Aan het kijken' }, 
-        bekeken: { color: 'bg-green-200/80 text-green-900', text: 'Bekeken' },
-      };
-      const tag = tagConfig[item.type] || { color: 'bg-slate-200/80 text-slate-900', text: item.type };
-
-      const streamingOptionsHTML = this.getStreamingOptions().map(opt => `<option value="${opt}" ${item.streamingOn === opt ? 'selected' : ''}>${opt}</option>`).join('');
-      const categoryOptionsHTML = Object.keys(tagConfig).map(key => `<option value="${key}" ${item.type === key ? 'selected' : ''}>${tagConfig[key].text}</option>`).join('');
-
-      let dateSeenHTML = '';
-      if(item.type === 'bekeken'){
-        dateSeenHTML = `<div class="mt-2"><label class="block text-xs font-medium text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" data-id="${item.id}" value="${item.dateSeen || ''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`;
-      }
-
-      div.innerHTML = `
-        <div class="flex">
-          <div class="w-1/2 flex-shrink-0 relative">
-            <div class="aspect-[2/3] w-full">
-              <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
-            </div>
-            <div class="absolute top-2 left-2 bg-black bg-opacity-70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
-          </div>
-          <div class="p-3 flex flex-col flex-grow w-1/2">
-            <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
-            <div class="text-sm text-slate-700 space-y-0.5 mb-3">
-              <p><strong>IMDB:</strong> ${item.imdbRating || 'N/B'}</p>
-              <p><strong>Jaar:</strong> ${item.year || 'N/B'}</p>
-              <p><strong>Duur:</strong> ${item.runtime || 'N/B'}</p>
-            </div>
-            <div class="mb-3 flex justify-between items-center">
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.color}">${tag.text}</span>
-              <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="tappable bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
-                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="p-3 pt-2 text-xs space-y-2 border-t border-white/20">
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
-              <select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
-                ${categoryOptionsHTML}
-              </select>
-            </div>
-            <div>
-              <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
-              <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
-                ${streamingOptionsHTML}
-              </select>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block font-medium text-slate-600 mb-0.5">Onze score</label>
-              <input type="text" data-id="${item.id}" value="${item.ourScore || ''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md" placeholder="bv. 8/10">
-            </div>
-            <div>
-              <label class="block font-medium text-slate-600 mb-0.5">&nbsp;</label>
-              <button data-id="${item.id}" data-imdbid="${item.imdbID || ''}" data-action="show-imdb" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5">
-                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.44 15.6c.33.58.17 1.32-.39 1.7-.56.38-1.3.22-1.68-.36L18 13.28V20a1 1 0 01-1 1H7a1 1 0 01-1-1v-6.72l-2.37 3.66c-.38.58-1.12.74-1.68.36-.56-.38-.73-1.12-.39-1.7L5.1 9.42c.3-.53.83-.85 1.4-.85h10c.57 0 1.1.32 1.4.85l3.54 6.18zM18 4h-5V3a1 1 0 00-1-1H7a1 1 0 00-1 1v1H2a1 1 0 00-1 1v2a1 1 0 001 1h16a1 1 0 001-1V5a1 1 0 00-1-1z"/></svg>
-                IMDB Info
-              </button>
-            </div>
-          </div>
-          ${dateSeenHTML}
-        </div>
-      `;
-      return div;
-    },
-  };
-
-  document.addEventListener('DOMContentLoaded', () => app.init());
-  </script>
+  <div id="filterControls" class="flex gap-2 mb-3">
+    <button class="filter-btn px-3 py-1.5 rounded bg-white" data-filter="film">Films</button>
+    <button class="filter-btn px-3 py-1.5 rounded bg-white" data-filter="serie">Series</button>
+    <button class="filter-btn px-3 py-1.5 rounded bg-white" data-filter="aan-het-kijken">Aan het kijken</button>
+    <button class="filter-btn px-3 py-1.5 rounded bg-white" data-filter="bekeken">Bekeken</button>
+    <button class="filter-btn px-3 py-1.5 rounded bg-white" data-filter="all">Alles</button>
+    <input id="search" class="px-3 py-2 rounded bg-white ml-auto" placeholder="Zoeken…" />
+  </div>
+  <div id="list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+  <p id="emptyState" class="hidden text-center text-slate-600 py-10">Laden…</p>
+</div>
+<script>
+const OMDB_DEFAULT_KEY='8a70a767';
+const DB_NAME='mfs-db';const DB_VERSION=1;const STORE='items';
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE)){const store=db.createObjectStore(STORE,{keyPath:'id'});store.createIndex('createdAt','createdAt');store.createIndex('type','type');}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE);}
+async function dbGetAll(){const db=await openDB();return new Promise((res,rej)=>{const r=tx(db).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
+async function dbPut(item){const db=await openDB();return new Promise((res,rej)=>{const r=tx(db,'readwrite').put(item);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+async function dbBulkPut(items){const db=await openDB();return new Promise((res,rej)=>{const store=tx(db,'readwrite');items.forEach(i=>store.put(i));store.transaction.oncomplete=()=>res();store.transaction.onerror=()=>rej(store.transaction.error);});}
+const app={state:{items:[],filter:'all',searchTerm:'',isDbReady:false},
+async init(){this.cacheEls();this.bindUI();try{await openDB();this.state.isDbReady=true;this.state.items=await dbGetAll();this.render();}catch(e){console.error(e);}if('serviceWorker'in navigator){navigator.serviceWorker.register('./sw.js').catch(console.warn);}},
+cacheEls(){this.$list=document.getElementById('list');this.$emptyState=document.getElementById('emptyState');this.$filterControls=document.getElementById('filterControls');this.$search=document.getElementById('search');this.$btnImport=document.getElementById('btn-import-json');this.$btnImportCSV=document.getElementById('btn-import-csv');this.$btnDemo=document.getElementById('btn-add-demo');this.$btnFillPosters=document.getElementById('btn-fill-posters');this.$omdbKey=document.getElementById('omdb-key');},
+bindUI(){this.$filterControls.addEventListener('click',(e)=>{const b=e.target.closest('.filter-btn');if(!b)return;this.state.filter=b.dataset.filter;this.render();});this.$search.addEventListener('input',(e)=>{this.state.searchTerm=e.target.value.trim();this.render();});this.$btnImport.addEventListener('click',async()=>{const input=document.createElement('input');input.type='file';input.accept='application/json';input.onchange=async()=>{const f=input.files[0];if(!f)return;const text=await f.text();let arr=[];try{arr=JSON.parse(text);}catch{alert('Geen geldige JSON.');return;}const now=Date.now();const normalized=arr.map((raw,i)=>({id:raw.id||`${now}-${i}`,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||(now+i),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:raw.ourScore||'',dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));await dbBulkPut(normalized);this.state.items=await dbGetAll();this.render();};input.click();});this.$btnImportCSV.addEventListener('click',async()=>{const input=document.createElement('input');input.type='file';input.accept='.csv,text/csv';input.onchange=async()=>{const file=input.files[0];if(!file)return;Papa.parse(file,{header:true,skipEmptyLines:true,transformHeader:h=>(h||'').toString().trim().toLowerCase(),complete:async(res)=>{const rows=res.data||[];const now=Date.now();const items=rows.map((r,i)=>{const lower={};Object.keys(r).forEach(k=>lower[(k||'').toString().trim().toLowerCase()]=r[k]);const get=k=>lower[k]??'';const imdbConst=(get('const')||'').toString().trim();const title=(get('title')||get('original title')||'').toString().trim()||'Onbekend';const year=(get('year')||'').toString().trim();const runtimeMin=(get('runtime (min)')||get('runtime')||'').toString().trim();const imdbRating=(get('imdb rating')||get('imdb_rating')||'').toString().trim();const yourRating=(get('your rating')||get('your_rating')||'').toString().trim();const dateRated=(get('date rated')||get('date_rated')||'').toString().trim();const platform=(get('description')||get('where')||'').toString().trim();return {id:`${now}-${i}`,title,type:'aan-het-kijken',createdAt:now+i,imdbRating,year,runtime:runtimeMin?(/(min|seizoen|aflever)/i.test(runtimeMin)?runtimeMin:`${runtimeMin} min`):'',poster:'',streamingOn:platform,ourScore:yourRating,dateSeen:dateRated,imdbID:imdbConst};});await dbBulkPut(items);app.state.items=await dbGetAll();app.render();alert(`CSV geïmporteerd: ${items.length} items`);}});};input.click();});this.$btnDemo.addEventListener('click',async()=>{const now=Date.now();const demo=[{id:`d-${now}`,title:'Inception',type:'film',createdAt:now,imdbRating:'8.8',year:'2010',runtime:'148 min',poster:'',streamingOn:'Netflix',ourScore:'9/10',imdbID:'tt1375666'},{id:`d-${now+1}`,title:'Dark',type:'serie',createdAt:now+1,imdbRating:'8.7',year:'2017',runtime:'3 seizoenen',poster:'',streamingOn:'Netflix',ourScore:'8/10',imdbID:'tt5753856'}];await dbBulkPut(demo);this.state.items=await dbGetAll();this.render();});this.$btnFillPosters.addEventListener('click',()=>this.fillPosters());},
+async fillPosters(){const key=(localStorage.getItem('omdbKey')||OMDB_DEFAULT_KEY).trim();const items=await dbGetAll();let updated=0,tried=0,hadKeyError=false;for(const item of items){if(item.poster&&item.poster!=='N/A')continue;tried++;try{let url=`https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&plot=short&r=json`;if(item.imdbID){url+=`&i=${encodeURIComponent(item.imdbID)}`;}else{url+=`&t=${encodeURIComponent(item.title)}${item.year?`&y=${encodeURIComponent(item.year)}`:''}`;}const resp=await fetch(url);const data=await resp.json();if(data&&data.Response==='False'&&String(data.Error||'').toLowerCase().includes('invalid api key')){hadKeyError=true;break;}if(data&&data.Response!=='False'){if(!item.imdbID&&data.imdbID)item.imdbID=data.imdbID;if(data.Poster&&data.Poster!=='N/A'){item.poster=data.Poster;await dbPut(item);updated++;}}await new Promise(r=>setTimeout(r,250));}catch(e){console.warn('OMDb fout',e);}}if(hadKeyError){alert('OMDb: ongeldige API key. Vul je eigen key in en probeer opnieuw.');document.getElementById('omdb-key').classList.remove('hidden');document.getElementById('omdb-key').focus();}else{this.state.items=await dbGetAll();this.render();alert(`Posters aangevuld: ${updated}/${tried}`);}},
+filtered(){const term=this.state.searchTerm.toLowerCase();let arr=this.state.items.slice();if(this.state.filter!=='all')arr=arr.filter(i=>i.type===this.state.filter);if(term)arr=arr.filter(i=>(i.title||'').toLowerCase().includes(term));arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));return arr;},
+render(){const list=this.$list,empty=this.$emptyState;list.innerHTML='';const items=this.filtered();if(items.length===0){empty.classList.remove('hidden');empty.textContent='Geen items.';return;}empty.classList.add('hidden');items.forEach((item,idx)=>{const div=document.createElement('div');div.className='glass-card rounded-xl overflow-hidden shadow';const poster=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';div.innerHTML=`<div class='flex'><div class='w-1/2'><img src='${poster}' class='w-full aspect-[2/3] object-cover'/></div><div class='p-3 w-1/2'><h3 class='font-bold mb-2 text-base'>${item.title}</h3><p class='text-sm'>IMDb: ${item.imdbRating||'N/B'}</p><p class='text-sm'>Jaar: ${item.year||'N/B'}</p><p class='text-sm'>Duur: ${item.runtime||'N/B'}</p><span class='inline-block mt-2 text-xs px-2 py-0.5 rounded bg-sky-100'>${item.type}</span></div></div>`;list.appendChild(div);});}
+};
+document.addEventListener('DOMContentLoaded',()=>app.init());
+</script>
 </body>
 </html>
