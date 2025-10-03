@@ -1,17 +1,17 @@
 <!doctype html>
 <html lang="nl" class="h-full bg-slate-100">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="theme-color" content="#0f172a"/>
-<title>Mijn Films en Series — CSV-import (stabiel)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<style>
-  .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(180%) blur(10px)}
-  .filter-btn{transition:all .15s ease}
-  input,select,button{touch-action:manipulation}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0f172a"/>
+  <title>Mijn Films en Series — Buttons Fix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(180%) blur(10px)}
+    .filter-btn{transition:all .15s ease}
+    #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#fff;padding:.5rem .75rem;border-radius:.75rem;box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:.85rem;z-index:9999}
+  </style>
 </head>
 <body class="h-full text-slate-900">
 <div id="app" class="max-w-6xl mx-auto p-4 pb-24">
@@ -20,6 +20,7 @@
     <div class="flex gap-2 items-center">
       <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
       <button id="btn-import-csv" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow text-sm">Importeer CSV</button>
+      <button id="btn-add-demo" class="px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Demo-items</button>
     </div>
   </header>
 
@@ -42,14 +43,18 @@
     <p id="emptyState" class="hidden text-center text-slate-600 py-10">Je lijst is leeg.</p>
   </main>
 </div>
+<div id="status">JS geladen…</div>
 
 <script>
-const OMDB_KEY = "8a70a767";
-const PLACEHOLDER = 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+// Defensive init to ensure buttons always work, even if something fails.
+// Also writes visible status updates so je het meteen ziet.
+const statusEl = document.getElementById('status');
+function setStatus(t){ if(statusEl){ statusEl.textContent = t; } console.log('[STATUS]', t); }
+
+const OMDB_KEY="8a70a767"; const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 function proxyPoster(url){ return url ? ('https://wsrv.nl/?url='+encodeURIComponent(url)+'&w=400&h=600&fit=cover&output=jpg') : ''; }
 function norm(s){ return (s||'').toString().trim().toLowerCase(); }
 
-// IndexedDB
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type');}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE);}
@@ -58,7 +63,6 @@ async function dbGet(id){const db=await openDB();return new Promise((res,rej)=>{
 async function dbPut(item){const db=await openDB();return new Promise((res,rej)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>res();p.onerror=()=>rej(p.error);});}
 async function dbDelete(id){const db=await openDB();return new Promise((res,rej)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>res();d.onerror=()=>rej(d.error);});}
 
-// Dedup: imdbID else (title,type)
 function sameKey(a,b){
   const ta=norm(a.type), tb=norm(b.type);
   const ia=norm(a.imdbID), ib=norm(b.imdbID);
@@ -70,128 +74,180 @@ async function upsertSmart(newItem){
   const all = await dbGetAll();
   const existing = all.find(it => sameKey(it,newItem));
   if(!existing){
-    if(!newItem.id) newItem.id = 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
-    if(!newItem.createdAt) newItem.createdAt = Date.now();
+    if(!newItem.id) newItem.id='id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+    if(!newItem.createdAt) newItem.createdAt=Date.now();
     await dbPut(newItem); return 'inserted';
   }
-  const merged = {...existing};
+  const merged={...existing};
   for(const k of ['title','imdbRating','year','runtime','poster','streamingOn','ourScore','dateSeen','imdbID','type']){
-    const nv = (newItem[k]??''); const ov = (existing[k]??'');
+    const nv=(newItem[k]??''); const ov=(existing[k]??'');
     if(!ov && nv) merged[k]=nv;
     if(k==='poster' && nv && nv!=='N/A') merged[k]=nv;
   }
-  merged.createdAt = Math.min(existing.createdAt||Date.now(), newItem.createdAt||Date.now());
-  merged.id = existing.id;
-  await dbPut(merged); return 'updated';
+  merged.createdAt=Math.min(existing.createdAt||Date.now(), newItem.createdAt||Date.now());
+  merged.id=existing.id; await dbPut(merged); return 'updated';
 }
 
-// Posters
 async function fetchOmdbPosterById(imdbID){
   if(!imdbID) return '';
   try{
-    const url = `https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_KEY)}&r=json&i=${encodeURIComponent(imdbID)}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if(data && data.Poster && data.Poster !== 'N/A') return data.Poster;
+    const url=`https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_KEY)}&r=json&i=${encodeURIComponent(imdbID)}`;
+    const resp=await fetch(url); const data=await resp.json();
+    if(data && data.Poster && data.Poster!=='N/A') return data.Poster;
   }catch(e){}
   return '';
 }
+
 async function ensurePoster(item, imgEl){
-  if(item.poster && item.poster !== 'N/A'){ imgEl.src = proxyPoster(item.poster); return; }
-  if(!item.imdbID){ imgEl.src = PLACEHOLDER; return; }
-  const p = await fetchOmdbPosterById(item.imdbID);
-  if(p){ item.poster = p; imgEl.src = proxyPoster(p); await dbPut(item); }
-  else { imgEl.src = PLACEHOLDER; }
+  if(item.poster && item.poster!=='N/A'){ imgEl.src=proxyPoster(item.poster); return; }
+  if(!item.imdbID){ imgEl.src=PLACEHOLDER; return; }
+  const p=await fetchOmdbPosterById(item.imdbID);
+  if(p){ item.poster=p; imgEl.src=proxyPoster(p); await dbPut(item); }
+  else { imgEl.src=PLACEHOLDER; }
 }
-window._posterErrorHandler = async function(imgEl){
+window._posterErrorHandler=async function(imgEl){
   if(imgEl.dataset.retry==='1'){ imgEl.onerror=null; imgEl.src=PLACEHOLDER; return; }
   imgEl.dataset.retry='1';
-  const it = await dbGet(imgEl.dataset.itemId||'');
-  if(it){
-    const p = await fetchOmdbPosterById(it.imdbID||'');
-    if(p){ it.poster=p; await dbPut(it); imgEl.src = proxyPoster(p); return; }
+  const it=await dbGet(imgEl.dataset.itemId||''); if(it){
+    const p=await fetchOmdbPosterById(it.imdbID||''); if(p){ it.poster=p; await dbPut(it); imgEl.src=proxyPoster(p); return; }
   }
-  imgEl.src = PLACEHOLDER;
+  imgEl.src=PLACEHOLDER;
 };
 
-// App
 const app={state:{items:[],filter:'all',searchTerm:'',isDbReady:false}};
+
+function bindButtons(){
+  const bJSON=document.getElementById('btn-import-json');
+  const bCSV=document.getElementById('btn-import-csv');
+  const bDemo=document.getElementById('btn-add-demo');
+  if(!bJSON || !bCSV || !bDemo){
+    setStatus('Knoppen niet gevonden — herlaad');
+    return;
+  }
+  bJSON.onclick=()=>app.importJSON();
+  bCSV.onclick=()=>app.importCSV();
+  bDemo.onclick=()=>app.addDemo();
+  setStatus('Knoppen actief');
+}
+
 app.init=async function(){
   this.$list=document.getElementById('list'); this.$empty=document.getElementById('emptyState');
   this.$filters=document.getElementById('filterControls'); this.$search=document.getElementById('search');
-  this.$btnImportJSON=document.getElementById('btn-import-json'); this.$btnImportCSV=document.getElementById('btn-import-csv');
+
+  bindButtons();
 
   this.$filters.addEventListener('click',(e)=>{const b=e.target.closest('.filter-btn');if(!b)return;this.state.filter=b.dataset.filter;this.render();});
   this.$search.addEventListener('input',e=>{this.state.searchTerm=e.target.value.trim();this.render();});
-  this.$btnImportJSON.addEventListener('click',()=>this.importJSON());
-  this.$btnImportCSV.addEventListener('click',()=>this.importCSV());
 
   await openDB(); this.state.isDbReady=true;
   this.state.items=await dbGetAll(); this.render();
 };
 
-// Import JSON
 app.importJSON=async function(){
+  setStatus('Import JSON gestart…');
   const i=document.createElement('input'); i.type='file'; i.accept='application/json';
   i.onchange=async ()=>{
-    const f=i.files[0]; if(!f) return;
-    let arr=[]; try{arr=JSON.parse(await f.text());}catch{alert('Geen geldige JSON');return;}
-    let inserted=0, updated=0;
-    for(const raw of arr){
-      const item={
-        id: raw.id, title: raw.title||'Onbekend', type: raw.type||'film',
-        createdAt: raw.createdAt||Date.now(),
-        imdbRating: raw.imdbRating||'', year: raw.year||'', runtime: raw.runtime||'',
-        poster: raw.poster||'', streamingOn: raw.streamingOn||'',
-        ourScore: raw.ourScore||'', dateSeen: raw.dateSeen||'',
-        imdbID: raw.imdbID||raw.imdbId||''
-      };
-      const res = await upsertSmart(item);
-      if(res==='inserted') inserted++; else if(res==='updated') updated++;
-    }
-    this.state.items=await dbGetAll(); this.render();
-    alert(`Import klaar. Nieuw: ${inserted} · Bijgewerkt: ${updated}`);
-  };
-  i.click();
-};
-
-// Import CSV — exact volgens je opgeschoonde headers (IMDb export):
-// Films/Series/Aan het kijken/H-varianten
-// Verwachte kolommen: Position, Const, Description, Title, Title Type, IMDb Rating, Runtime (mins), Year, Your Rating, Date Rated
-app.importCSV=async function(){
-  const i=document.createElement('input'); i.type='file'; i.accept='.csv,text/csv';
-  i.onchange=async ()=>{
-    const f=i.files[0]; if(!f) return;
-    Papa.parse(f,{header:true,skipEmptyLines:true,transformHeader:h=>(h||'').toString().trim(),complete:async (res)=>{
-      const rows=res.data||[]; let inserted=0, updated=0;
-      for(const L of rows){
-        const g=(k)=> (L[k]??'').toString().trim();
-        // Herleid type uit Title Type (movie,tvSeries) als aanwezig; anders laat de gebruiker zelf via filters/aanpassen
-        let typ = 'film';
-        const tt = g('Title Type').toLowerCase();
-        if(tt.includes('series')) typ='serie';
-        // Specifieke CSV's "H-film" of "H-serie" of "Aan het kijken" worden door jou gekozen bij import; pas eventueel nadien via dropdown aan.
+    try{
+      const f=i.files[0]; if(!f){ setStatus('Geen bestand gekozen'); return; }
+      let arr=[]; try{arr=JSON.parse(await f.text());}catch{alert('Geen geldige JSON'); setStatus('JSON fout'); return;}
+      let inserted=0, updated=0;
+      for(const raw of arr){
         const item={
-          title: g('Title') || g('Original Title') || 'Onbekend',
-          type: typ,
-          createdAt: Date.now(),
-          imdbRating: g('IMDb Rating'),
-          year: g('Year'),
-          runtime: (g('Runtime (mins)') && /\d+/.test(g('Runtime (mins)')))? (g('Runtime (mins)')+' min') : g('Runtime (mins)'),
-          poster: '',
-          streamingOn: g('Description'),
-          ourScore: g('Your Rating'),
-          dateSeen: g('Date Rated'),
-          imdbID: g('Const')
+          id: raw.id, title: raw.title||'Onbekend', type: raw.type||'film',
+          createdAt: raw.createdAt||Date.now(),
+          imdbRating: raw.imdbRating||'', year: raw.year||'', runtime: raw.runtime||'',
+          poster: raw.poster||'', streamingOn: raw.streamingOn||'',
+          ourScore: raw.ourScore||'', dateSeen: raw.dateSeen||'',
+          imdbID: raw.imdbID||raw.imdbId||''
         };
         const res = await upsertSmart(item);
         if(res==='inserted') inserted++; else if(res==='updated') updated++;
       }
-      app.state.items=await dbGetAll(); app.render();
+      this.state.items=await dbGetAll(); this.render();
+      alert(`Import klaar. Nieuw: ${inserted} · Bijgewerkt: ${updated}`);
+      setStatus('Import JSON klaar');
+    }catch(err){ console.error(err); setStatus('Import JSON error'); }
+  };
+  i.click();
+};
+
+app.importCSV=async function(){
+  setStatus('Import CSV gestart…');
+  const i=document.createElement('input'); i.type='file'; i.accept='.csv,text/csv';
+  i.onchange=async ()=>{
+    const f=i.files[0]; if(!f){ setStatus('Geen bestand gekozen'); return; }
+    const hasPapa = !!(window.Papa && window.Papa.parse);
+    if(!hasPapa){
+      // Fallback: minimal CSV split per line; verwacht comma-gescheiden en headers exact
+      const text = await f.text();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const headers = lines.shift().split(',');
+      const idx = (name)=> headers.findIndex(h => h.trim()===name);
+      const iTitle=idx('Title'), iConst=idx('Const'), iYear=idx('Year'), iMin=idx('Runtime (mins)'), iIMDb=idx('IMDb Rating'), iYour=idx('Your Rating'), iDate=idx('Date Rated'), iDesc=idx('Description');
+      let inserted=0, updated=0;
+      for(const line of lines){
+        const cols = line.split(',');
+        const item={
+          title: (cols[iTitle]||'').trim() || 'Onbekend',
+          type: 'film',
+          createdAt: Date.now(),
+          imdbRating: (cols[iIMDb]||'').trim(),
+          year: (cols[iYear]||'').trim(),
+          runtime: (cols[iMin]||'').trim().replace(/^(\d+)$/,'$1 min'),
+          poster: '',
+          streamingOn: (cols[iDesc]||'').trim(),
+          ourScore: (cols[iYour]||'').trim(),
+          dateSeen: (cols[iDate]||'').trim(),
+          imdbID: (cols[iConst]||'').trim()
+        };
+        const res = await upsertSmart(item);
+        if(res==='inserted') inserted++; else if(res==='updated') updated++;
+      }
+      this.state.items=await dbGetAll(); this.render();
       alert(`CSV import klaar. Nieuw: ${inserted} · Bijgewerkt: ${updated}`);
+      setStatus('Import CSV klaar (fallback)');
+      return;
+    }
+    Papa.parse(f,{header:true,skipEmptyLines:true,transformHeader:h=>(h||'').toString().trim(),complete:async (res)=>{
+      try{
+        const rows=res.data||[]; let inserted=0, updated=0;
+        for(const L of rows){
+          const g=(k)=> (L[k]??'').toString().trim();
+          let typ='film'; const tt=(g('Title Type')||'').toLowerCase(); if(tt.includes('series')) typ='serie';
+          const item={
+            title: g('Title') || g('Original Title') || 'Onbekend',
+            type: typ,
+            createdAt: Date.now(),
+            imdbRating: g('IMDb Rating'),
+            year: g('Year'),
+            runtime: (g('Runtime (mins)') && /\d+/.test(g('Runtime (mins)')))? (g('Runtime (mins)')+' min') : g('Runtime (mins)'),
+            poster: '',
+            streamingOn: g('Description'),
+            ourScore: g('Your Rating'),
+            dateSeen: g('Date Rated'),
+            imdbID: g('Const')
+          };
+          const res = await upsertSmart(item);
+          if(res==='inserted') inserted++; else if(res==='updated') updated++;
+        }
+        app.state.items=await dbGetAll(); app.render();
+        alert(`CSV import klaar. Nieuw: ${inserted} · Bijgewerkt: ${updated}`);
+        setStatus('Import CSV klaar');
+      }catch(err){ console.error(err); setStatus('Import CSV error'); }
     }});
   };
   i.click();
+};
+
+app.addDemo=async function(){
+  setStatus('Demo toevoegen…');
+  const now=Date.now();
+  const demo=[
+    {id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10', imdbID:'tt1375666'}
+  ];
+  for(const d of demo){ await upsertSmart(d); }
+  this.state.items=await dbGetAll(); this.render();
+  setStatus('Demo klaar');
 };
 
 app.filtered=function(){
@@ -260,18 +316,7 @@ document.addEventListener('change', async e=>{
   await dbPut(it); app.state.items=await dbGetAll(); app.render();
 });
 
-app.render=async function(){
-  const list=this.$list, empty=this.$empty; list.innerHTML='';
-  document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
-    const active=(btn.dataset.filter===this.state.filter);
-    btn.classList.toggle('bg-indigo-600',active); btn.classList.toggle('text-white',active);
-    btn.classList.toggle('bg-white/50',!active); btn.classList.toggle('text-slate-800',!active);
-  });
-  const items=this.filtered(); if(items.length===0){ empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden'); items.forEach((it,idx)=> list.appendChild(this.card(it, idx+1)));
-};
-
-document.addEventListener('DOMContentLoaded',()=>app.init());
+document.addEventListener('DOMContentLoaded',()=>{ setStatus('DOM klaar'); app.init(); });
 </script>
 </body>
 </html>
