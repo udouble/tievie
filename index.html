@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.6 streaming-normalisatie + 'Onbekend'</title>
+  <title>MFS — v3.6b streaming-normalisatie + 'Onbekend' + Streamz</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -44,6 +44,7 @@
         <option value="__UNKNOWN__">Onbekend</option>
         <option>Apple TV+</option><option>Netflix</option><option>Prime Video</option><option>Disney+</option>
         <option>VRT MAX</option><option>Go Play</option><option>VTM Go</option><option>Videoland</option><option>NPO</option>
+        <option>Streamz</option>
         <option>Blu-ray</option><option>iTunes</option>
       </select>
       <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
@@ -67,6 +68,7 @@
           <option value="">— Niet toegekend —</option>
           <option>Apple TV+</option><option>Netflix</option><option>Prime Video</option><option>Disney+</option>
           <option>VRT MAX</option><option>Go Play</option><option>VTM Go</option><option>Videoland</option><option>NPO</option>
+          <option>Streamz</option>
           <option>Blu-ray</option><option>iTunes</option>
         </select>
         <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow">Voeg toe</button>
@@ -98,14 +100,14 @@
 
 <div id="suggestions-portal"><div id="suggestions" class="hidden bg-white rounded-lg shadow-lg border border-slate-200"></div></div>
 
-<div id="status">v3.6 geladen…</div>
+<div id="status">v3.6b geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 
-/* === STREAM NORMALISATIE === */
+/* === STREAM NORMALISATIE (incl. Streamz) === */
 function normalizeStream(raw){
   const s=(raw||'').toString().trim();
   if(!s) return '';
@@ -117,9 +119,10 @@ function normalizeStream(raw){
   if(low.startsWith('prim')) return 'Prime Video';
   if(low.includes('play'))   return 'Go Play';
   if(low.startsWith('np'))   return 'NPO';
+  if(low.startsWith('strea'))return 'Streamz';
   return ''; // onbekend
 }
-const STREAM_OPTIONS = ['','Apple TV+','Netflix','Prime Video','Disney+','VRT MAX','Go Play','VTM Go','Videoland','NPO','Blu-ray','iTunes'];
+const STREAM_OPTIONS = ['','Apple TV+','Netflix','Prime Video','Disney+','VRT MAX','Go Play','VTM Go','Videoland','NPO','Streamz','Blu-ray','iTunes'];
 
 /* === DB helpers === */
 function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
@@ -158,8 +161,7 @@ async function upsertSmart(nv){
 /* === Rendering === */
 function tagCfg(t){const m={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};return m[t]||{c:'bg-slate-200/80 text-slate-900',t:t}}
 function streamingOptionsHTML(sel){
-  return ['','Apple TV+','Netflix','Prime Video','Disney+','VRT MAX','Go Play','VTM Go','Videoland','NPO','Blu-ray','iTunes']
-    .map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
+  return STREAM_OPTIONS.map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 function categoryOptionsHTML(type){
   const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
@@ -236,8 +238,6 @@ app.card=function(item,idx){
   return el;
 }
 
-function ensurePoster(item,img){const src=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';img.src=src}
-
 /* === Filtering, sorteren, streaming === */
 function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
 app.filtered=function(){
@@ -267,7 +267,8 @@ app.render=function(){
     b.classList.toggle('bg-white/50',!act);b.classList.toggle('text-slate-800',!act);
   });
   const items=app.filtered();
-  const badge=document.getElementById('countBadge');
+  const badge=document.getElementById('countBadge') || document.createElement('span');
+  if(!badge.id){badge.id='countBadge'; document.querySelector('.glass-card select#filterStreaming').parentElement.appendChild(badge);}
   const label=app.state.filter==='all'?'Alles':document.querySelector(`.filter-btn[data-filter="${app.state.filter}"]`)?.textContent||app.state.filter;
   badge.textContent=`${label}: ${items.length}`;
   if(items.length===0){empty.classList.remove('hidden');return}
@@ -299,18 +300,18 @@ app.importJSON=function(){
         const item={id:raw.id,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||Date.now(),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:normalizeStream(raw.streamingOn||raw.stream||''),ourScore:cleaned,dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''};
         const res=await upsertSmart(item); if(res==='inserted')ins++; else if(res==='updated')upd++;
       }
-      // normaliseer bestaande records éénmalig (migratie)
+      // migratie: normaliseer bestaande records
       const items=await dbGetAll();
       for(const it of items){
-        const normS=normalizeStream(it.streamingOn);
-        if((it.streamingOn||'')!==normS){ it.streamingOn=normS; await dbPut(it); }
+        const ns=normalizeStream(it.streamingOn);
+        if((it.streamingOn||'')!==ns){ it.streamingOn=ns; await dbPut(it); }
       }
       app.state.items=await dbGetAll(); app.render();
       alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
     }catch(e){console.error(e); alert('Import fout.');}
   })()}; picker.click();
 };
-document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll(); /* migratie bij load */ const items=await dbGetAll(); for(const it of items){const ns=normalizeStream(it.streamingOn); if(it.streamingOn!==ns){it.streamingOn=ns; await dbPut(it);} } app.state.items=await dbGetAll(); app.render(); setStatus('v3.6 actief')});
+document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll(); /* migratie bij load */ const items=await dbGetAll(); for(const it of items){const ns=normalizeStream(it.streamingOn); if(it.streamingOn!==ns){it.streamingOn=ns; await dbPut(it);} } app.state.items=await dbGetAll(); app.render(); setStatus('v3.6b actief')});
 </script>
 </body>
 </html>
