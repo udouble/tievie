@@ -1,36 +1,292 @@
-<!doctype html><html lang="nl"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>MFS</title>
-<link rel="manifest" href="./manifest.json"/><script src="https://cdn.tailwindcss.com"></script><script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<style>.glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(180%) blur(10px)}.t{min-height:44px;min-width:44px}</style></head>
-<body class="bg-slate-100 text-slate-900"><div class="max-w-6xl mx-auto p-4 pb-24">
-<header class="mb-4 flex justify-between items-center gap-3"><h1 class="text-2xl font-bold">Mijn Films en Series</h1>
-<div class="flex gap-2"><button id="ijson" class="t px-3 py-2 rounded-xl bg-white/70 shadow text-sm">Importeer JSON</button>
-<button id="icsv" class="t px-3 py-2 rounded-xl bg-white/70 shadow text-sm">Importeer CSV (IMDb)</button>
-<button id="demo" class="t px-3 py-2 rounded-xl bg-indigo-600 text-white shadow text-sm">Demo-items</button>
-<button id="post" class="t px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Posters aanvullen</button></div></header>
-<section class="mb-3"><div id="filters" class="flex flex-wrap gap-2"><button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="film">Films</button>
-<button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="serie">Series</button><button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="herman-film">H-Films</button>
-<button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="herman-serie">H-Series</button><button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="aan-het-kijken">Aan het kijken</button>
-<button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="bekeken">Bekeken</button><button class="f px-3 py-1.5 rounded-lg bg-white/50" data-k="all">Alles</button>
-<div class="flex-1"></div><input id="q" placeholder="Zoeken…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48"/></div></section>
-<main><div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div><p id="empty" class="hidden text-center text-slate-600 py-10">Laden…</p></main></div>
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>MFS – Quick Add</title>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="apple-touch-icon" href="./icons/icon-192.png"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>.glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(180%) blur(10px)}.tappable{min-height:44px;min-width:44px}.overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);}</style>
+</head>
+<body class="bg-slate-100 text-slate-900">
+<div class="max-w-6xl mx-auto p-4 pb-24">
+<header class="mb-3 flex items-center justify-between gap-3">
+  <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
+  <div class="flex gap-2 items-center">
+    <button id="btn-import-json" class="tappable px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
+    <button id="btn-import-csv" class="tappable px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer CSV (IMDb)</button>
+    <button id="btn-add-demo" class="tappable px-3 py-2 rounded-xl bg-indigo-600 text-white shadow text-sm">Demo-items</button>
+    <button id="btn-fill-posters" class="tappable px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Posters aanvullen</button>
+  </div>
+</header>
+
+<section class="mb-4">
+  <div class="glass-card rounded-xl p-3 shadow flex items-center gap-2">
+    <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 21l-4.35-4.35m1.1-4.4a6.75 6.75 0 11-13.5 0 6.75 6.75 0 0113.5 0z"/></svg>
+    <input id="quickadd" type="search" class="flex-1 bg-transparent outline-none placeholder:text-slate-400" placeholder="Nieuwe titel toevoegen… typ om te zoeken (OMDb)">
+    <span class="text-xs text-slate-500">Enter = zoeken</span>
+  </div>
+</section>
+
+<div id="overlay" class="overlay hidden">
+  <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl mt-20 p-3">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-lg font-semibold">Zoekresultaten</h2>
+      <button id="ov-close" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200">Sluiten</button>
+    </div>
+    <div id="ov-list" class="divide-y divide-slate-200"></div>
+  </div>
+</div>
+
+<section class="mb-3">
+  <div id="filterControls" class="flex flex-wrap gap-2">
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="film">Films</button>
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="serie">Series</button>
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-film">H-Films</button>
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-serie">H-Series</button>
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="aan-het-kijken">Aan het kijken</button>
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="bekeken">Bekeken</button>
+    <button class="filter-btn tappable px-3 py-1.5 rounded-lg bg-white/50" data-filter="all">Alles</button>
+    <div class="flex-1"></div>
+    <input id="search" type="search" placeholder="Zoeken in je lijst…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48"/>
+  </div>
+</section>
+
+<main>
+  <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+  <p id="emptyState" class="hidden text-center text-slate-600 py-10">Laden…</p>
+</main>
+</div>
+
 <script>
-const DB='mfs-db',V=1,S='items',OMDB='8a70a767';
-function openDB(){return new Promise((ok,err)=>{const r=indexedDB.open(DB,V);r.onupgradeneeded=()=>{const d=r.result; if(!d.objectStoreNames.contains(S)){const s=d.createObjectStore(S,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type');}};r.onsuccess=()=>ok(r.result);r.onerror=()=>err(r.error);});}
-function tx(db,m='readonly'){return db.transaction(S,m).objectStore(S)}
-async function all(){const db=await openDB();return new Promise((ok,err)=>{const g=tx(db).getAll();g.onsuccess=()=>ok(g.result||[]);g.onerror=()=>err(g.error);});}
-async function put(x){const db=await openDB();return new Promise((ok,err)=>{const p=tx(db,'readwrite').put(x);p.onsuccess=()=>ok();p.onerror=()=>err(p.error);});}
-async function del(id){const db=await openDB();return new Promise((ok,err)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>ok();d.onerror=()=>err(d.error);});}
-async function bulk(xs){const db=await openDB();return new Promise((ok,err)=>{const s=tx(db,'readwrite');xs.forEach(i=>s.put(i));s.transaction.oncomplete=()=>ok();s.transaction.onerror=()=>err(s.transaction.error);});}
-const app={state:{items:[],f:'all',q:''}};
-app.init=async function(){this.L=document.getElementById('list');this.E=document.getElementById('empty');document.getElementById('filters').addEventListener('click',e=>{const b=e.target.closest('.f');if(!b)return;this.state.f=b.dataset.k;this.render();});document.getElementById('q').addEventListener('input',e=>{this.state.q=e.target.value.trim();this.render();});document.getElementById('ijson').addEventListener('click',()=>this.impJSON());document.getElementById('icsv').addEventListener('click',()=>this.impCSV());document.getElementById('demo').addEventListener('click',()=>this.demo());document.getElementById('post').addEventListener('click',()=>this.fill()); try{this.state.items=await all();}catch(e){console.error(e);} this.render();};
-app.impJSON=async function(){const i=document.createElement('input');i.type='file';i.accept='application/json';i.onchange=async ()=>{const f=i.files[0];if(!f)return;let a=[];try{a=JSON.parse(await f.text());}catch{alert('Geen geldige JSON');return;}const t=Date.now();const n=a.map((r,k)=>({id:r.id||`${t}-${k}`,title:r.title||'Onbekend',type:r.type||'film',createdAt:r.createdAt||(t+k),imdbRating:r.imdbRating||'',year:r.year||'',runtime:r.runtime||'',poster:r.poster||'',streamingOn:r.streamingOn||'',ourScore:r.ourScore||'',dateSeen:r.dateSeen||'',imdbID:r.imdbID||r.imdbId||''}));await bulk(n);app.state.items=await all();app.render();};i.click();};
-app.impCSV=async function(){const i=document.createElement('input');i.type='file';i.accept='.csv,text/csv';i.onchange=async ()=>{const f=i.files[0];if(!f)return;Papa.parse(f,{header:true,skipEmptyLines:true,transformHeader:h=>(h||'').toString().trim().toLowerCase(),complete:async (res)=>{const rows=res.data||[];const t=Date.now();const items=rows.map((r,k)=>{const L={};Object.keys(r).forEach(x=>L[(x||'').toString().trim().toLowerCase()]=r[x]);const g=k=>L[k]??'';const ic=(g('const')||'').toString().trim();const title=(g('title')||g('original title')||'').toString().trim()||'Onbekend';const year=(g('year')||'').toString().trim();const rt=(g('runtime (min)')||g('runtime')||'').toString().trim();const ir=(g('imdb rating')||g('imdb_rating')||'').toString().trim();const ur=(g('your rating')||g('your_rating')||'').toString().trim();const dr=(g('date rated')||g('date_rated')||'').toString().trim();const pf=(g('description')||g('where')||'').toString().trim();return {id:`${t}-${k}`,title,type:'aan-het-kijken',createdAt:t+k,imdbRating:ir,year, runtime:rt?(/(min|seizoen|aflever)/i.test(rt)?rt:`${rt} min`):'', poster:'', streamingOn:pf, ourScore:ur, dateSeen:dr, imdbID:ic};});await bulk(items);app.state.items=await all();app.render();alert(`CSV geïmporteerd: ${items.length} items`);}});};i.click();};
-app.demo=async function(){const t=Date.now();await bulk([{id:`d-${t}`,title:'Inception',type:'film',createdAt:t,imdbRating:'8.8',year:'2010',runtime:'148 min',poster:'',streamingOn:'Netflix',ourScore:'9/10',imdbID:'tt1375666'}]);this.state.items=await all();this.render();}
-app.fill=async function(){const key=OMDB;const items=await all();let upd=0;for(const it of items){if(it.poster&&it.poster!=='N/A')continue;try{let u=`https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&plot=short&r=json`;if(it.imdbID)u+=`&i=${encodeURIComponent(it.imdbID)}`;else u+=`&t=${encodeURIComponent(it.title)}${it.year?`&y=${encodeURIComponent(it.year)}`:''}`;const r=await fetch(u);const d=await r.json();if(d&&d.Response!=='False'){if(!it.imdbID&&d.imdbID)it.imdbID=d.imdbID;if(d.Poster&&d.Poster!=='N/A'){it.poster=d.Poster;await put(it);upd++;}}await new Promise(r=>setTimeout(r,250));}catch(e){console.warn('OMDb',e);}} this.state.items=await all();this.render();alert('Posters aangevuld: '+upd);} ;
-app.filtered=function(){let a=this.state.items.slice();const t=this.state.q.toLowerCase();if(this.state.f!=='all')a=a.filter(i=>i.type===this.state.f);if(t)a=a.filter(i=>(i.title||'').toLowerCase().includes(t));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));return a;}
-app.render=function(){const L=document.getElementById('list'),E=document.getElementById('empty');L.innerHTML='';const items=this.filtered();if(!items.length){E.textContent='Geen items in deze filter.';E.classList.remove('hidden');return;}E.classList.add('hidden');items.forEach((it,idx)=>L.appendChild(this.card(it,idx+1)));}
-app.card=function(it,idx){const tag={film:['bg-sky-200/80 text-sky-900','Film'],serie:['bg-amber-200/80 text-amber-900','Serie'],'herman-film':['bg-purple-200/80 text-purple-900','H-Film'],'herman-serie':['bg-pink-200/80 text-pink-900','H-Serie'],'aan-het-kijken':['bg-blue-200/80 text-blue-900','Aan het kijken'],bekeken:['bg-green-200/80 text-green-900','Bekeken']};const t=tag[it.type]||['bg-slate-200/80 text-slate-900',it.type];const poster=(it.poster&&it.poster!=='N/A')?it.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';const sopts=['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'].map(o=>`<option value="${o}" ${it.streamingOn===o?'selected':''}>${o}</option>`).join('');const copts=Object.keys(tag).map(k=>`<option value="${k}" ${it.type===k?'selected':''}>${tag[k][1]}</option>`).join('');let date='';if(it.type==='bekeken'){date=`<div class='mt-2'><label class='block text-xs font-medium text-slate-600 mb-0.5'>Laatst gezien op</label><input type='date' data-id='${it.id}' value='${it.dateSeen||''}' class='date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md'></div>`;}return (function(){const d=document.createElement('div');d.className='glass-card rounded-xl overflow-hidden shadow-lg text-slate-800';d.innerHTML=`<div class='flex'><div class='w-1/2 relative'><div class='aspect-[2/3] w-full'><img src='${poster}' class='w-full h-full object-cover' alt=''></div><div class='absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm'>${idx}</div></div><div class='p-3 flex flex-col flex-grow w-1/2'><h3 class='font-bold text-base leading-tight mb-2'>${it.title}</h3><div class='text-sm text-slate-700 space-y-0.5 mb-2'><p><strong>IMDB:</strong> ${it.imdbRating||'N/B'}</p><p><strong>Jaar:</strong> ${it.year||'N/B'}</p><p><strong>Duur:</strong> ${it.runtime||'N/B'}</p></div><div class='mb-2 flex justify-between items-center'><span class='text-xs font-semibold px-2 py-0.5 rounded-full ${t[0]}'>${t[1]}</span><button data-id='${it.id}' data-action='delete' class='t bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all'><svg class='h-4 w-4' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'/></svg></button></div><div class='flex flex-col gap-2 mt-1'><input type='text' data-id='${it.id}' value='${it.ourScore||''}' class='our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs' placeholder='Onze score'><button data-id='${it.id}' data-imdbid='${it.imdbID||''}' data-action='show-imdb' class='w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs'>IMDB Info</button></div></div></div><div class='p-3 pt-2 text-xs space-y-2 border-t border-white/20'><div class='grid grid-cols-2 gap-2'><div><label class='block font-medium text-slate-600 mb-0.5'>Categorie</label><select data-id='${it.id}' class='category-select w-full p-1.5 border border-slate-300/50 rounded-md'>${copts}</select></div><div><label class='block font-medium text-slate-600 mb-0.5'>Waar te bekijken</label><select data-id='${it.id}' class='streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md'>${sopts}</select></div></div>${date}</div>`;return d;})()}
-document.addEventListener('click',async e=>{const d=e.target.closest('[data-action="delete"]');if(d){await del(d.dataset.id);app.state.items=await all();app.render();}const imdb=e.target.closest('[data-action="show-imdb"]');if(imdb){const id=imdb.dataset.imdbid;if(id)window.open('https://www.imdb.com/title/'+id,'_blank');}});
-document.addEventListener('change',async e=>{const id=e.target.getAttribute('data-id');if(!id)return;const it=app.state.items.find(x=>x.id==id);if(!it)return;if(e.target.classList.contains('category-select'))it.type=e.target.value;if(e.target.classList.contains('streaming-service-select'))it.streamingOn=e.target.value;if(e.target.classList.contains('our-score-input'))it.ourScore=e.target.value;if(e.target.classList.contains('date-seen-input'))it.dateSeen=e.target.value;await put(it);app.render();});
+const DB_NAME='mfs-db', DB_VERSION=1, STORE='items', OMDB_DEFAULT_KEY='8a70a767';
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type');}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE);}
+async function dbGetAll(){const db=await openDB();return new Promise((res,rej)=>{const q=tx(db).getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error);});}
+async function dbPut(item){const db=await openDB();return new Promise((res,rej)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>res();p.onerror=()=>rej(p.error);});}
+async function dbDelete(id){const db=await openDB();return new Promise((res,rej)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>res();d.onerror=()=>rej(d.error);});}
+async function dbBulkPut(items){const db=await openDB();return new Promise((res,rej)=>{const s=tx(db,'readwrite');items.forEach(i=>s.put(i));s.transaction.oncomplete=()=>res();s.transaction.onerror=()=>rej(s.transaction.error);});}
+
+const app={state:{items:[],filter:'all',searchTerm:'',isDbReady:false}};
+app.init=async function(){
+  this.$list=document.getElementById('list'); this.$empty=document.getElementById('emptyState');
+  this.$filters=document.getElementById('filterControls'); this.$search=document.getElementById('search');
+  this.$btnImport=document.getElementById('btn-import-json'); this.$btnImportCSV=document.getElementById('btn-import-csv');
+  this.$btnDemo=document.getElementById('btn-add-demo'); this.$btnPosters=document.getElementById('btn-fill-posters');
+  this.$quickadd=document.getElementById('quickadd'); this.$overlay=document.getElementById('overlay');
+  this.$ovList=document.getElementById('ov-list'); this.$ovClose=document.getElementById('ov-close');
+
+  this.$filters.addEventListener('click',(e)=>{const b=e.target.closest('.filter-btn');if(!b)return;this.state.filter=b.dataset.filter;this.render();});
+  this.$search.addEventListener('input',e=>{this.state.searchTerm=e.target.value.trim();this.render();});
+  this.$btnImport.addEventListener('click',()=>this.importJSON());
+  this.$btnImportCSV.addEventListener('click',()=>this.importCSV());
+  this.$btnDemo.addEventListener('click',()=>this.addDemo());
+  this.$btnPosters.addEventListener('click',()=>this.fillPosters());
+
+  // Quick add: debounce + overlay
+  let timer=null;
+  this.$quickadd.addEventListener('input',e=>{
+    const q=e.target.value.trim();
+    if(timer) clearTimeout(timer);
+    if(q.length<2){ this.hideOverlay(); return; }
+    timer=setTimeout(()=>this.searchOmdb(q), 300);
+  });
+  this.$quickadd.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=e.target.value.trim(); if(q.length>=2) this.searchOmdb(q);} });
+  this.$ovClose.addEventListener('click',()=>this.hideOverlay());
+  this.$overlay.addEventListener('click',e=>{ if(e.target===this.$overlay) this.hideOverlay(); });
+
+  this.$ovList.addEventListener('click', async (e)=>{
+    const addBtn=e.target.closest('[data-action="ov-add"]');
+    if(addBtn){
+      const imdbID=addBtn.dataset.imdbid||''; const title=addBtn.dataset.title||''; const year=addBtn.dataset.year||'';
+      const row=addBtn.closest('[data-row]'); const typeSel=row.querySelector('.ov-type'); const platSel=row.querySelector('.ov-platform');
+      await this.addFromOmdb({imdbID,title,year,type:typeSel.value,streamingOn:platSel.value});
+      this.hideOverlay(); this.$quickadd.value='';
+    }
+  });
+
+  try{await openDB();this.state.isDbReady=true;this.state.items=await dbGetAll();}catch(e){console.error('DB fout',e);}
+  this.render();
+};
+
+app.hideOverlay=function(){ this.$overlay.classList.add('hidden'); this.$ovList.innerHTML=''; };
+app.showOverlay=function(){ this.$overlay.classList.remove('hidden'); };
+
+app.searchOmdb=async function(q){
+  try{
+    const url=`https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_DEFAULT_KEY)}&s=${encodeURIComponent(q)}&type=&r=json`;
+    const resp=await fetch(url); const data=await resp.json();
+    if(!data || data.Response==='False' || !Array.isArray(data.Search)){ this.$ovList.innerHTML='<div class="p-3 text-slate-600">Geen resultaten.</div>'; this.showOverlay(); return; }
+    const opts=['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'];
+    const options=opts.map(o=>`<option>${o}</option>`).join('');
+    this.$ovList.innerHTML=data.Search.slice(0,12).map(x=>{
+      const poster=(x.Poster&&x.Poster!=='N/A')?x.Poster:'https://placehold.co/96x144/e2e8f0/94a3b8?text=Poster';
+      return `<div class="py-2 flex gap-3 items-start" data-row>
+        <img src="${poster}" class="w-16 h-24 object-cover rounded shadow-sm" alt="poster">
+        <div class="flex-1">
+          <div class="font-semibold leading-5">${x.Title||'Onbekend'} <span class="text-slate-500 font-normal">(${x.Year||''})</span></div>
+          <div class="text-xs text-slate-500 mb-2">${(x.Type||'').toUpperCase()} · ${x.imdbID||''}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+            <select class="ov-type p-1.5 border border-slate-300/60 rounded-md">
+              <option value="film">Film</option><option value="serie">Serie</option>
+              <option value="herman-film">H-Film</option><option value="herman-serie">H-Serie</option>
+              <option value="aan-het-kijken" selected>Aan het kijken</option><option value="bekeken">Bekeken</option>
+            </select>
+            <select class="ov-platform p-1.5 border border-slate-300/60 rounded-md">${options}</select>
+            <button data-action="ov-add" data-imdbid="${x.imdbID||''}" data-title="${(x.Title||'').replace(/"/g,'&quot;')}" data-year="${x.Year||''}" class="px-3 py-1.5 rounded-md bg-sky-600 text-white font-semibold">OK – toevoegen</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    this.showOverlay();
+  }catch(e){ console.warn('OMDb zoekfout', e); }
+};
+
+app.addFromOmdb=async function({imdbID,title,year,type,streamingOn}){
+  const now=Date.now();
+  let item={ id:`q-${now}`, title, type, createdAt:now, imdbRating:'', year, runtime:'', poster:'', streamingOn, ourScore:'', dateSeen:'', imdbID };
+  try{
+    const url=`https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_DEFAULT_KEY)}&plot=short&r=json&i=${encodeURIComponent(imdbID)}`;
+    const resp=await fetch(url); const data=await resp.json();
+    if(data && data.Response!=='False'){
+      item.imdbRating=data.imdbRating&&data.imdbRating!=='N/A'?data.imdbRating:'';
+      item.runtime=data.Runtime&&data.Runtime!=='N/A'?data.Runtime:'';
+      item.year=item.year||(data.Year&&data.Year!=='N/A'?data.Year:'');
+      if(data.Poster&&data.Poster!=='N/A') item.poster=data.Poster;
+    }
+  }catch(e){ console.warn('OMDb detail fout', e); }
+  await dbPut(item); this.state.items=await dbGetAll(); this.render();
+};
+
+app.importJSON=async function(){
+  const i=document.createElement('input'); i.type='file'; i.accept='application/json';
+  i.onchange=async ()=>{const f=i.files[0]; if(!f) return; let arr=[]; try{arr=JSON.parse(await f.text());}catch{alert('Geen geldige JSON');return;}
+    const now=Date.now();
+    const norm=arr.map((raw,idx)=>({
+      id:raw.id||`${now}-${idx}`, title:raw.title||'Onbekend', type:raw.type||'film', createdAt:raw.createdAt||(now+idx),
+      imdbRating:raw.imdbRating||'', year:raw.year||'', runtime:raw.runtime||'', poster:raw.poster||'',
+      streamingOn:raw.streamingOn||'', ourScore:raw.ourScore||'', dateSeen:raw.dateSeen||'', imdbID:raw.imdbID||raw.imdbId||''
+    }));
+    await dbBulkPut(norm); this.state.items=await dbGetAll(); this.render();
+  };
+  i.click();
+};
+
+app.importCSV=async function(){
+  const i=document.createElement('input'); i.type='file'; i.accept='.csv,text/csv';
+  i.onchange=async ()=>{
+    const f=i.files[0]; if(!f) return;
+    Papa.parse(f,{header:true,skipEmptyLines:true,transformHeader:h=>(h||'').toString().trim().toLowerCase(),complete:async (res)=>{
+      const rows=res.data||[]; const now=Date.now();
+      const items=rows.map((r,idx)=>{
+        const L={}; Object.keys(r).forEach(k=>L[(k||'').toString().trim().toLowerCase()]=r[k]);
+        const g=k=>L[k]??'';
+        const imdbConst=(g('const')||'').toString().trim();
+        const title=(g('title')||g('original title')||'').toString().trim()||'Onbekend';
+        const year=(g('year')||'').toString().trim();
+        const rt=(g('runtime (min)')||g('runtime')||'').toString().trim();
+        const imdbRating=(g('imdb rating')||g('imdb_rating')||'').toString().trim();
+        const yourRating=(g('your rating')||g('your_rating')||'').toString().trim();
+        const dateRated=(g('date rated')||g('date_rated')||'').toString().trim();
+        const platform=(g('description')||g('where')||'').toString().trim();
+        return { id:`${now}-${idx}`, title, type:'aan-het-kijken', createdAt:now+idx, imdbRating,
+          year, runtime: rt?(/(min|seizoen|aflever)/i.test(rt)?rt:`${rt} min`):'', poster:'', streamingOn:platform, ourScore:yourRating, dateSeen:dateRated, imdbID:imdbConst };
+      });
+      await dbBulkPut(items); app.state.items=await dbGetAll(); app.render(); alert(`CSV geïmporteerd: ${items.length} items`);
+    }});
+  };
+  i.click();
+};
+
+app.addDemo=async function(){
+  const now=Date.now();
+  const demo=[{id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10', imdbID:'tt1375666'}];
+  await dbBulkPut(demo); this.state.items=await dbGetAll(); this.render();
+};
+
+app.fillPosters=async function(){
+  const key=(localStorage.getItem('omdbKey')||OMDB_DEFAULT_KEY).trim();
+  const items=await dbGetAll(); let updated=0,tried=0,hadKeyError=false;
+  for(const it of items){
+    if(it.poster && it.poster!=='N/A') continue; tried++;
+    try{
+      let url=`https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&plot=short&r=json`;
+      if(it.imdbID) url+=`&i=${encodeURIComponent(it.imdbID)}`; else url+=`&t=${encodeURIComponent(it.title)}${it.year?`&y=${encodeURIComponent(it.year)}`:''}`;
+      const resp=await fetch(url); const data=await resp.json();
+      if(data && data.Response==='False' && String(data.Error||'').toLowerCase().includes('invalid api key')){ hadKeyError=true; break; }
+      if(data && data.Response!=='False'){ if(!it.imdbID && data.imdbID) it.imdbID=data.imdbID; if(data.Poster && data.Poster!=='N/A'){ it.poster=data.Poster; await dbPut(it); updated++; } }
+      await new Promise(r=>setTimeout(r,250));
+    }catch(err){ console.warn('OMDb fout',err); }
+  }
+  if(hadKeyError){ alert('OMDb: ongeldige API key.'); } else { this.state.items=await dbGetAll(); this.render(); alert(`Posters aangevuld: ${updated}/${tried}`); }
+};
+
+app.filtered=function(){ let arr=this.state.items.slice(); const term=this.state.searchTerm.toLowerCase();
+  if(this.state.filter!=='all') arr=arr.filter(i=>i.type===this.state.filter);
+  if(term) arr=arr.filter(i=>(i.title||'').toLowerCase().includes(term));
+  arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); return arr; };
+
+app.card=function(item,index){
+  const el=document.createElement('div'); el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
+  const poster=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Geen+poster';
+  const tags={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};
+  const tag=tags[item.type]||{c:'bg-slate-200/80 text-slate-900',t:item.type};
+  const streamOpts=['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'].map(o=>`<option value="${o}" ${item.streamingOn===o?'selected':''}>${o}</option>`).join('');
+  const catOpts=Object.keys(tags).map(k=>`<option value="${k}" ${item.type===k?'selected':''}>${tags[k].t}</option>`).join('');
+  let dateSeen=''; if(item.type==='bekeken'){dateSeen=`<div class="mt-2"><label class="block text-xs font-medium text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" data-id="${item.id}" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`;}
+  el.innerHTML=`<div class="flex">
+    <div class="w-1/2 flex-shrink-0 relative"><div class="aspect-[2/3] w-full"><img src="${poster}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';"></div>
+      <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div></div>
+    <div class="p-3 flex flex-col flex-grow w-1/2">
+      <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
+      <div class="text-sm text-slate-700 space-y-0.5 mb-2"><p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p><p><strong>Jaar:</strong> ${item.year||'N/B'}</p><p><strong>Duur:</strong> ${item.runtime||'N/B'}</p></div>
+      <div class="mb-2 flex justify-between items-center"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
+        <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="tappable bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
+          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+      <div class="flex flex-col gap-2 mt-1">
+        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Onze score">
+        <button data-id="${item.id}" data-imdbid="${item.imdbID||''}" data-action="show-imdb" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDB Info</button>
+      </div>
+    </div></div>
+    <div class="p-3 pt-2 text-xs space-y-2 border-t border-white/20">
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="block font-medium text-slate-600 mb-0.5">Categorie</label><select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">${catOpts}</select></div>
+        <div><label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label><select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">${streamOpts}</select></div>
+      </div>${dateSeen}</div>`;
+  return el;
+};
+
+document.addEventListener('click', async e=>{
+  const del=e.target.closest('[data-action="delete"]'); if(del){ await dbDelete(del.dataset.id); app.state.items=await dbGetAll(); app.render(); }
+  const imdb=e.target.closest('[data-action="show-imdb"]'); if(imdb){ const id=imdb.dataset.imdbid; if(id) window.open('https://www.imdb.com/title/'+id,'_blank'); }
+});
+document.addEventListener('change', async e=>{
+  const id=e.target.getAttribute('data-id'); if(!id) return;
+  const items=await dbGetAll(); const it=items.find(x=>x.id==id); if(!it) return;
+  if(e.target.classList.contains('category-select')) it.type=e.target.value;
+  if(e.target.classList.contains('streaming-service-select')) it.streamingOn=e.target.value;
+  if(e.target.classList.contains('our-score-input')) it.ourScore=e.target.value;
+  if(e.target.classList.contains('date-seen-input')) it.dateSeen=e.target.value;
+  await dbPut(it); app.state.items=await dbGetAll(); app.render();
+});
+
+app.render=function(){
+  const list=this.$list, empty=this.$empty; list.innerHTML='';
+  document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
+    const active=(btn.dataset.filter===this.state.filter);
+    btn.classList.toggle('bg-indigo-600',active); btn.classList.toggle('text-white',active);
+    btn.classList.toggle('bg-white/50',!active); btn.classList.toggle('text-slate-800',!active);
+  });
+  const items=this.filtered(); if(items.length===0){ empty.textContent=this.state.items.length?'Geen items in deze filter.':'Je lijst is leeg.'; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden'); items.forEach((it,idx)=> list.appendChild(this.card(it, idx+1)));
+};
+
+app.filtered=function(){ let arr=this.state.items.slice(); const term=this.state.searchTerm.toLowerCase();
+  if(this.state.filter!=='all') arr=arr.filter(i=>i.type===this.state.filter);
+  if(term) arr=arr.filter(i=>(i.title||'').toLowerCase().includes(term));
+  arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); return arr; };
+
 document.addEventListener('DOMContentLoaded',()=>app.init());
-</script></body></html>
+</script>
+</body></html>
