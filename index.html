@@ -1,10 +1,10 @@
-
 <!doctype html>
-<html lang="nl">
+<html lang="nl" class="h-full bg-slate-100">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MFS — Safari fix v3 (verbose)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0f172a"/>
+  <title>Mijn Films en Series — Safari fix v3.2 (FULL UI)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
@@ -16,7 +16,7 @@
   </style>
   <link rel="icon" href="data:,">
 </head>
-<body class="bg-slate-100 text-slate-900">
+<body class="h-full text-slate-900">
 <div class="max-w-6xl mx-auto p-4 pb-24">
   <header class="mb-3 flex items-center justify-between gap-3">
     <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
@@ -46,7 +46,7 @@
     <p id="emptyState" class="hidden text-center text-slate-600 py-10">Je lijst is leeg.</p>
   </main>
 </div>
-<div id="status">Safari fix v3 geladen…</div>
+<div id="status">Safari fix v3.2 (FULL) geladen…</div>
 
 <script>
 const statusEl = document.getElementById('status');
@@ -56,7 +56,7 @@ const OMDB_KEY="8a70a767"; const PLACEHOLDER='https://placehold.co/400x600/e2e8f
 function proxyPoster(url){ return url ? ('https://wsrv.nl/?url='+encodeURIComponent(url)+'&w=400&h=600&fit=cover&output=jpg') : ''; }
 function norm(s){ return (s||'').toString().trim().toLowerCase(); }
 
-// IndexedDB helpers
+// IndexedDB
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type');}};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE);}
@@ -65,10 +65,9 @@ async function dbGet(id){const db=await openDB();return new Promise((res,rej)=>{
 async function dbPut(item){const db=await openDB();return new Promise((res,rej)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>res();p.onerror=()=>rej(p.error);});}
 async function dbDelete(id){const db=await openDB();return new Promise((res,rej)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>res();d.onerror=()=>rej(d.error);});}
 
-// App object zonder 'this'
+// App
 const app={state:{items:[],filter:'all',searchTerm:''}};
 
-// Duplicate logic
 function sameKey(a,b){
   const ta=norm(a.type), tb=norm(b.type);
   const ia=norm(a.imdbID), ib=norm(b.imdbID);
@@ -103,7 +102,6 @@ async function fetchOmdbPosterById(imdbID){
   }catch(e){}
   return '';
 }
-
 async function ensurePoster(item, imgEl){
   if(item.poster && item.poster!=='N/A'){ imgEl.src=proxyPoster(item.poster); return; }
   if(!item.imdbID){ imgEl.src=PLACEHOLDER; return; }
@@ -127,66 +125,31 @@ function bindButtons(){
   bJSON.onclick=()=>app.importJSON();
   bCSV.onclick=()=>app.importCSV();
   bDemo.onclick=()=>app.addDemo();
-  setStatus('Knoppen actief (v3)');
+  setStatus('Knoppen actief (v3.2)');
 }
 
-// UI
-app.filtered=function(){
-  let arr=app.state.items.slice(); const term=app.state.searchTerm.toLowerCase();
-  if(app.state.filter!=='all') arr=arr.filter(i=>i.type===app.state.filter);
-  if(term) arr=arr.filter(i=>(i.title||'').toLowerCase().includes(term));
-  arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); return arr;
-};
-app.card=function(item,index){
-  const el=document.createElement('div'); el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
-  const poster=(item.poster&&item.poster!=='N/A')?proxyPoster(item.poster):'';
-  el.innerHTML=`<div class="flex">
-    <div class="w-1/2 flex-shrink-0 relative">
-      <div class="aspect-[2/3] w-full">
-        <img src="${poster||PLACEHOLDER}" data-item-id="${item.id}" onerror="_posterErrorHandler(this)" alt="Poster van ${item.title}" class="w-full h-full object-cover">
-      </div>
-      <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
-    </div>
-    <div class="p-3 flex flex-col flex-grow w-1/2">
-      <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
-      <div class="text-sm text-slate-700 space-y-0.5 mb-2"><p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p><p><strong>Jaar:</strong> ${item.year||'N/B'}</p><p><strong>Duur:</strong> ${item.runtime||'N/B'}</p></div>
-    </div>
-  </div>`;
-  setTimeout(()=>{ const img = el.querySelector('img[data-item-id]'); ensurePoster(item, img); }, 0);
-  return el;
-};
-app.render=function(){
-  const list=document.getElementById('list'), empty=document.getElementById('emptyState'); list.innerHTML='';
-  const items=app.filtered(); if(items.length===0){ empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden'); items.forEach((it,idx)=> list.appendChild(app.card(it, idx+1)));
+app.init=function(){
+  app.$list=document.getElementById('list'); app.$empty=document.getElementById('emptyState');
+  const filters=document.getElementById('filterControls'); const search=document.getElementById('search');
+  filters.addEventListener('click',e=>{const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();});
+  search.addEventListener('input',e=>{app.state.searchTerm=e.target.value.trim(); app.render();});
+  bindButtons();
+  dbGetAll().then(items=>{ app.state.items=items; app.render(); });
 };
 
-// Robust JSON importer with diagnostics
 app.importJSON=function(){
   setStatus('Import JSON gestart…');
-  const btn=document.getElementById('btn-import-json'); btn.disabled=true;
-  const picker=document.createElement('input'); picker.type='file'; picker.accept='application/json,.json,application/octet-stream';
+  const picker=document.createElement('input'); picker.type='file'; picker.accept='application/json';
   picker.onchange=()=>{
-    (async ()=>{
+    (async()=>{
       try{
-        const f=picker.files[0]; if(!f){ setStatus('Geen bestand gekozen'); btn.disabled=false; return; }
+        const f=picker.files[0]; if(!f){ setStatus('Geen bestand gekozen'); return; }
         const text=await f.text();
-        console.log('[IMPORT] bestand', f.name, 'bytes', text.length);
-        let data;
-        try { data=JSON.parse(text); } catch(e){
-          console.error('[IMPORT] JSON.parse fout:', e);
-          alert('Geen geldige JSON (parser error).'); btn.disabled=false; setStatus('JSON fout'); return;
-        }
+        let data; try{ data=JSON.parse(text); }catch(e){ alert('Geen geldige JSON'); setStatus('JSON fout'); return; }
         let arr = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
-        if(!Array.isArray(arr) || arr.length===0){
-          console.warn('[IMPORT] Lege of ongeldige array. data keys:', data && typeof data==='object' ? Object.keys(data) : typeof data);
-          alert('JSON bevat geen items-array.'); btn.disabled=false; setStatus('JSON fout'); return;
-        }
-        console.log('[IMPORT] items aantal:', arr.length, 'eerste type:', typeof arr[0], arr[0]);
-        let inserted=0, updated=0, skipped=0;
+        let inserted=0, updated=0;
         for(const raw of arr){
-          if(typeof raw!=='object' || raw===null){ skipped++; continue; }
-          const item={
+          const item = {
             id: raw.id, title: raw.title||'Onbekend', type: raw.type||'film',
             createdAt: raw.createdAt||Date.now(),
             imdbRating: raw.imdbRating||'', year: raw.year||'', runtime: raw.runtime||'',
@@ -195,28 +158,121 @@ app.importJSON=function(){
             imdbID: raw.imdbID||raw.imdbId||''
           };
           const res=await upsertSmart(item);
-          if(res==='inserted') inserted++; else if(res==='updated') updated++; else skipped++;
+          if(res==='inserted') inserted++; else if(res==='updated') updated++;
         }
         app.state.items=await dbGetAll(); app.render();
-        alert(`Import klaar. Nieuw: ${inserted} · Bijgewerkt: ${updated} · Overgeslagen: ${skipped}`);
+        alert(`Import klaar. Nieuw: ${inserted} · Bijgewerkt: ${updated}`);
         setStatus('Import JSON klaar');
-      }catch(err){ console.error('[IMPORT] Onbekende fout:', err); setStatus('Import JSON error'); }
-      finally{ btn.disabled=false; }
+      }catch(err){ console.error(err); setStatus('Import JSON error'); }
     })();
   };
   picker.click();
 };
-
-// CSV import tijdelijk niet nodig
-app.importCSV=function(){ alert('CSV import niet nodig voor deze test in Safari. Gebruik JSON.'); };
-
+app.importCSV=function(){ alert('CSV import is niet nodig nu.'); };
 app.addDemo=function(){
   const now=Date.now();
-  upsertSmart({id:`d-${now}`, title:'Inception', type:'film', createdAt:now, imdbRating:'8.8', year:'2010', runtime:'148 min', poster:'', streamingOn:'Netflix', ourScore:'9/10', imdbID:'tt1375666'})
-    .then(async ()=>{ app.state.items=await dbGetAll(); app.render(); setStatus('Demo klaar'); });
+  upsertSmart({id:`demo-${now}`, title:'Demo', type:'film', createdAt:now, imdbRating:'8.0', year:'2020', runtime:'100 min', streamingOn:'Netflix', ourScore:'8/10', imdbID:'tt1375666'})
+    .then(async()=>{ app.state.items=await dbGetAll(); app.render(); });
 };
 
-document.addEventListener('DOMContentLoaded',()=>{ setStatus('DOM klaar (v3)'); bindButtons(); dbGetAll().then(items=>{app.state.items=items; app.render();}); });
+app.filtered=function(){
+  let arr=app.state.items.slice(); const term=app.state.searchTerm.toLowerCase();
+  if(app.state.filter!=='all') arr=arr.filter(i=>i.type===app.state.filter);
+  if(term) arr=arr.filter(i=>(i.title||'').toLowerCase().includes(term));
+  arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); return arr;
+};
+
+function tagConfig(type){
+  const map={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};
+  return map[type]||{c:'bg-slate-200/80 text-slate-900',t:type};
+}
+function streamingOptionsHTML(sel){ return ['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes']
+  .map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o}</option>`).join(''); }
+function categoryOptionsHTML(type){
+  const map={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
+  return Object.keys(map).map(k=>`<option value="${k}" ${type===k?'selected':''}>${map[k]}</option>`).join('');
+}
+
+app.card=function(item,index){
+  const el=document.createElement('div'); el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
+  const tag=tagConfig(item.type);
+  const poster=(item.poster&&item.poster!=='N/A')?proxyPoster(item.poster):PLACEHOLDER;
+  el.innerHTML=`
+  <div class="flex">
+    <div class="w-1/2 flex-shrink-0 relative">
+      <div class="aspect-[2/3] w-full">
+        <img src="${poster}" data-item-id="${item.id}" onerror="_posterErrorHandler(this)" alt="Poster van ${item.title}" class="w-full h-full object-cover">
+      </div>
+      <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
+    </div>
+    <div class="p-3 flex flex-col flex-grow w-1/2">
+      <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
+      <div class="text-sm text-slate-700 space-y-0.5 mb-2">
+        <p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p>
+        <p><strong>Jaar:</strong> ${item.year||'N/B'}</p>
+        <p><strong>Duur:</strong> ${item.runtime||'N/B'}</p>
+      </div>
+      <div class="mb-2 flex justify-between items-center">
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
+        <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
+          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div class="flex flex-col gap-2 mt-1">
+        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Onze score">
+        <button data-id="${item.id}" data-imdbid="${item.imdbID||''}" data-action="show-imdb" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDB Info</button>
+      </div>
+    </div>
+  </div>
+  <div class="p-3 pt-2 text-xs space-y-2 border-t border-white/20">
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
+        <select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
+          ${categoryOptionsHTML(item.type)}
+        </select>
+      </div>
+      <div>
+        <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+        <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
+          ${streamingOptionsHTML(item.streamingOn)}
+        </select>
+      </div>
+    </div>
+    ${item.type==='bekeken'?`<div><label class="block font-medium text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" data-id="${item.id}" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
+  </div>`;
+
+  // Wire actions
+  setTimeout(()=>{
+    const img = el.querySelector('img[data-item-id]'); ensurePoster(item, img);
+    el.querySelector('[data-action="delete"]').onclick=async()=>{ await dbDelete(item.id); app.state.items=await dbGetAll(); app.render(); };
+    el.querySelector('.our-score-input').onchange=async(e)=>{ item.ourScore=e.target.value; await dbPut(item); };
+    el.querySelector('.category-select').onchange=async(e)=>{ item.type=e.target.value; await dbPut(item); app.render(); };
+    el.querySelector('.streaming-service-select').onchange=async(e)=>{ item.streamingOn=e.target.value; await dbPut(item); };
+    const infoBtn = el.querySelector('[data-action="show-imdb"]');
+    infoBtn.onclick=()=>{ const id=item.imdbID; if(id){ window.open('https://www.imdb.com/title/'+id, '_blank'); } else { alert('Geen IMDb ID beschikbaar.'); } };
+    const dateInput = el.querySelector('.date-seen-input'); if(dateInput){ dateInput.onchange=async(e)=>{ item.dateSeen=e.target.value; await dbPut(item); }; }
+  }, 0);
+
+  return el;
+};
+
+app.render=function(){
+  const list=document.getElementById('list'), empty=document.getElementById('emptyState'); list.innerHTML='';
+  // active styling
+  document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
+    const active = btn.dataset.filter===app.state.filter;
+    btn.classList.toggle('bg-indigo-600', active);
+    btn.classList.toggle('text-white', active);
+    btn.classList.toggle('bg-white/50', !active);
+    btn.classList.toggle('text-slate-800', !active);
+  });
+  const items=app.filtered(); if(items.length===0){ empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  items.forEach((it,idx)=> list.appendChild(app.card(it, idx+1)));
+};
+
+document.addEventListener('DOMContentLoaded',()=>{ setStatus('DOM klaar (v3.2 FULL)'); app.init(); });
 </script>
 </body>
 </html>
