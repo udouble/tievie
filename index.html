@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.5 sorteren</title>
+  <title>MFS — v3.6 streaming-normalisatie + 'Onbekend'</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -13,6 +13,7 @@
     ::placeholder{font-style:italic;color:#64748b}
     #suggestions-portal{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:99999}
     #suggestions{max-height:22rem;overflow:auto;pointer-events:auto}
+    select.italic { font-style: italic; color:#475569; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
@@ -40,8 +41,9 @@
       <label for="filterStreaming" class="text-sm text-slate-600">Streaming</label>
       <select id="filterStreaming" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
         <option value="">Alle diensten</option>
-        <option>Netflix</option><option>Disney+</option><option>Prime Video</option><option>Apple TV+</option>
-        <option>VRT MAX</option><option>Play</option><option>Streamz</option><option>Videoland</option>
+        <option value="__UNKNOWN__">Onbekend</option>
+        <option>Apple TV+</option><option>Netflix</option><option>Prime Video</option><option>Disney+</option>
+        <option>VRT MAX</option><option>Go Play</option><option>VTM Go</option><option>Videoland</option><option>NPO</option>
         <option>Blu-ray</option><option>iTunes</option>
       </select>
       <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
@@ -62,9 +64,9 @@
           <option value="bekeken">Bekeken</option>
         </select>
         <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/80 shadow">
-          <option value="">— Waar te bekijken —</option>
-          <option>Netflix</option><option>Disney+</option><option>Prime Video</option><option>Apple TV+</option>
-          <option>VRT MAX</option><option>Play</option><option>Streamz</option><option>Videoland</option>
+          <option value="">— Niet toegekend —</option>
+          <option>Apple TV+</option><option>Netflix</option><option>Prime Video</option><option>Disney+</option>
+          <option>VRT MAX</option><option>Go Play</option><option>VTM Go</option><option>Videoland</option><option>NPO</option>
           <option>Blu-ray</option><option>iTunes</option>
         </select>
         <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow">Voeg toe</button>
@@ -96,29 +98,82 @@
 
 <div id="suggestions-portal"><div id="suggestions" class="hidden bg-white rounded-lg shadow-lg border border-slate-200"></div></div>
 
-<div id="status">v3.5 geladen…</div>
+<div id="status">v3.6 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
-const OMDB_KEY="8a70a767";const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
+
+/* === STREAM NORMALISATIE === */
+function normalizeStream(raw){
+  const s=(raw||'').toString().trim();
+  if(!s) return '';
+  const low=s.toLowerCase();
+  if(low.startsWith('appl')) return 'Apple TV+';
+  if(low.startsWith('netf')) return 'Netflix';
+  if(low.startsWith('vrt'))  return 'VRT MAX';
+  if(low.startsWith('vtm'))  return 'VTM Go';
+  if(low.startsWith('prim')) return 'Prime Video';
+  if(low.includes('play'))   return 'Go Play';
+  if(low.startsWith('np'))   return 'NPO';
+  return ''; // onbekend
+}
+const STREAM_OPTIONS = ['','Apple TV+','Netflix','Prime Video','Disney+','VRT MAX','Go Play','VTM Go','Videoland','NPO','Blu-ray','iTunes'];
+
+/* === DB helpers === */
 function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
 function norm(s){return (s||'').toString().trim().toLowerCase()}
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
-async function dbGet(id){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).get(id);q.onsuccess=()=>ok(q.result||null);q.onerror=()=>no(q.error)})}
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 async function dbDelete(id){const db=await openDB();return new Promise((ok,no)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>ok();d.onerror=()=>no(d.error)})}
+
+/* === App state === */
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+
+/* === Merge / upsert (met normalisatie) === */
 function sameKey(a,b){const ta=norm(a.type),tb=norm(b.type);const ia=norm(a.imdbID),ib=norm(b.imdbID);if(ia&&ib)return ia===ib&&ta===tb;const taT=norm(a.title),tbT=norm(b.title);return taT&&tbT&&taT===tbT&&ta===tb}
-async function upsertSmart(nv){const all=await dbGetAll();const ex=all.find(it=>sameKey(it,nv));if(!ex){if(!nv.id)nv.id='id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);if(!nv.createdAt)nv.createdAt=Date.now();await dbPut(nv);return 'inserted'}const m={...ex};['title','imdbRating','year','runtime','poster','streamingOn','ourScore','dateSeen','imdbID','type'].forEach(k=>{const n=(nv[k]??''),o=(ex[k]??'');if(!o&&n)m[k]=n;if(k==='poster'&&n&&n!=='N/A')m[k]=n});m.createdAt=Math.min(ex.createdAt||Date.now(),nv.createdAt||Date.now());m.id=ex.id;await dbPut(m);return 'updated'}
-function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
-function ensurePoster(item,img){const src=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';img.src=src}
+async function upsertSmart(nv){
+  nv.streamingOn = normalizeStream(nv.streamingOn);
+  const all=await dbGetAll();
+  const ex=all.find(it=>sameKey(it,nv));
+  if(!ex){
+    if(!nv.id)nv.id='id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+    if(!nv.createdAt)nv.createdAt=Date.now();
+    await dbPut(nv); return 'inserted';
+  }
+  const m={...ex};
+  ['title','imdbRating','year','runtime','poster','streamingOn','ourScore','dateSeen','imdbID','type'].forEach(k=>{
+    let n=(nv[k]??''), o=(ex[k]??'');
+    if(k==='streamingOn'){ n=normalizeStream(n); o=normalizeStream(o); }
+    if(!o && n) m[k]=n;
+    if(k==='poster' && n && n!=='N/A') m[k]=n;
+  });
+  m.createdAt=Math.min(ex.createdAt||Date.now(), nv.createdAt||Date.now());
+  m.id=ex.id; await dbPut(m); return 'updated';
+}
+
+/* === Rendering === */
 function tagCfg(t){const m={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};return m[t]||{c:'bg-slate-200/80 text-slate-900',t:t}}
-function streamingOptionsHTML(sel){return ['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'].map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o}</option>`).join('')}
-function categoryOptionsHTML(type){const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('')}
-app.card=function(item,idx){const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';const tag=tagCfg(item.type);const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;el.innerHTML=`
+function streamingOptionsHTML(sel){
+  return ['','Apple TV+','Netflix','Prime Video','Disney+','VRT MAX','Go Play','VTM Go','Videoland','NPO','Blu-ray','iTunes']
+    .map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
+}
+function categoryOptionsHTML(type){
+  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
+  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+}
+
+function ensurePoster(item,img){const src=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';img.src=src}
+
+app.card=function(item,idx){
+  const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';const tag=tagCfg(item.type);
+  const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+  const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;
+  const streamSel = normalizeStream(item.streamingOn);
+  el.innerHTML=`
 <div class="flex">
   <div class="w-1/2 flex-shrink-0 relative">
     <div class="aspect-[2/3] w-full">
@@ -155,9 +210,10 @@ app.card=function(item,idx){const el=document.createElement('div');el.className=
     </div>
     <div>
       <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
-      <select data-id="${item.id||''}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
-        ${streamingOptionsHTML(item.streamingOn)}
+      <select data-id="${item.id||''}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md ${streamSel?'':'italic'}">
+        ${streamingOptionsHTML(streamSel)}
       </select>
+      ${streamSel?'':'<div class="mt-1 text-slate-500 italic">Niet toegekend</div>'}
     </div>
   </div>
   ${item.type==='bekeken'?`<div><label class="block font-medium text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" data-id="${item.id||''}" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
@@ -165,30 +221,44 @@ app.card=function(item,idx){const el=document.createElement('div');el.className=
   setTimeout(()=>{
     const img=el.querySelector('img[data-item-id]');ensurePoster(item,img);
     el.querySelector('[data-action="delete"]').onclick=async()=>{await dbDelete(item.id);app.state.items=await dbGetAll();app.render()};
-    el.querySelector('.our-score-input').onchange=async(e)=>{item.ourScore=e.target.value;await dbPut(item)};
-    el.querySelector('.category-select').onchange=async(e)=>{item.type=e.target.value;await dbPut(item);app.render()};
-    el.querySelector('.streaming-service-select').onchange=async(e)=>{item.streamingOn=e.target.value;await dbPut(item)};
-    const infoBtn=el.querySelector('[data-action="show-imdb"]');infoBtn.onclick=()=>{const id=item.imdbID;if(id){window.open('https://www.imdb.com/title/'+id,'_blank')}else{alert('Geen IMDb ID beschikbaar.')}};
+    const scoreInput=el.querySelector('.our-score-input');scoreInput.onchange=async(e)=>{item.ourScore=e.target.value;await dbPut(item)};
+    const catSel=el.querySelector('.category-select');catSel.onchange=async(e)=>{item.type=e.target.value;await dbPut(item);app.render()};
+    const streamSelEl=el.querySelector('.streaming-service-select');
+    streamSelEl.onchange=async(e)=>{
+      const val=normalizeStream(e.target.value);
+      item.streamingOn=val; e.target.classList.toggle('italic', !val);
+      await dbPut(item); app.render();
+    };
+    const infoBtn=el.querySelector('[data-action="show-imdb"]');infoBtn.onclick=()=>{
+      const id=item.imdbID;if(id){window.open('https://www.imdb.com/title/'+id,'_blank')}else{alert('Geen IMDb ID beschikbaar.')}};
     const dateInput=el.querySelector('.date-seen-input');if(dateInput){dateInput.onchange=async(e)=>{item.dateSeen=e.target.value;await dbPut(item)}};
   },0);
   return el;
 }
+
+function ensurePoster(item,img){const src=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';img.src=src}
+
+/* === Filtering, sorteren, streaming === */
+function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
 app.filtered=function(){
   let a=app.state.items.slice();
   if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
-  const s=(app.state.filterStreaming||'').trim();
-  if(s) a=a.filter(i=>(i.streamingOn||'')===s);
+  // streaming filter
+  const fs=app.state.filterStreaming;
+  if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
+  else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
+  // zoeken
   const term=(app.state.searchTerm||'').toLowerCase();
   if(term) a=a.filter(i=>(i.title||'').toLowerCase().includes(term));
+  // sorteren
   const by=app.state.sortBy;
-  const pi=(v)=>{const x=parseFloat(String(v));return isNaN(x)?-Infinity:x};
-  if(by==='imdb_desc'){ a.sort((x,y)=> pi(y.imdbRating)-pi(x.imdbRating)); }
-  else if(by==='imdb_asc'){ a.sort((x,y)=> pi(x.imdbRating)-pi(y.imdbRating)); }
+  if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
+  else if(by==='imdb_asc'){ a.sort((x,y)=> (parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=> (x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=> (y.title||'').localeCompare(x.title||'')); }
   else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
-}
+};
 app.render=function(){
   const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
   document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{
@@ -203,7 +273,7 @@ app.render=function(){
   if(items.length===0){empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
   items.forEach((it,i)=>list.appendChild(app.card(it,i+1)));
-}
+};
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
   document.getElementById('btn-add-demo').onclick=()=>{};
@@ -226,15 +296,21 @@ app.importJSON=function(){
       for(const raw of arr){
         const score=(raw.ourScore==null)?'':String(raw.ourScore);
         const cleaned=(typeof score==='string'&&score.toLowerCase()==='nan')?'':score;
-        const item={id:raw.id,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||Date.now(),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:cleaned,dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''};
+        const item={id:raw.id,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||Date.now(),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:normalizeStream(raw.streamingOn||raw.stream||''),ourScore:cleaned,dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''};
         const res=await upsertSmart(item); if(res==='inserted')ins++; else if(res==='updated')upd++;
+      }
+      // normaliseer bestaande records éénmalig (migratie)
+      const items=await dbGetAll();
+      for(const it of items){
+        const normS=normalizeStream(it.streamingOn);
+        if((it.streamingOn||'')!==normS){ it.streamingOn=normS; await dbPut(it); }
       }
       app.state.items=await dbGetAll(); app.render();
       alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
     }catch(e){console.error(e); alert('Import fout.');}
   })()}; picker.click();
 };
-document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll();app.render();setStatus('v3.5 sorteren actief')});
+document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll(); /* migratie bij load */ const items=await dbGetAll(); for(const it of items){const ns=normalizeStream(it.streamingOn); if(it.streamingOn!==ns){it.streamingOn=ns; await dbPut(it);} } app.state.items=await dbGetAll(); app.render(); setStatus('v3.6 actief')});
 </script>
 </body>
 </html>
