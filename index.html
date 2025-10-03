@@ -2,11 +2,305 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MFS App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0f172a"/>
+  <title>MFS — v3.14 HOTFIX (data eerst tonen, niets wissen)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="./manifest.json">
+  <style>
+    .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(160%) blur(10px)}
+    #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#fff;padding:.4rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
+    ::placeholder{font-style:italic;color:#64748b}
+    select.italic { font-style: italic; color:#475569; }
+    .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
+  </style>
 </head>
-<body>
-  <h1>MFS bundel werkt</h1>
-  <p>Volledige versie met alle functies.</p>
+<body class="bg-slate-100 text-slate-900">
+<div class="max-w-6xl mx-auto p-4 pb-24">
+  <header class="mb-3">
+    <div class="mb-2 flex items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
+      <div class="flex gap-2 items-center">
+        <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
+        <button id="btn-add-demo" class="px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Demo-items</button>
+      </div>
+    </div>
+
+    <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-2">
+      <label for="sortBy" class="text-sm text-slate-600">Sorteren</label>
+      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
+        <option value="created_desc" selected>Nummer (recent → oud)</option>
+        <option value="imdb_desc">IMDb-score hoog → laag</option>
+        <option value="imdb_asc">IMDb-score laag → hoog</option>
+        <option value="title_asc">Titel A → Z</option>
+        <option value="title_desc">Titel Z → A</option>
+      </select>
+      <div class="h-5 w-px bg-slate-200 mx-1"></div>
+      <label for="filterStreaming" class="text-sm text-slate-600">Streaming</label>
+      <select id="filterStreaming" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
+        <option value="">Alle diensten</option>
+        <option>Streamz</option>
+        <option>Netflix</option>
+        <option>Prime Video</option>
+        <option>Apple TV+</option>
+        <option>VRT MAX</option>
+        <option>Go Play</option>
+        <option>NPO</option>
+        <option>Disney+</option>
+        <option value="__UNKNOWN__">Onbekend</option>
+      </select>
+
+      <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
+    </div>
+
+    <div class="glass-card rounded-xl p-3 shadow mb-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative grow min-w-[240px]">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (bv. Matrix)" class="w-full px-3 py-2 rounded-lg bg-white/80 shadow">
+        </div>
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/80 shadow">
+          <option value="film" selected>Film</option>
+          <option value="serie">Serie</option>
+          <option value="herman-film">H-Film</option>
+          <option value="herman-serie">H-Serie</option>
+          <option value="aan-het-kijken">Aan het kijken</option>
+          <option value="bekeken">Bekeken</option>
+        </select>
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/80 shadow">
+          <option value="">Onbekend</option>
+          <option>Streamz</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
+        </select>
+        <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow">Voeg toe</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="mb-3">
+    <div id="filterControls" class="flex flex-wrap items-center gap-2">
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="film">Films</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="serie">Series</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-film">H-Films</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-serie">H-Series</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="aan-het-kijken">Aan het kijken</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="bekeken">Bekeken</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="all">Alles</button>
+      <div class="flex-1"></div>
+      <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48"/>
+    </div>
+  </section>
+
+  <main>
+    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+    <p id="emptyState" class="hidden text-center text-slate-600 py-10">Je lijst is leeg.</p>
+  </main>
+</div>
+
+<div id="status">v3.14 geladen…</div>
+
+<script>
+/* ======= BASIS: niets wissen, eerst tonen wat in IndexedDB zit ======= */
+const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
+const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
+const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+
+function normalizeStream(raw){
+  const s=(raw||'').toString().trim();
+  if(!s) return '';
+  const low=s.toLowerCase();
+  if(low.startsWith('appl')) return 'Apple TV+';
+  if(low.startsWith('netf')) return 'Netflix';
+  if(low.startsWith('vrt'))  return 'VRT MAX';
+  if(low.startsWith('vtm'))  return 'VTM Go';
+  if(low.startsWith('prim')) return 'Prime Video';
+  if(low.includes('play'))   return 'Go Play';
+  if(low.startsWith('np'))   return 'NPO';
+  if(low.startsWith('strea'))return 'Streamz';
+  if(low.startsWith('disn')) return 'Disney+';
+  return '';
+}
+
+function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
+async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
+async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
+
+const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+
+function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
+function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
+function norm(s){return (s||'').toString().trim().toLowerCase()}
+
+app.filtered=function(){
+  let a=app.state.items.slice();
+  if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
+  const fs=app.state.filterStreaming;
+  if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
+  else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
+  const term=(app.state.searchTerm||'').toLowerCase();
+  if(term){
+    a=a.filter(i=>{
+      const t=(i.title||'').toLowerCase();
+      const y=(i.year||'').toString();
+      const s=(normalizeStream(i.streamingOn)||'').toLowerCase();
+      const id=(i.imdbID||'').toLowerCase();
+      return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
+    });
+  }
+  const by=app.state.sortBy;
+  if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
+  else if(by==='imdb_asc'){ a.sort((x,y)=> (parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
+  else if(by==='title_asc'){ a.sort((x,y)=> (x.title||'').localeCompare(y.title||'')); }
+  else if(by==='title_desc'){ a.sort((x,y)=> (y.title||'').localeCompare(x.title||'')); }
+  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
+  return a;
+};
+
+function categoryOptionsHTML(type){
+  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
+  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+}
+function streamingOptionsHTML(sel){
+  const order=['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  const opts=[''].concat(order);
+  return opts.map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
+}
+
+app.card=function(item,idx){
+  const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
+  const tagMap={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};
+  const tag=tagMap[item.type]||{c:'bg-slate-200/80 text-slate-900',t:item.type};
+  const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+  const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;
+  const streamSel=normalizeStream(item.streamingOn);
+
+  el.innerHTML=`
+<div class="flex">
+  <div class="w-1/2 flex-shrink-0 relative">
+    <div class="aspect-[2/3] w-full"><img src="${imgSrc}" alt="Poster" class="w-full h-full object-cover"></div>
+    <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${idx}</div>
+  </div>
+  <div class="p-3 flex flex-col flex-grow w-1/2">
+    <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
+    <div class="text-sm text-slate-700 space-y-0.5 mb-2">
+      <p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p>
+      <p><strong>Jaar:</strong> ${item.year||'N/B'}</p>
+      <p><strong>Duur:</strong> ${item.runtime||'N/B'}</p>
+    </div>
+    <div class="mb-2 flex justify-between items-center">
+      <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
+    </div>
+    <div class="flex flex-col gap-2 mt-1">
+      <input type="text" value="${scoreVal||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
+      <button class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDb-info</button>
+    </div>
+  </div>
+</div>
+<div class="p-3 pt-2 text-xs space-y-2 border-t border-white/20">
+  <div class="grid grid-cols-2 gap-2">
+    <div>
+      <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
+      <select class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
+        ${categoryOptionsHTML(item.type)}
+      </select>
+    </div>
+    <div>
+      <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+      <select class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md ${streamSel?'':'italic'}">
+        ${streamingOptionsHTML(streamSel)}
+      </select>
+    </div>
+  </div>
+  ${item.type==='bekeken'?`<div><label class="block text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
+</div>`;
+  return el;
+}
+
+app.render=function(){
+  const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
+  document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{
+    const act=b.dataset.filter===app.state.filter;
+    b.classList.toggle('bg-indigo-600',act);b.classList.toggle('text-white',act);
+    b.classList.toggle('bg-white/50',!act);b.classList.toggle('text-slate-800',!act);
+  });
+  const items=app.filtered();
+  const badge=document.getElementById('countBadge');
+  const label=app.state.filter==='all'?'Alles':document.querySelector(`.filter-btn[data-filter="${app.state.filter}"]`)?.textContent||app.state.filter;
+  badge.textContent=`${label}: ${items.length}`;
+  if(items.length===0){empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  items.forEach((it,i)=>list.appendChild(app.card(it,i+1)));
+};
+
+function bindUI(){
+  document.getElementById('btn-import-json').onclick=()=>app.importJSON();
+  const sortBy=document.getElementById('sortBy');
+  const filterStreaming=document.getElementById('filterStreaming');
+  sortBy.addEventListener('change',()=>{app.state.sortBy=sortBy.value;app.render()});
+  filterStreaming.addEventListener('change',()=>{app.state.filterStreaming=filterStreaming.value;app.render()});
+  document.getElementById('filterControls').addEventListener('click',e=>{
+    const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();
+  });
+  const search=document.getElementById('search');
+  ['input','keyup','change','search','paste','cut'].forEach(evt=>{
+    search.addEventListener(evt,(e)=>{app.state.searchTerm=e.target.value.trim();app.render()});
+  });
+}
+
+app.importJSON=function(){
+  const picker=document.createElement('input'); picker.type='file'; picker.accept='application/json';
+  picker.onchange=()=>{(async()=>{
+    try{
+      const f=picker.files[0]; if(!f) return;
+      const text=await f.text(); let data=JSON.parse(text);
+      let arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
+      if(!arr.length){alert('Leeg JSON-bestand.');return}
+      let ins=0,upd=0;
+      const db=await openDB();
+      for(const raw of arr){
+        const id = raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+        const item={
+          id,
+          title: raw.title||'Onbekend',
+          type: raw.type||'film',
+          createdAt: raw.createdAt||Date.now(),
+          imdbRating: raw.imdbRating||'',
+          year: raw.year||'',
+          runtime: raw.runtime||'',
+          poster: raw.poster||'',
+          streamingOn: normalizeStream(raw.streamingOn||raw.stream||''),
+          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),
+          dateSeen: raw.dateSeen||'',
+          imdbID: raw.imdbID||raw.imdbId||''
+        };
+        await new Promise((ok,no)=>{const p=db.transaction(STORE,'readwrite').objectStore(STORE).put(item);p.onsuccess=ok;p.onerror=()=>no(p.error)});
+        ins++;
+      }
+      app.state.items=await dbGetAll(); app.render();
+      alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
+    }catch(e){console.error(e); alert('Import fout.');}
+  })()}; picker.click();
+};
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  bindUI();
+  // Belangrijk: laadt ALLEEN wat al bestond. Schrijf niets weg.
+  try{
+    app.state.items = await dbGetAll();
+    setStatus(`v3.14 actief — ${app.state.items.length} items geladen`);
+    app.render();
+  }catch(e){
+    console.error(e);
+    setStatus('Kon lokale data niet laden.');
+  }
+});
+</script>
 </body>
 </html>
