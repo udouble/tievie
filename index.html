@@ -4,17 +4,15 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.4 overlay + posters</title>
+  <title>MFS — v3.5 sorteren</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
     .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(160%) blur(10px)}
     #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#fff;padding:.4rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
     ::placeholder{font-style:italic;color:#64748b}
-    /* overlay */
     #suggestions-portal{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:99999}
     #suggestions{max-height:22rem;overflow:auto;pointer-events:auto}
-    #suggestions .item:hover{background:rgba(0,0,0,.05)}
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
@@ -27,6 +25,29 @@
         <button id="btn-add-demo" class="px-3 py-2 rounded-xl bg-emerald-600 text-white shadow text-sm">Demo-items</button>
       </div>
     </div>
+
+    <!-- Sort & streaming filter -->
+    <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-2">
+      <label for="sortBy" class="text-sm text-slate-600">Sorteren</label>
+      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
+        <option value="created_desc" selected>Nummer (recent → oud)</option>
+        <option value="imdb_desc">IMDb-score hoog → laag</option>
+        <option value="imdb_asc">IMDb-score laag → hoog</option>
+        <option value="title_asc">Titel A → Z</option>
+        <option value="title_desc">Titel Z → A</option>
+      </select>
+      <div class="h-5 w-px bg-slate-200 mx-1"></div>
+      <label for="filterStreaming" class="text-sm text-slate-600">Streaming</label>
+      <select id="filterStreaming" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
+        <option value="">Alle diensten</option>
+        <option>Netflix</option><option>Disney+</option><option>Prime Video</option><option>Apple TV+</option>
+        <option>VRT MAX</option><option>Play</option><option>Streamz</option><option>Videoland</option>
+        <option>Blu-ray</option><option>iTunes</option>
+      </select>
+      <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
+    </div>
+
+    <!-- Add bar -->
     <div class="glass-card rounded-xl p-3 shadow mb-3">
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[220px]">
@@ -62,7 +83,6 @@
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="aan-het-kijken">Aan het kijken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="bekeken">Bekeken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="all">Alles</button>
-      <span id="countBadge" class="ml-2 text-sm text-slate-600"></span>
       <div class="flex-1"></div>
       <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48"/>
     </div>
@@ -74,18 +94,14 @@
   </main>
 </div>
 
-<!-- Overlay portal -->
-<div id="suggestions-portal">
-  <div id="suggestions" class="hidden bg-white rounded-lg shadow-lg border border-slate-200"></div>
-</div>
+<div id="suggestions-portal"><div id="suggestions" class="hidden bg-white rounded-lg shadow-lg border border-slate-200"></div></div>
 
-<div id="status">v3.4 geladen…</div>
+<div id="status">v3.5 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const OMDB_KEY="8a70a767";const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
-function thumb(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=64&h=96&fit=cover&output=jpg'):''}
 function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
 function norm(s){return (s||'').toString().trim().toLowerCase()}
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
@@ -94,21 +110,19 @@ async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{c
 async function dbGet(id){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).get(id);q.onsuccess=()=>ok(q.result||null);q.onerror=()=>no(q.error)})}
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 async function dbDelete(id){const db=await openDB();return new Promise((ok,no)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>ok();d.onerror=()=>no(d.error)})}
-const app={state:{items:[],filter:'all',searchTerm:''}};
+const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 function sameKey(a,b){const ta=norm(a.type),tb=norm(b.type);const ia=norm(a.imdbID),ib=norm(b.imdbID);if(ia&&ib)return ia===ib&&ta===tb;const taT=norm(a.title),tbT=norm(b.title);return taT&&tbT&&taT===tbT&&ta===tb}
 async function upsertSmart(nv){const all=await dbGetAll();const ex=all.find(it=>sameKey(it,nv));if(!ex){if(!nv.id)nv.id='id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);if(!nv.createdAt)nv.createdAt=Date.now();await dbPut(nv);return 'inserted'}const m={...ex};['title','imdbRating','year','runtime','poster','streamingOn','ourScore','dateSeen','imdbID','type'].forEach(k=>{const n=(nv[k]??''),o=(ex[k]??'');if(!o&&n)m[k]=n;if(k==='poster'&&n&&n!=='N/A')m[k]=n});m.createdAt=Math.min(ex.createdAt||Date.now(),nv.createdAt||Date.now());m.id=ex.id;await dbPut(m);return 'updated'}
-async function omdbById(id){if(!id)return null;try{const r=await fetch(`https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_KEY)}&r=json&i=${encodeURIComponent(id)}`);return await r.json()}catch(e){return null}}
-async function omdbSearch(q){try{const r=await fetch(`https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_KEY)}&r=json&s=${encodeURIComponent(q)}`);return await r.json()}catch(e){return null}}
-async function ensurePoster(item,img){if(item.poster&&item.poster!=='N/A'){img.src=poster(item.poster);return}if(!item.imdbID){img.src=PLACEHOLDER;return}const d=await omdbById(item.imdbID);const p=(d&&d.Poster&&d.Poster!=='N/A')?d.Poster:'';if(p){item.poster=p;img.src=poster(p);await dbPut(item)}else{img.src=PLACEHOLDER}}
-window._posterErrorHandler=async function(img){if(img.dataset.retry==='1'){img.onerror=null;img.src=PLACEHOLDER;return}img.dataset.retry='1';const it=await dbGet(img.dataset.itemId||'');if(it){const d=await omdbById(it.imdbID||'');const p=(d&&d.Poster&&d.Poster!=='N/A')?d.Poster:'';if(p){it.poster=p;await dbPut(it);img.src=poster(p);return}}img.src=PLACEHOLDER};
+function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
+function ensurePoster(item,img){const src=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';img.src=src}
 function tagCfg(t){const m={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};return m[t]||{c:'bg-slate-200/80 text-slate-900',t:t}}
 function streamingOptionsHTML(sel){return ['','Netflix','Disney+','Prime Video','Apple TV+','VRT MAX','Play','Streamz','Videoland','Blu-ray','iTunes'].map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o}</option>`).join('')}
 function categoryOptionsHTML(type){const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('')}
-app.card=function(item,idx){const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';const tag=tagCfg(item.type);const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):PLACEHOLDER;const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;el.innerHTML=`
+app.card=function(item,idx){const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';const tag=tagCfg(item.type);const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;el.innerHTML=`
 <div class="flex">
   <div class="w-1/2 flex-shrink-0 relative">
     <div class="aspect-[2/3] w-full">
-      <img src="${imgSrc}" data-item-id="${item.id||''}" onerror="_posterErrorHandler(this)" alt="Poster van ${item.title}" class="w-full h-full object-cover">
+      <img src="${imgSrc}" data-item-id="${item.id||''}" alt="Poster van ${item.title}" class="w-full h-full object-cover">
     </div>
     <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${idx}</div>
   </div>
@@ -159,14 +173,68 @@ app.card=function(item,idx){const el=document.createElement('div');el.className=
   },0);
   return el;
 }
-app.filtered=function(){let a=app.state.items.slice();const t=(app.state.searchTerm||'').toLowerCase();if(app.state.filter!=='all')a=a.filter(i=>i.type===app.state.filter);if(t)a=a.filter(i=>(i.title||'').toLowerCase().includes(t));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));return a}
-app.render=function(){const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{const act=b.dataset.filter===app.state.filter;b.classList.toggle('bg-indigo-600',act);b.classList.toggle('text-white',act);b.classList.toggle('bg-white/50',!act);b.classList.toggle('text-slate-800',!act)});const items=app.filtered();const badge=document.getElementById('countBadge');const label=app.state.filter==='all'?'Alles':document.querySelector(`.filter-btn[data-filter="${app.state.filter}"]`)?.textContent||app.state.filter;badge.textContent=`${label}: ${items.length}`;if(items.length===0){empty.classList.remove('hidden');return}empty.classList.add('hidden');items.forEach((it,i)=>list.appendChild(app.card(it,i+1)))}
-function bindUI(){document.getElementById('btn-import-json').onclick=()=>app.importJSON();document.getElementById('btn-add-demo').onclick=()=>app.addDemo();document.getElementById('btn-add-item').onclick=handleAddItem;document.getElementById('btn-refresh-posters').onclick=refreshVisiblePosters;setupSuggestionsOverlay();}
-function setupSuggestionsOverlay(){const field=document.getElementById('add-search');const box=document.getElementById('suggestions');let t;function place(){const r=field.getBoundingClientRect();box.style.position='fixed';box.style.left=r.left+'px';box.style.top=(r.bottom+4)+'px';box.style.width=r.width+'px'}field.addEventListener('focus',place);window.addEventListener('resize',place);window.addEventListener('scroll',place,true);field.addEventListener('input',()=>{clearTimeout(t);const q=field.value.trim();if(q.length<2){box.classList.add('hidden');box.innerHTML='';return}t=setTimeout(async()=>{place();const data=await omdbSearch(q);const res=(data&&Array.isArray(data.Search))?data.Search:[];if(res.length===0){box.classList.add('hidden');box.innerHTML='';return}box.innerHTML=res.map(r=>{const p=(r.Poster&&r.Poster!=='N/A')?thumb(r.Poster):'https://placehold.co/64x96/e2e8f0/94a3b8?text=?';return `<div class="item px-2 py-2 cursor-pointer flex items-center gap-2" data-imdbid="${r.imdbID}" data-title="${r.Title}"><img src="${p}" class="w-16 h-24 object-cover rounded"/><div class="min-w-0"><div class="truncate">${r.Title}</div><div class="text-slate-500 text-xs">${r.Year||''} • ${r.Type||''}</div></div></div>`}).join('');box.classList.remove('hidden');box.querySelectorAll('.item').forEach(el=>{el.onclick=()=>{field.value=el.dataset.title;field.dataset.imdbid=el.dataset.imdbid;box.classList.add('hidden');box.innerHTML=''}})},300)});document.addEventListener('click',(e)=>{if(e.target===field||box.contains(e.target))return;box.classList.add('hidden')})}
-async function handleAddItem(){const field=document.getElementById('add-search');const title=(field.value||'').trim();const imdbID=(field.dataset.imdbid||'').trim();const type=document.getElementById('add-type').value;const stream=document.getElementById('add-stream').value;if(!title){alert('Geef een titel in of kies een suggestie.');return}let d=null;if(imdbID){d=await omdbById(imdbID)}const item={title,type,createdAt:Date.now(),imdbRating:d?.imdbRating||'',year:d?.Year||'',runtime:d?.Runtime||'',poster:(d&&d.Poster&&d.Poster!=='N/A')?d.Poster:'',streamingOn:stream,ourScore:'',dateSeen:'',imdbID};await upsertSmart(item);app.state.items=await dbGetAll();app.state.filter=type;app.render();field.value='';field.dataset.imdbid='';document.getElementById('add-stream').value=''}
-async function refreshVisiblePosters(){const list=document.getElementById('list');const imgs=list.querySelectorAll('img[data-item-id]');for(const img of imgs){const id=img.getAttribute('data-item-id');const it=await dbGet(id);if(it){it.poster='';await dbPut(it);await ensurePoster(it,img)}}setStatus('Posters bijgewerkt voor zichtbare items')}
-app.importJSON=function(){setStatus('Import JSON…');const picker=document.createElement('input');picker.type='file';picker.accept='application/json';picker.onchange=()=>{(async()=>{try{const f=picker.files[0];if(!f){setStatus('Geen bestand gekozen');return}const text=await f.text();let data;try{data=JSON.parse(text)}catch(e){alert('Geen geldige JSON');setStatus('JSON fout');return}let arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);let ins=0,upd=0;for(const raw of arr){const score=(raw.ourScore==null)?'':String(raw.ourScore);const cleaned=(typeof score==='string'&&score.toLowerCase()==='nan')?'':score;const item={id:raw.id,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||Date.now(),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:cleaned,dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''};const res=await upsertSmart(item);if(res==='inserted')ins++;else if(res==='updated')upd++;}app.state.items=await dbGetAll();app.render();alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);setStatus('Import klaar')}catch(err){console.error(err);setStatus('Import error')}})()};picker.click()};
-document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll();app.render();setStatus('v3.4 actief')});
+app.filtered=function(){
+  let a=app.state.items.slice();
+  if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
+  const s=(app.state.filterStreaming||'').trim();
+  if(s) a=a.filter(i=>(i.streamingOn||'')===s);
+  const term=(app.state.searchTerm||'').toLowerCase();
+  if(term) a=a.filter(i=>(i.title||'').toLowerCase().includes(term));
+  const by=app.state.sortBy;
+  const pi=(v)=>{const x=parseFloat(String(v));return isNaN(x)?-Infinity:x};
+  if(by==='imdb_desc'){ a.sort((x,y)=> pi(y.imdbRating)-pi(x.imdbRating)); }
+  else if(by==='imdb_asc'){ a.sort((x,y)=> pi(x.imdbRating)-pi(y.imdbRating)); }
+  else if(by==='title_asc'){ a.sort((x,y)=> (x.title||'').localeCompare(y.title||'')); }
+  else if(by==='title_desc'){ a.sort((x,y)=> (y.title||'').localeCompare(x.title||'')); }
+  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
+  return a;
+}
+app.render=function(){
+  const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
+  document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{
+    const act=b.dataset.filter===app.state.filter;
+    b.classList.toggle('bg-indigo-600',act);b.classList.toggle('text-white',act);
+    b.classList.toggle('bg-white/50',!act);b.classList.toggle('text-slate-800',!act);
+  });
+  const items=app.filtered();
+  const badge=document.getElementById('countBadge');
+  const label=app.state.filter==='all'?'Alles':document.querySelector(`.filter-btn[data-filter="${app.state.filter}"]`)?.textContent||app.state.filter;
+  badge.textContent=`${label}: ${items.length}`;
+  if(items.length===0){empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  items.forEach((it,i)=>list.appendChild(app.card(it,i+1)));
+}
+function bindUI(){
+  document.getElementById('btn-import-json').onclick=()=>app.importJSON();
+  document.getElementById('btn-add-demo').onclick=()=>{};
+  const sortBy=document.getElementById('sortBy');
+  const filterStreaming=document.getElementById('filterStreaming');
+  sortBy.addEventListener('change',()=>{app.state.sortBy=sortBy.value;app.render()});
+  filterStreaming.addEventListener('change',()=>{app.state.filterStreaming=filterStreaming.value;app.render()});
+  const filters=document.getElementById('filterControls'); const search=document.getElementById('search');
+  filters.addEventListener('click',e=>{const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();});
+  search.addEventListener('input',e=>{app.state.searchTerm=e.target.value.trim(); app.render();});
+}
+app.importJSON=function(){
+  const picker=document.createElement('input'); picker.type='file'; picker.accept='application/json';
+  picker.onchange=()=>{(async()=>{
+    try{
+      const f=picker.files[0]; if(!f) return;
+      const text=await f.text(); let data=JSON.parse(text);
+      let arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
+      let ins=0,upd=0;
+      for(const raw of arr){
+        const score=(raw.ourScore==null)?'':String(raw.ourScore);
+        const cleaned=(typeof score==='string'&&score.toLowerCase()==='nan')?'':score;
+        const item={id:raw.id,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||Date.now(),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:cleaned,dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''};
+        const res=await upsertSmart(item); if(res==='inserted')ins++; else if(res==='updated')upd++;
+      }
+      app.state.items=await dbGetAll(); app.render();
+      alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
+    }catch(e){console.error(e); alert('Import fout.');}
+  })()}; picker.click();
+};
+document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll();app.render();setStatus('v3.5 sorteren actief')});
 </script>
 </body>
 </html>
