@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.8 random popover + streaming volgorde</title>
+  <title>MFS — v3.11 zoekfix + 'Onbekend' enkel in dropdown</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -14,9 +14,8 @@
     select.italic { font-style: italic; color:#475569; }
     .pulse { animation: pulse 1.2s ease-in-out 3; }
     @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)} 70%{box-shadow:0 0 0 14px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
-    /* Popover */
-    #random-popover-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
-    #random-popover{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
+    .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
@@ -30,7 +29,6 @@
       </div>
     </div>
 
-    <!-- Sort & streaming filter + random -->
     <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-2">
       <label for="sortBy" class="text-sm text-slate-600">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
@@ -58,7 +56,6 @@
       <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
 
       <button id="btn-random-pick" class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex items-center gap-2">
-        <!-- fris “ster”-icoon -->
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 3l2.1 5.1L19 10l-4.5 3.3L15 19l-3-2-3 2 0.5-5.7L5 10l4.9-1.9L12 3z"/>
         </svg>
@@ -66,7 +63,6 @@
       </button>
     </div>
 
-    <!-- Add bar -->
     <div class="glass-card rounded-xl p-3 shadow mb-3">
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[220px]">
@@ -118,17 +114,18 @@
   </main>
 </div>
 
-<!-- Random popover -->
-<div id="random-popover-backdrop"></div>
-<div id="random-popover">
+<div id="random-popover-backdrop" class="backdrop"></div>
+<div id="random-popover" class="modal">
   <div class="bg-white rounded-2xl shadow-2xl max-w-md w-[90vw] overflow-hidden">
     <div class="flex gap-3 p-3">
       <img id="rp-poster" alt="Poster" class="w-24 h-36 object-cover rounded-lg flex-shrink-0">
       <div class="flex flex-col">
         <h3 id="rp-title" class="text-lg font-semibold leading-snug"></h3>
         <p id="rp-meta" class="text-sm text-slate-600 mt-1"></p>
+        <div id="rp-stream-hint" class="text-xs text-slate-500 mt-1"></div>
         <div class="mt-auto flex gap-2 pt-2">
-          <button id="rp-open-imdb" class="px-3 py-1.5 rounded-xl bg-yellow-400/90 hover:bg-yellow-400 text-yellow-900 text-sm font-semibold">Open op IMDb</button>
+          <button id="rp-open-imdb" class="px-3 py-1.5 rounded-xl bg-yellow-400/90 hover:bg-yellow-400 text-yellow-900 text-sm font-semibold">IMDb-info</button>
+          <button id="rp-play" class="hidden px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm"></button>
           <button id="rp-ok" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm">OK</button>
         </div>
       </div>
@@ -136,14 +133,42 @@
   </div>
 </div>
 
-<div id="status">v3.8 geladen…</div>
+<div id="imdb-backdrop" class="backdrop"></div>
+<div id="imdb-modal" class="modal">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-[94vw] max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+      <h3 id="imdb-title" class="text-lg font-semibold">IMDb</h3>
+      <button id="imdb-close" title="Sluiten" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div id="imdb-body" class="p-4 overflow-auto">
+      <div id="imdb-loading" class="text-slate-500">Laden…</div>
+      <div id="imdb-content" class="hidden">
+        <div class="flex gap-4">
+          <img id="imdb-poster" class="w-28 h-40 object-cover rounded-md" alt="Poster">
+          <div class="text-sm">
+            <p id="imdb-meta" class="text-slate-600"></p>
+            <p id="imdb-plot" class="mt-2"></p>
+            <div class="mt-3 text-xs text-slate-500">Bron: OMDb (samenvatting van IMDb-gegevens)</div>
+          </div>
+        </div>
+      </div>
+      <div id="imdb-error" class="hidden text-red-600">Kon informatie niet laden.</div>
+    </div>
+  </div>
+</div>
+
+<div id="status">v3.11 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
+const OMDB_KEY='8a70a767';
 
-/* === STREAM NORMALISATIE (incl. Streamz) === */
 function normalizeStream(raw){
   const s=(raw||'').toString().trim();
   if(!s) return '';
@@ -160,7 +185,7 @@ function normalizeStream(raw){
   return ''; // onbekend
 }
 const STREAM_ORDER = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
-/* === DB helpers === */
+
 function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
 function norm(s){return (s||'').toString().trim().toLowerCase()}
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
@@ -169,10 +194,8 @@ async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{c
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 async function dbDelete(id){const db=await openDB();return new Promise((ok,no)=>{const d=tx(db,'readwrite').delete(id);d.onsuccess=()=>ok();d.onerror=()=>no(d.error)})}
 
-/* === App state === */
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
-/* === Merge / upsert (met normalisatie) === */
 function sameKey(a,b){const ta=norm(a.type),tb=norm(b.type);const ia=norm(a.imdbID),ib=norm(b.imdbID);if(ia&&ib)return ia===ib&&ta===tb;const taT=norm(a.title),tbT=norm(b.title);return taT&&tbT&&taT===tbT&&ta===tb}
 async function upsertSmart(nv){
   nv.streamingOn = normalizeStream(nv.streamingOn);
@@ -194,7 +217,6 @@ async function upsertSmart(nv){
   m.id=ex.id; await dbPut(m); return 'updated';
 }
 
-/* === Rendering === */
 function tagCfg(t){const m={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};return m[t]||{c:'bg-slate-200/80 text-slate-900',t:t}}
 function streamingOptionsHTML(sel){
   const opts = [''].concat(STREAM_ORDER);
@@ -232,13 +254,13 @@ app.card=function(item,idx){
     </div>
     <div class="mb-2 flex justify-between items-center">
       <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
-      <button data-id="${item.id||''}" data-action="delete" title="Verwijderen" class="bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
-        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      <button data-id="${item.id||''}" data-imdbid="${item.imdbID||''}" data-action="show-imdb" class="w-7 h-7 flex items-center justify-center rounded-full transition-all bg-white/50 text-slate-600 hover:bg-yellow-400 hover:text-yellow-900" title="IMDb-info">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.44 15.6c.33.58.17 1.32-.39 1.7-.56.38-1.3.22-1.68-.36L18 13.28V20a1 1 0 01-1 1H7a1 1 0 01-1-1v-6.72l-2.37 3.66c-.38.58-1.12.74-1.68.36-.56-.38-.73-1.12-.39-1.7L5.1 9.42c.3-.53.83-.85 1.4-.85h10c.57 0 1.1.32 1.4.85l3.54 6.18zM18 4h-5V3a1 1 0 00-1-1H7a1 1 0 00-1 1v1H2a1 1 0 00-1 1v2a1 1 0 001 1h16a1 1 0 001-1V5a1 1 0 00-1-1z"/></svg>
       </button>
     </div>
     <div class="flex flex-col gap-2 mt-1">
       <input type="text" data-id="${item.id||''}" value="${scoreVal||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
-      <button data-id="${item.id||''}" data-imdbid="${item.imdbID||''}" data-action="show-imdb" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDB Info</button>
+      <button data-id="${item.id||''}" data-imdbid="${item.imdbID||''}" data-action="show-imdb-detail" class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDb-info</button>
     </div>
   </div>
 </div>
@@ -255,7 +277,6 @@ app.card=function(item,idx){
       <select data-id="${item.id||''}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md ${streamSel?'':'italic'}">
         ${streamingOptionsHTML(streamSel)}
       </select>
-      ${streamSel?'':'<div class="mt-1 text-slate-500 italic">Niet toegekend</div>'}
     </div>
   </div>
   ${item.type==='bekeken'?`<div><label class="block font-medium text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" data-id="${item.id||''}" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
@@ -271,14 +292,15 @@ app.card=function(item,idx){
       item.streamingOn=val; e.target.classList.toggle('italic', !val);
       await dbPut(item); app.render();
     };
-    const infoBtn=el.querySelector('[data-action="show-imdb"]');infoBtn.onclick=()=>{
-      const id=item.imdbID;if(id){window.open('https://www.imdb.com/title/'+id,'_blank')}else{alert('Geen IMDb ID beschikbaar.')}};
+    const infoBtnSmall=el.querySelector('[data-action="show-imdb"]');
+    const infoBtn=el.querySelector('[data-action="show-imdb-detail"]');
+    const openOverlay=()=>{ if(item.imdbID){ showImdbOverlay(item.imdbID, item.title); } else { alert('Geen IMDb ID beschikbaar.'); } };
+    infoBtn.onclick=openOverlay; infoBtnSmall.onclick=openOverlay;
     const dateInput=el.querySelector('.date-seen-input');if(dateInput){dateInput.onchange=async(e)=>{item.dateSeen=e.target.value;await dbPut(item)}};
   },0);
   return el;
 }
 
-/* === Filtering, sorteren, streaming === */
 function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
 app.filtered=function(){
   let a=app.state.items.slice();
@@ -287,7 +309,15 @@ app.filtered=function(){
   if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
   else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
   const term=(app.state.searchTerm||'').toLowerCase();
-  if(term) a=a.filter(i=>(i.title||'').toLowerCase().includes(term));
+  if(term){
+    a=a.filter(i=>{
+      const t=(i.title||'').toLowerCase();
+      const y=(i.year||'').toString();
+      const s=(normalizeStream(i.streamingOn)||'').toLowerCase();
+      const id=(i.imdbID||'').toLowerCase();
+      return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
+    });
+  }
   const by=app.state.sortBy;
   if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
   else if(by==='imdb_asc'){ a.sort((x,y)=> (parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
@@ -297,7 +327,6 @@ app.filtered=function(){
   return a;
 };
 
-/* === Random pick + popover === */
 function randomPick(){
   if(!(app.state.filter==='film' || app.state.filter==='serie')) return null;
   const pool = app.filtered();
@@ -313,10 +342,21 @@ function showRandomPopover(item){
   const img=document.getElementById('rp-poster');
   const btnOk=document.getElementById('rp-ok');
   const btnImdb=document.getElementById('rp-open-imdb');
+  const btnPlay=document.getElementById('rp-play');
+  const hint=document.getElementById('rp-stream-hint');
   title.textContent=item.title||'—';
   meta.textContent=`IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`.trim();
   img.src=(item.poster&&item.poster!=='N/A')?poster(item.poster):PLACEHOLDER;
-  btnImdb.onclick=()=>{ if(item.imdbID){ window.open('https://www.imdb.com/title/'+item.imdbID,'_blank'); } };
+  const svc = normalizeStream(item.streamingOn);
+  if(svc){
+    btnPlay.textContent = `Speel op ${svc}`;
+    btnPlay.classList.remove('hidden');
+    hint.textContent = `Beschikbaar op ${svc}`;
+  }else{
+    btnPlay.classList.add('hidden');
+    hint.textContent = '';
+  }
+  btnImdb.onclick=()=>{ if(item.imdbID){ showImdbOverlay(item.imdbID, item.title); } };
   function close(){
     backdrop.style.display='none'; pop.style.display='none';
     const cardEl = document.getElementById('card-'+(item.id||''));
@@ -325,8 +365,56 @@ function showRandomPopover(item){
   btnOk.onclick=close;
   backdrop.onclick=close;
   document.onkeydown=(e)=>{ if(e.key==='Escape') close(); };
+  btnPlay.onclick=()=>{
+    const filterSelect=document.getElementById('filterStreaming');
+    filterSelect.value = svc;
+    app.state.filterStreaming = svc;
+    app.render();
+    close();
+  };
   backdrop.style.display='block'; pop.style.display='flex';
 }
+
+async function showImdbOverlay(imdbID, title){
+  const backdrop=document.getElementById('imdb-backdrop');
+  const modal=document.getElementById('imdb-modal');
+  const t=document.getElementById('imdb-title');
+  const body=document.getElementById('imdb-body');
+  const loading=document.getElementById('imdb-loading');
+  const content=document.getElementById('imdb-content');
+  const err=document.getElementById('imdb-error');
+  const posterEl=document.getElementById('imdb-poster');
+  const metaEl=document.getElementById('imdb-meta');
+  const plotEl=document.getElementById('imdb-plot');
+  t.textContent=title?`IMDb — ${title}`:'IMDb';
+  loading.classList.remove('hidden'); content.classList.add('hidden'); err.classList.add('hidden');
+  posterEl.src=''; metaEl.textContent=''; plotEl.textContent='';
+  backdrop.style.display='block'; modal.style.display='flex';
+  try{
+    const res=await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(imdbID)}&plot=short`);
+    const data=await res.json();
+    if(data && data.Response!=='False'){
+      posterEl.src = (data.Poster && data.Poster!=='N/A') ? poster(data.Poster) : PLACEHOLDER;
+      const bits=[data.Year, data.Rated, data.Runtime, data.Genre, data.imdbRating?`IMDb ${data.imdbRating}`:''].filter(Boolean);
+      metaEl.textContent = bits.join(' · ');
+      plotEl.textContent = data.Plot || '—';
+      loading.classList.add('hidden'); content.classList.remove('hidden');
+    } else {
+      loading.classList.add('hidden'); err.classList.remove('hidden');
+    }
+  }catch(e){
+    console.error(e);
+    loading.classList.add('hidden'); err.classList.remove('hidden');
+  }
+}
+(function bindImdbClose(){
+  const backdrop=document.getElementById('imdb-backdrop');
+  const modal=document.getElementById('imdb-modal');
+  function close(){ backdrop.style.display='none'; modal.style.display='none'; }
+  document.getElementById('imdb-close').onclick=close;
+  backdrop.onclick=close;
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') close(); });
+})();
 
 app.render=function(){
   const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
@@ -361,7 +449,11 @@ function bindUI(){
   filterStreaming.addEventListener('change',()=>{app.state.filterStreaming=filterStreaming.value;app.render()});
   const filters=document.getElementById('filterControls'); const search=document.getElementById('search');
   filters.addEventListener('click',e=>{const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();});
-  search.addEventListener('input',e=>{app.state.searchTerm=e.target.value.trim(); app.render();});
+  // Zoekfix: bind breed (input/keyup/change) en log status
+  const onSearch=(e)=>{ app.state.searchTerm=(e.target.value||'').trim(); console.log('[ZOEK]', app.state.searchTerm); app.render(); };
+  search.addEventListener('input',onSearch);
+  search.addEventListener('keyup',onSearch);
+  search.addEventListener('change',onSearch);
 
   document.getElementById('btn-random-pick').addEventListener('click',()=>{
     const pick = randomPick();
@@ -384,7 +476,6 @@ app.importJSON=function(){
         const item={id:raw.id,title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||Date.now(),imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:normalizeStream(raw.streamingOn||raw.stream||''),ourScore:cleaned,dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''};
         const res=await upsertSmart(item); if(res==='inserted')ins++; else if(res==='updated')upd++;
       }
-      // migratie: normaliseer bestaande records
       const items=await dbGetAll();
       for(const it of items){
         const ns=normalizeStream(it.streamingOn);
@@ -399,7 +490,6 @@ app.importJSON=function(){
 document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
   app.state.items=await dbGetAll();
-  // migratie bij load
   const items=await dbGetAll();
   for(const it of items){
     const ns=normalizeStream(it.streamingOn);
@@ -407,7 +497,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   }
   app.state.items=await dbGetAll();
   app.render();
-  setStatus('v3.8 actief');
+  setStatus('v3.11 actief');
 });
 </script>
 </body>
