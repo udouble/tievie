@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.12 robuuste zoek</title>
+  <title>MFS — v3.14 HOTFIX (data eerst tonen, niets wissen)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -12,8 +12,6 @@
     #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#fff;padding:.4rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
     ::placeholder{font-style:italic;color:#64748b}
     select.italic { font-style: italic; color:#475569; }
-    .pulse { animation: pulse 1.2s ease-in-out 3; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)} 70%{box-shadow:0 0 0 14px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
     .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
   </style>
@@ -54,18 +52,11 @@
       </select>
 
       <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
-
-      <button id="btn-random-pick" class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 3l2.1 5.1L19 10l-4.5 3.3L15 19l-3-2-3 2 0.5-5.7L5 10l4.9-1.9L12 3z"/>
-        </svg>
-        Kies iets voor me
-      </button>
     </div>
 
     <div class="glass-card rounded-xl p-3 shadow mb-3">
       <div class="flex flex-wrap items-center gap-2">
-        <div class="relative grow min-w-[220px]">
+        <div class="relative grow min-w-[240px]">
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (bv. Matrix)" class="w-full px-3 py-2 rounded-lg bg-white/80 shadow">
         </div>
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/80 shadow">
@@ -88,8 +79,6 @@
           <option>Disney+</option>
         </select>
         <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow">Voeg toe</button>
-        <div class="flex-1"></div>
-        <button id="btn-refresh-posters" class="px-3 py-2 rounded-xl bg-amber-500 text-white shadow">Posters bijwerken</button>
       </div>
     </div>
   </header>
@@ -114,12 +103,13 @@
   </main>
 </div>
 
-<div id="status">v3.12 geladen…</div>
+<div id="status">v3.14 geladen…</div>
 
 <script>
+/* ======= BASIS: niets wissen, eerst tonen wat in IndexedDB zit ======= */
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
-const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
+const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 
 function normalizeStream(raw){
   const s=(raw||'').toString().trim();
@@ -134,12 +124,9 @@ function normalizeStream(raw){
   if(low.startsWith('np'))   return 'NPO';
   if(low.startsWith('strea'))return 'Streamz';
   if(low.startsWith('disn')) return 'Disney+';
-  return ''; // onbekend
+  return '';
 }
-const STREAM_ORDER = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
 
-function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
-function norm(s){return (s||'').toString().trim().toLowerCase()}
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
@@ -147,9 +134,10 @@ async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{
 
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
-function sameKey(a,b){const ta=norm(a.type),tb=norm(b.type);const ia=norm(a.imdbID),ib=norm(b.imdbID);if(ia&&ib)return ia===ib&&ta===tb;const taT=norm(a.title),tbT=norm(b.title);return taT&&tbT&&taT===tbT&&ta===tb}
-
+function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
 function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
+function norm(s){return (s||'').toString().trim().toLowerCase()}
+
 app.filtered=function(){
   let a=app.state.items.slice();
   if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
@@ -175,11 +163,24 @@ app.filtered=function(){
   return a;
 };
 
+function categoryOptionsHTML(type){
+  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
+  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+}
+function streamingOptionsHTML(sel){
+  const order=['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  const opts=[''].concat(order);
+  return opts.map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
+}
+
 app.card=function(item,idx){
   const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
+  const tagMap={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};
+  const tag=tagMap[item.type]||{c:'bg-slate-200/80 text-slate-900',t:item.type};
   const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
   const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;
   const streamSel=normalizeStream(item.streamingOn);
+
   el.innerHTML=`
 <div class="flex">
   <div class="w-1/2 flex-shrink-0 relative">
@@ -193,6 +194,9 @@ app.card=function(item,idx){
       <p><strong>Jaar:</strong> ${item.year||'N/B'}</p>
       <p><strong>Duur:</strong> ${item.runtime||'N/B'}</p>
     </div>
+    <div class="mb-2 flex justify-between items-center">
+      <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
+    </div>
     <div class="flex flex-col gap-2 mt-1">
       <input type="text" value="${scoreVal||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
       <button class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDb-info</button>
@@ -204,33 +208,31 @@ app.card=function(item,idx){
     <div>
       <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
       <select class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
-        <option value="film" ${item.type==='film'?'selected':''}>Film</option>
-        <option value="serie" ${item.type==='serie'?'selected':''}>Serie</option>
-        <option value="herman-film" ${item.type==='herman-film'?'selected':''}>H-Film</option>
-        <option value="herman-serie" ${item.type==='herman-serie'?'selected':''}>H-Serie</option>
-        <option value="aan-het-kijken" ${item.type==='aan-het-kijken'?'selected':''}>Aan het kijken</option>
-        <option value="bekeken" ${item.type==='bekeken'?'selected':''}>Bekeken</option>
+        ${categoryOptionsHTML(item.type)}
       </select>
     </div>
     <div>
       <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
       <select class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md ${streamSel?'':'italic'}">
-        <option value="">Onbekend</option>
-        ${STREAM_ORDER.map(s=>`<option ${s===streamSel?'selected':''}>${s}</option>`).join('')}
+        ${streamingOptionsHTML(streamSel)}
       </select>
     </div>
   </div>
+  ${item.type==='bekeken'?`<div><label class="block text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
 </div>`;
   return el;
 }
 
-function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
-
 app.render=function(){
   const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
+  document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{
+    const act=b.dataset.filter===app.state.filter;
+    b.classList.toggle('bg-indigo-600',act);b.classList.toggle('text-white',act);
+    b.classList.toggle('bg-white/50',!act);b.classList.toggle('text-slate-800',!act);
+  });
   const items=app.filtered();
   const badge=document.getElementById('countBadge');
-  const label=app.state.filter==='all'?'Alles':app.state.filter;
+  const label=app.state.filter==='all'?'Alles':document.querySelector(`.filter-btn[data-filter="${app.state.filter}"]`)?.textContent||app.state.filter;
   badge.textContent=`${label}: ${items.length}`;
   if(items.length===0){empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
@@ -239,27 +241,16 @@ app.render=function(){
 
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
-
   const sortBy=document.getElementById('sortBy');
   const filterStreaming=document.getElementById('filterStreaming');
   sortBy.addEventListener('change',()=>{app.state.sortBy=sortBy.value;app.render()});
   filterStreaming.addEventListener('change',()=>{app.state.filterStreaming=filterStreaming.value;app.render()});
-
   document.getElementById('filterControls').addEventListener('click',e=>{
-    const b=e.target.closest('.filter-btn'); if(!b) return;
-    app.state.filter=b.dataset.filter; app.render();
+    const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();
   });
-
-  const handleSearch = debounce((val)=>{
-    app.state.searchTerm = (val||'').trim();
-    setStatus(app.state.searchTerm ? `Filter: “${app.state.searchTerm}”` : 'Filter leeg');
-    app.render();
-  }, 100);
-
-  // Robuuste listeners (overleven DOM-quirks & Safari zoekkruisje)
   const search=document.getElementById('search');
   ['input','keyup','change','search','paste','cut'].forEach(evt=>{
-    search.addEventListener(evt,(e)=>handleSearch(e.target.value));
+    search.addEventListener(evt,(e)=>{app.state.searchTerm=e.target.value.trim();app.render()});
   });
 }
 
@@ -270,27 +261,29 @@ app.importJSON=function(){
       const f=picker.files[0]; if(!f) return;
       const text=await f.text(); let data=JSON.parse(text);
       let arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
+      if(!arr.length){alert('Leeg JSON-bestand.');return}
       let ins=0,upd=0;
+      const db=await openDB();
       for(const raw of arr){
+        const id = raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
         const item={
-          id:raw.id||('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-          title:raw.title||'Onbekend',
-          type:raw.type||'film',
-          createdAt:raw.createdAt||Date.now(),
-          imdbRating:raw.imdbRating||'',
-          year:raw.year||'',
-          runtime:raw.runtime||'',
-          poster:raw.poster||'',
-          streamingOn:normalizeStream(raw.streamingOn||raw.stream||''),
-          ourScore:(raw.ourScore==null||String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),
-          dateSeen:raw.dateSeen||'',
-          imdbID:raw.imdbID||raw.imdbId||''
+          id,
+          title: raw.title||'Onbekend',
+          type: raw.type||'film',
+          createdAt: raw.createdAt||Date.now(),
+          imdbRating: raw.imdbRating||'',
+          year: raw.year||'',
+          runtime: raw.runtime||'',
+          poster: raw.poster||'',
+          streamingOn: normalizeStream(raw.streamingOn||raw.stream||''),
+          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),
+          dateSeen: raw.dateSeen||'',
+          imdbID: raw.imdbID||raw.imdbId||''
         };
-        // naive upsert naar memory (demo; echte versie gebruikt IndexedDB)
-        const idx=app.state.items.findIndex(x=> (x.imdbID && x.imdbID===item.imdbID) || (x.title===item.title && x.type===item.type));
-        if(idx<0){ app.state.items.push(item); ins++; } else { app.state.items[idx] = {...app.state.items[idx], ...item}; upd++; }
+        await new Promise((ok,no)=>{const p=db.transaction(STORE,'readwrite').objectStore(STORE).put(item);p.onsuccess=ok;p.onerror=()=>no(p.error)});
+        ins++;
       }
-      app.render();
+      app.state.items=await dbGetAll(); app.render();
       alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
     }catch(e){console.error(e); alert('Import fout.');}
   })()}; picker.click();
@@ -298,8 +291,15 @@ app.importJSON=function(){
 
 document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
-  setStatus('v3.12 actief — klaar');
-  app.render();
+  // Belangrijk: laadt ALLEEN wat al bestond. Schrijf niets weg.
+  try{
+    app.state.items = await dbGetAll();
+    setStatus(`v3.14 actief — ${app.state.items.length} items geladen`);
+    app.render();
+  }catch(e){
+    console.error(e);
+    setStatus('Kon lokale data niet laden.');
+  }
 });
 </script>
 </body>
