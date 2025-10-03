@@ -4,16 +4,19 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.6b streaming-normalisatie + 'Onbekend' + Streamz</title>
+  <title>MFS — v3.8 random popover + streaming volgorde</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
     .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(160%) blur(10px)}
     #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#fff;padding:.4rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
     ::placeholder{font-style:italic;color:#64748b}
-    #suggestions-portal{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:99999}
-    #suggestions{max-height:22rem;overflow:auto;pointer-events:auto}
     select.italic { font-style: italic; color:#475569; }
+    .pulse { animation: pulse 1.2s ease-in-out 3; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)} 70%{box-shadow:0 0 0 14px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
+    /* Popover */
+    #random-popover-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
+    #random-popover{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
@@ -27,7 +30,7 @@
       </div>
     </div>
 
-    <!-- Sort & streaming filter -->
+    <!-- Sort & streaming filter + random -->
     <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-2">
       <label for="sortBy" class="text-sm text-slate-600">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
@@ -41,13 +44,26 @@
       <label for="filterStreaming" class="text-sm text-slate-600">Streaming</label>
       <select id="filterStreaming" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
         <option value="">Alle diensten</option>
-        <option value="__UNKNOWN__">Onbekend</option>
-        <option>Apple TV+</option><option>Netflix</option><option>Prime Video</option><option>Disney+</option>
-        <option>VRT MAX</option><option>Go Play</option><option>VTM Go</option><option>Videoland</option><option>NPO</option>
         <option>Streamz</option>
-        <option>Blu-ray</option><option>iTunes</option>
+        <option>Netflix</option>
+        <option>Prime Video</option>
+        <option>Apple TV+</option>
+        <option>VRT MAX</option>
+        <option>Go Play</option>
+        <option>NPO</option>
+        <option>Disney+</option>
+        <option value="__UNKNOWN__">Onbekend</option>
       </select>
+
       <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
+
+      <button id="btn-random-pick" class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex items-center gap-2">
+        <!-- fris “ster”-icoon -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 3l2.1 5.1L19 10l-4.5 3.3L15 19l-3-2-3 2 0.5-5.7L5 10l4.9-1.9L12 3z"/>
+        </svg>
+        Kies iets voor me
+      </button>
     </div>
 
     <!-- Add bar -->
@@ -65,11 +81,15 @@
           <option value="bekeken">Bekeken</option>
         </select>
         <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/80 shadow">
-          <option value="">— Niet toegekend —</option>
-          <option>Apple TV+</option><option>Netflix</option><option>Prime Video</option><option>Disney+</option>
-          <option>VRT MAX</option><option>Go Play</option><option>VTM Go</option><option>Videoland</option><option>NPO</option>
+          <option value="">Onbekend</option>
           <option>Streamz</option>
-          <option>Blu-ray</option><option>iTunes</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
         </select>
         <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow">Voeg toe</button>
         <div class="flex-1"></div>
@@ -98,9 +118,25 @@
   </main>
 </div>
 
-<div id="suggestions-portal"><div id="suggestions" class="hidden bg-white rounded-lg shadow-lg border border-slate-200"></div></div>
+<!-- Random popover -->
+<div id="random-popover-backdrop"></div>
+<div id="random-popover">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-[90vw] overflow-hidden">
+    <div class="flex gap-3 p-3">
+      <img id="rp-poster" alt="Poster" class="w-24 h-36 object-cover rounded-lg flex-shrink-0">
+      <div class="flex flex-col">
+        <h3 id="rp-title" class="text-lg font-semibold leading-snug"></h3>
+        <p id="rp-meta" class="text-sm text-slate-600 mt-1"></p>
+        <div class="mt-auto flex gap-2 pt-2">
+          <button id="rp-open-imdb" class="px-3 py-1.5 rounded-xl bg-yellow-400/90 hover:bg-yellow-400 text-yellow-900 text-sm font-semibold">Open op IMDb</button>
+          <button id="rp-ok" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<div id="status">v3.6b geladen…</div>
+<div id="status">v3.8 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -120,10 +156,10 @@ function normalizeStream(raw){
   if(low.includes('play'))   return 'Go Play';
   if(low.startsWith('np'))   return 'NPO';
   if(low.startsWith('strea'))return 'Streamz';
+  if(low.startsWith('disn')) return 'Disney+';
   return ''; // onbekend
 }
-const STREAM_OPTIONS = ['','Apple TV+','Netflix','Prime Video','Disney+','VRT MAX','Go Play','VTM Go','Videoland','NPO','Streamz','Blu-ray','iTunes'];
-
+const STREAM_ORDER = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
 /* === DB helpers === */
 function poster(u){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=400&h=600&fit=cover&output=jpg'):''}
 function norm(s){return (s||'').toString().trim().toLowerCase()}
@@ -161,7 +197,11 @@ async function upsertSmart(nv){
 /* === Rendering === */
 function tagCfg(t){const m={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};return m[t]||{c:'bg-slate-200/80 text-slate-900',t:t}}
 function streamingOptionsHTML(sel){
-  return STREAM_OPTIONS.map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
+  const opts = [''].concat(STREAM_ORDER);
+  return opts.map(o=>{
+    const label = o || 'Onbekend';
+    return `<option value="${o}" ${sel===o?'selected':''}>${label}</option>`;
+  }).join('');
 }
 function categoryOptionsHTML(type){
   const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
@@ -243,14 +283,11 @@ function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return
 app.filtered=function(){
   let a=app.state.items.slice();
   if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
-  // streaming filter
   const fs=app.state.filterStreaming;
   if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
   else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
-  // zoeken
   const term=(app.state.searchTerm||'').toLowerCase();
   if(term) a=a.filter(i=>(i.title||'').toLowerCase().includes(term));
-  // sorteren
   const by=app.state.sortBy;
   if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
   else if(by==='imdb_asc'){ a.sort((x,y)=> (parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
@@ -259,6 +296,38 @@ app.filtered=function(){
   else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
 };
+
+/* === Random pick + popover === */
+function randomPick(){
+  if(!(app.state.filter==='film' || app.state.filter==='serie')) return null;
+  const pool = app.filtered();
+  if(!pool.length) return null;
+  const idx = Math.floor(Math.random()*pool.length);
+  return pool[idx];
+}
+function showRandomPopover(item){
+  const backdrop=document.getElementById('random-popover-backdrop');
+  const pop=document.getElementById('random-popover');
+  const title=document.getElementById('rp-title');
+  const meta=document.getElementById('rp-meta');
+  const img=document.getElementById('rp-poster');
+  const btnOk=document.getElementById('rp-ok');
+  const btnImdb=document.getElementById('rp-open-imdb');
+  title.textContent=item.title||'—';
+  meta.textContent=`IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`.trim();
+  img.src=(item.poster&&item.poster!=='N/A')?poster(item.poster):PLACEHOLDER;
+  btnImdb.onclick=()=>{ if(item.imdbID){ window.open('https://www.imdb.com/title/'+item.imdbID,'_blank'); } };
+  function close(){
+    backdrop.style.display='none'; pop.style.display='none';
+    const cardEl = document.getElementById('card-'+(item.id||''));
+    if(cardEl){ cardEl.classList.remove('pulse'); cardEl.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(()=>cardEl.classList.add('pulse'), 150); }
+  }
+  btnOk.onclick=close;
+  backdrop.onclick=close;
+  document.onkeydown=(e)=>{ if(e.key==='Escape') close(); };
+  backdrop.style.display='block'; pop.style.display='flex';
+}
+
 app.render=function(){
   const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
   document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{
@@ -266,15 +335,23 @@ app.render=function(){
     b.classList.toggle('bg-indigo-600',act);b.classList.toggle('text-white',act);
     b.classList.toggle('bg-white/50',!act);b.classList.toggle('text-slate-800',!act);
   });
+  const randomBtn=document.getElementById('btn-random-pick');
+  const showRandom = (app.state.filter==='film' || app.state.filter==='serie');
+  randomBtn.classList.toggle('hidden', !showRandom);
+
   const items=app.filtered();
-  const badge=document.getElementById('countBadge') || document.createElement('span');
-  if(!badge.id){badge.id='countBadge'; document.querySelector('.glass-card select#filterStreaming').parentElement.appendChild(badge);}
+  const badge=document.getElementById('countBadge');
   const label=app.state.filter==='all'?'Alles':document.querySelector(`.filter-btn[data-filter="${app.state.filter}"]`)?.textContent||app.state.filter;
   badge.textContent=`${label}: ${items.length}`;
   if(items.length===0){empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
-  items.forEach((it,i)=>list.appendChild(app.card(it,i+1)));
+  items.forEach((it,i)=>{
+    const card=app.card(it,i+1);
+    card.id = 'card-'+(it.id||('x'+i));
+    list.appendChild(card);
+  });
 };
+
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
   document.getElementById('btn-add-demo').onclick=()=>{};
@@ -285,7 +362,14 @@ function bindUI(){
   const filters=document.getElementById('filterControls'); const search=document.getElementById('search');
   filters.addEventListener('click',e=>{const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();});
   search.addEventListener('input',e=>{app.state.searchTerm=e.target.value.trim(); app.render();});
+
+  document.getElementById('btn-random-pick').addEventListener('click',()=>{
+    const pick = randomPick();
+    if(!pick){ alert('Geen items in deze selectie.'); return; }
+    showRandomPopover(pick);
+  });
 }
+
 app.importJSON=function(){
   const picker=document.createElement('input'); picker.type='file'; picker.accept='application/json';
   picker.onchange=()=>{(async()=>{
@@ -311,7 +395,20 @@ app.importJSON=function(){
     }catch(e){console.error(e); alert('Import fout.');}
   })()}; picker.click();
 };
-document.addEventListener('DOMContentLoaded',async()=>{bindUI();app.state.items=await dbGetAll(); /* migratie bij load */ const items=await dbGetAll(); for(const it of items){const ns=normalizeStream(it.streamingOn); if(it.streamingOn!==ns){it.streamingOn=ns; await dbPut(it);} } app.state.items=await dbGetAll(); app.render(); setStatus('v3.6b actief')});
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  bindUI();
+  app.state.items=await dbGetAll();
+  // migratie bij load
+  const items=await dbGetAll();
+  for(const it of items){
+    const ns=normalizeStream(it.streamingOn);
+    if(it.streamingOn!==ns){ it.streamingOn=ns; await dbPut(it); }
+  }
+  app.state.items=await dbGetAll();
+  app.render();
+  setStatus('v3.8 actief');
+});
 </script>
 </body>
 </html>
