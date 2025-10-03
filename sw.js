@@ -1,1 +1,1 @@
-// not used in nosw build
+// no SW in this build
