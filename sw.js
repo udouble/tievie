@@ -1,5 +1,5 @@
 
-const CACHE='tievie-v3.25b-seed-2025-10-04';
+const CACHE='tievie-v3.25c-fullui-2025-10-04';
 const CORE=['./','./index.html','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
 const SYNC_URL='/__mfs_sync__.json';
 
