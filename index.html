@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.21 (Bekeken-modal)</title>
+  <title>MFS — v3.22 (Posters ophalen)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -19,20 +19,22 @@
     #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
     #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
     #suggest .row:hover{background:rgba(2,6,23,.06)}
-    /* IMDb modal */
     #imdb-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:100010}
     #imdb-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:100011}
     .imdb-content{width:min(960px,92vw);max-height:88vh;overflow:auto}
+    .progress{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}
+    .bar{height:100%;background:#10b981;width:0%}
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
-<div class="max-w-6xl mx-auto p-4 pb-24">
+<div class="max-w-6xl mx-auto p-4 pb-28">
   <header class="mb-3">
-    <div class="mb-2 flex items-center justify-between gap-3">
+    <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
       <div class="flex gap-2 items-center">
         <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
         <button id="btn-export-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Exporteer alles</button>
+        <button id="btn-fetch-posters" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow text-sm" title="Vul ontbrekende posters/titels aan voor de huidige selectie">Posters ophalen</button>
       </div>
     </div>
 
@@ -120,6 +122,16 @@
     <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
     <p id="emptyState" class="hidden text-center text-slate-600 py-10">Je lijst is leeg.</p>
   </main>
+
+  <div id="progressWrap" class="fixed left-1/2 -translate-x-1/2 bottom-3 w-[92vw] max-w-xl hidden">
+    <div class="glass-card px-3 py-2 rounded-xl shadow">
+      <div class="flex items-center justify-between mb-1">
+        <div class="text-sm font-medium">Posters ophalen</div>
+        <div id="progLabel" class="text-xs text-slate-600">0 / 0</div>
+      </div>
+      <div class="progress"><div id="progBar" class="bar"></div></div>
+    </div>
+  </div>
 </div>
 
 <!-- Suggest overlay -->
@@ -251,7 +263,7 @@
   </div>
 </div>
 
-<div id="status">v3.21 geladen…</div>
+<div id="status">v3.22 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -403,7 +415,7 @@ app.card=function(item,idx){
         </button>
       </div>
     </div>
-    <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
+    <h3 class="font-bold text-base leading-tight mb-2">${item.title||'—'}</h3>
     <div class="text-sm text-slate-700 space-y-0.5 mb-2">
       <p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p>
       <p><strong>Jaar:</strong> ${item.year||'N/B'}</p>
@@ -445,31 +457,24 @@ app.card=function(item,idx){
     openImdbOverlay(id);
   });
   el.querySelector('.btn-mark-bekeken').addEventListener('click', ()=> openBekekenPrompt(item));
-  // Intercept category change → if user picks 'bekeken', open prompt instead of immediate switch
   el.querySelector('.category-select').addEventListener('change', async (e)=>{
     const sel = e.currentTarget.value;
     if(sel==='bekeken' && item.type!=='bekeken'){
-      // revert UI select instantly to previous until confirmed
       e.currentTarget.value = item.type;
       openBekekenPrompt(item);
     }else{
-      // normal update
       const upd={...item, type: sel};
       await dbPut(upd);
       app.state.items = await dbGetAll();
       app.render();
     }
   });
-
-  // streaming change
   el.querySelector('.streaming-service-select').addEventListener('change', async (e)=>{
     const upd={...item, streamingOn: e.currentTarget.value};
     await dbPut(upd);
     app.state.items = await dbGetAll();
     app.render();
   });
-
-  // our score inline edit
   el.querySelector('.our-score-input').addEventListener('change', async (e)=>{
     const v = e.currentTarget.value;
     const upd={...item, ourScore: v};
@@ -479,14 +484,61 @@ app.card=function(item,idx){
   return el;
 }
 
-// Suggest overlay helpers + OMDb + add flow + IMDb overlay identical to v3.20 (omitted for brevity below)
+// IMDb overlay (same as v3.20)
+function openImdbOverlay(imdbID){
+  if(!imdbID){ alert('Geen IMDb ID'); return; }
+  const bd=document.getElementById('imdb-backdrop');
+  const md=document.getElementById('imdb-modal');
+  const close=()=>{ bd.style.display='none'; md.style.display='none'; }
+  document.getElementById('imdb-close').onclick=close;
+  bd.onclick=close;
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
 
-// --- (For brevity in this environment, keeping same functions from v3.20 for search overlay + imdb overlay) ---
+  document.getElementById('imdb-title').textContent='Laden…';
+  document.getElementById('imdb-sub').textContent='';
+  document.getElementById('imdb-genre').textContent='';
+  document.getElementById('imdb-crew').textContent='';
+  document.getElementById('imdb-plot').textContent='';
+  document.getElementById('imdb-ratings').textContent='';
+  document.getElementById('imdb-poster').src='https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
 
-// Suggest overlay helpers
+  document.getElementById('imdb-backdrop').style.display='block';
+  document.getElementById('imdb-modal').style.display='flex';
+
+  fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(imdbID)}&plot=short`)
+    .then(r=>r.json())
+    .then(d=>{
+      if(!d || d.Response==='False'){ document.getElementById('imdb-title').textContent='Niet gevonden'; return; }
+      const posterUrl = (d.Poster && d.Poster!=='N/A')? poster(d.Poster,200,300) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
+      document.getElementById('imdb-poster').src = posterUrl;
+      document.getElementById('imdb-title').textContent = `${d.Title||''}`;
+      const sub = [d.Year, d.Rated, d.Runtime].filter(Boolean).join(' · ');
+      document.getElementById('imdb-sub').textContent = sub;
+      document.getElementById('imdb-genre').textContent = d.Genre? `Genre: ${d.Genre}` : '';
+      const crewBits = [];
+      if(d.Director && d.Director!=='N/A') crewBits.push(`Regie: ${d.Director}`);
+      if(d.Actors && d.Actors!=='N/A') crewBits.push(`Cast: ${d.Actors}`);
+      document.getElementById('imdb-crew').textContent = crewBits.join(' · ');
+      document.getElementById('imdb-plot').textContent = d.Plot && d.Plot!=='N/A' ? d.Plot : '—';
+      const ratings = [];
+      if(d.imdbRating && d.imdbRating!=='N/A') ratings.push(`IMDb: ${d.imdbRating} (${d.imdbVotes||'—'} stemmen)`);
+      if(Array.isArray(d.Ratings)){
+        d.Ratings.forEach(r=>{
+          if(r.Source && r.Value) ratings.push(`${r.Source}: ${r.Value}`);
+        });
+      }
+      document.getElementById('imdb-ratings').innerHTML = ratings.map(r=>`<div>• ${r}</div>`).join('');
+    })
+    .catch(e=>{
+      console.error(e);
+      document.getElementById('imdb-title').textContent='Kon details niet laden';
+    });
+}
+
+// Suggest overlay helpers + OMDb quick search (same stable behavior as v3.20/v3.21)
+let omdbSearchAbort=null; let omdbSearchSeq=0;
 function hideSuggest(){
-  const s=document.getElementById('suggest');
-  s.style.display='none';
+  const s=document.getElementById('suggest'); s.style.display='none';
   const ul=document.getElementById('suggest-list'); if(ul) ul.innerHTML='';
   const emp=document.getElementById('suggest-empty'); if(emp) emp.classList.add('hidden');
 }
@@ -521,35 +573,30 @@ function renderSuggest(list){
   sug.style.display='block';
   placeSuggestOverlay();
 }
-
-// OMDb search
-const omdbSearch = debounce(async(q)=>{
+const omdbSearch = (function(){let t;return (q)=>{clearTimeout(t);t=setTimeout(async()=>{
   if(SUGGEST_LOCK) return;
   if(!q || q.length<2){ hideSuggest(); return; }
   try{
-    if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
-    omdbAbort = new AbortController();
-    const mySeq = ++omdbSeq;
+    if(omdbSearchAbort){ try{ omdbSearchAbort.abort(); }catch(e){} }
+    omdbSearchAbort = new AbortController();
+    const mySeq = ++omdbSearchSeq;
     const typeSel=document.getElementById('add-type').value;
     const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
     const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
-    const res=await fetch(url,{signal:omdbAbort.signal});
+    const res=await fetch(url,{signal:omdbSearchAbort.signal});
     const data=await res.json();
-    if(SUGGEST_LOCK || mySeq!==omdbSeq) return;
+    if(SUGGEST_LOCK || mySeq!==omdbSearchSeq) return;
     if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
-  }catch(e){
-    if(e.name==='AbortError') return;
-    console.error(e); renderSuggest([]);
-  }
-}, 250);
+  }catch(e){ if(e.name!=='AbortError'){ console.error(e); renderSuggest([]);} }
+},250)}})();
 
-// Add modal flow
+// Add modal flow (unchanged)
 let pendingHit=null;
 function openAddModal(hit){
   pendingHit = hit;
   SUGGEST_LOCK = true;
-  if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
-  omdbSeq++;
+  if(omdbSearchAbort){ try{ omdbSearchAbort.abort(); }catch(e){} }
+  omdbSearchSeq++;
   hideSuggest();
   const input=document.getElementById('add-search');
   input.blur();
@@ -578,7 +625,6 @@ async function confirmAddSelection(){
   pendingHit=null;
   closeAddModal();
 }
-
 async function addFromOmdbWithChoices(hit, typeSel, streamSel){
   const map={movie:'film',series:'serie'};
   const item={
@@ -595,78 +641,57 @@ async function addFromOmdbWithChoices(hit, typeSel, streamSel){
   app.state.items=await dbGetAll(); app.render();
 }
 
-// IMDb overlay logic
-function openImdbOverlay(imdbID){
-  if(!imdbID){ alert('Geen IMDb ID'); return; }
-  const bd=document.getElementById('imdb-backdrop');
-  const md=document.getElementById('imdb-modal');
-  const close=()=>{ bd.style.display='none'; md.style.display='none'; }
-  document.getElementById('imdb-close').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
+// Posters ophalen (current filtered set, only missing poster OR title/year/runtime)
+async function fetchPostersForCurrent(){
+  const btn = document.getElementById('btn-fetch-posters');
+  btn.disabled = true;
+  const wrap = document.getElementById('progressWrap');
+  const bar = document.getElementById('progBar');
+  const lab = document.getElementById('progLabel');
+  wrap.classList.remove('hidden');
 
-  // reset content
-  document.getElementById('imdb-title').textContent='Laden…';
-  document.getElementById('imdb-sub').textContent='';
-  document.getElementById('imdb-genre').textContent='';
-  document.getElementById('imdb-crew').textContent='';
-  document.getElementById('imdb-plot').textContent='';
-  document.getElementById('imdb-ratings').textContent='';
-  document.getElementById('imdb-poster').src='https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
-  document.getElementById('imdb-link').href=`https://www.imdb.com/title/${imdbID}/`;
+  const items = app.filtered().filter(i => i.imdbID && ( !i.poster || i.poster==='N/A' || !i.title || !i.year || !i.runtime ));
+  const total = items.length;
+  let done = 0;
+  lab.textContent = `${done} / ${total}`;
+  bar.style.width = `0%`;
 
-  bd.style.display='block'; md.style.display='flex';
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
 
-  // fetch full data from OMDb
-  fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(imdbID)}&plot=short`)
-    .then(r=>r.json())
-    .then(d=>{
-      if(!d || d.Response==='False'){ document.getElementById('imdb-title').textContent='Niet gevonden'; return; }
-      const posterUrl = (d.Poster && d.Poster!=='N/A')? poster(d.Poster,200,300) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
-      document.getElementById('imdb-poster').src = posterUrl;
-      document.getElementById('imdb-title').textContent = `${d.Title||''}`;
-      const sub = [d.Year, d.Rated, d.Runtime].filter(Boolean).join(' · ');
-      document.getElementById('imdb-sub').textContent = sub;
-      document.getElementById('imdb-genre').textContent = d.Genre? `Genre: ${d.Genre}` : '';
-      const crewBits = [];
-      if(d.Director && d.Director!=='N/A') crewBits.push(`Regie: ${d.Director}`);
-      if(d.Actors && d.Actors!=='N/A') crewBits.push(`Cast: ${d.Actors}`);
-      document.getElementById('imdb-crew').textContent = crewBits.join(' · ');
-      document.getElementById('imdb-plot').textContent = d.Plot && d.Plot!=='N/A' ? d.Plot : '—';
-      const ratings = [];
-      if(d.imdbRating && d.imdbRating!=='N/A') ratings.push(`IMDb: ${d.imdbRating} (${d.imdbVotes||'—'} stemmen)`);
-      if(Array.isArray(d.Ratings)){
-        d.Ratings.forEach(r=>{
-          if(r.Source && r.Value) ratings.push(`${r.Source}: ${r.Value}`);
-        });
+  for(const it of items){
+    try{
+      const url = `https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(it.imdbID)}&plot=short`;
+      const res = await fetch(url);
+      const d = await res.json();
+      if(d && d.Response!=='False'){
+        const upd = {...it};
+        if(d.Title && (!upd.title || upd.title==='Onbekend')) upd.title = d.Title;
+        if(d.Year && !upd.year) upd.year = d.Year;
+        if(d.Runtime && !upd.runtime) upd.runtime = d.Runtime;
+        if(d.imdbRating && !upd.imdbRating) upd.imdbRating = d.imdbRating;
+        if(d.Poster && d.Poster!=='N/A') upd.poster = d.Poster;
+        await dbPut(upd);
       }
-      document.getElementById('imdb-ratings').innerHTML = ratings.map(r=>`<div>• ${r}</div>`).join('');
-    })
-    .catch(e=>{
-      console.error(e);
-      document.getElementById('imdb-title').textContent='Kon details niet laden';
-    });
-}
+    }catch(e){ console.error(e); }
+    done++;
+    lab.textContent = `${done} / ${total}`;
+    bar.style.width = `${total?Math.round(done*100/total):100}%`;
+    // OMDb gratis API: throttle ~1/sec
+    await sleep(1100);
+  }
 
-// Random modal
-function showRandom(item){
-  const bd=document.getElementById('random-backdrop');
-  const md=document.getElementById('random-modal');
-  document.getElementById('rnd-title').textContent=item.title||'—';
-  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
-  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
-  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
-  const close=()=>{bd.style.display='none'; md.style.display='none'};
-  document.getElementById('rnd-ok').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
-  bd.style.display='block'; md.style.display='flex';
+  app.state.items = await dbGetAll();
+  app.render();
+  wrap.classList.add('hidden');
+  btn.disabled = false;
+  alert(`Posters aangevuld: ${done}/${total}`);
 }
 
 // UI bindings
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
   document.getElementById('btn-export-json').onclick=exportAll;
+  document.getElementById('btn-fetch-posters').onclick=fetchPostersForCurrent;
 
   const sortBy=document.getElementById('sortBy');
   const filterStreaming=document.getElementById('filterStreaming');
@@ -707,13 +732,13 @@ function bindUI(){
   document.getElementById('add-cancel').onclick=closeAddModal;
   document.getElementById('add-confirm').onclick=confirmAddSelection;
 
-  // IMDb overlay close shortcuts
   document.getElementById('imdb-close').onclick=()=>{
     document.getElementById('imdb-backdrop').style.display='none';
     document.getElementById('imdb-modal').style.display='none';
   };
 }
 
+// Export/import
 function exportAll(){
   const data = JSON.stringify({ items: app.state.items }, null, 2);
   const blob = new Blob([data], {type:'application/json'});
@@ -723,7 +748,6 @@ function exportAll(){
   a.click();
   URL.revokeObjectURL(a.href);
 }
-
 app.importJSON=function(){
   const picker=document.createElement('input'); picker.type='file'; picker.accept='application/json';
   picker.onchange=()=>{(async()=>{
@@ -733,24 +757,24 @@ app.importJSON=function(){
       let arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
       if(!arr.length){alert('Leeg JSON-bestand.');return}
       let ins=0,upd=0;
-      const all=await dbGetAll();
+      const existing=await dbGetAll();
       for(const raw of arr){
-        const existing = all.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
+        const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
         const item={
-          id: existing?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-          title: raw.title||existing?.title||'Onbekend',
-          type: raw.type||existing?.type||'film',
-          createdAt: existing?.createdAt || raw.createdAt || Date.now(),
-          imdbRating: raw.imdbRating || existing?.imdbRating || '',
-          year: raw.year || existing?.year || '',
-          runtime: raw.runtime || existing?.runtime || '',
-          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (existing?.poster||''),
-          streamingOn: normalizeStream(raw.streamingOn||raw.stream||existing?.streamingOn||''),
-          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (existing?.ourScore||'') : String(raw.ourScore),
-          dateSeen: raw.dateSeen || existing?.dateSeen || '',
-          imdbID: raw.imdbID || raw.imdbId || existing?.imdbID || ''
+          id: ex?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
+          title: raw.title||ex?.title||'Onbekend',
+          type: raw.type||ex?.type||'film',
+          createdAt: ex?.createdAt || raw.createdAt || Date.now(),
+          imdbRating: raw.imdbRating || ex?.imdbRating || '',
+          year: raw.year || ex?.year || '',
+          runtime: raw.runtime || ex?.runtime || '',
+          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (ex?.poster||''),
+          streamingOn: raw.streamingOn || ex?.streamingOn || '',
+          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
+          dateSeen: raw.dateSeen || ex?.dateSeen || '',
+          imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
         };
-        if(existing){ upd++; } else { ins++; }
+        if(ex){ upd++; } else { ins++; }
         await dbPut(item);
       }
       app.state.items=await dbGetAll(); app.render();
@@ -758,6 +782,21 @@ app.importJSON=function(){
     }catch(e){console.error(e); alert('Import fout.');}
   })()}; picker.click();
 };
+
+// Random modal
+function showRandom(item){
+  const bd=document.getElementById('random-backdrop');
+  const md=document.getElementById('random-modal');
+  document.getElementById('rnd-title').textContent=item.title||'—';
+  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
+  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
+  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
+  const close=()=>{bd.style.display='none'; md.style.display='none'};
+  document.getElementById('rnd-ok').onclick=close;
+  bd.onclick=close;
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
+  bd.style.display='block'; md.style.display='flex';
+}
 
 document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
@@ -794,7 +833,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
       app.state.items = await dbGetAll();
       setStatus(`Herstel klaar (${total} items).`);
     }else{
-      setStatus(`v3.20 actief — ${app.state.items.length} items geladen`);
+      setStatus(`v3.22 actief — ${app.state.items.length} items geladen`);
     }
     app.render();
   }catch(e){
