@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS v3.24 — stabiel</title>
+  <title>MFS v3.24b — stabiel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -261,7 +261,7 @@
   </div>
 </div>
 
-<div id="status">v3.24 geladen…</div>
+<div id="status">v3.24b geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -694,7 +694,44 @@ function showRandom(item){
 
 function bindUI(){
   const __fileInp=document.getElementById('file-import-json');
-  document.getElementById('btn-import-json').onclick=()=>{ try{ __fileInp.value=''; __fileInp.click(); }catch(e){ console.error(e); app.importJSON(); } };
+  const __fileInp=document.getElementById('file-import-json');
+// Bind once: when a file is chosen, process it
+__fileInp.addEventListener('change', ()=>{
+  (async()=>{
+    try{
+      const f=__fileInp.files && __fileInp.files[0];
+      if(!f){ return; }
+      const text=await f.text();
+      const data=JSON.parse(text);
+      const arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
+      if(!arr.length){ alert('Leeg JSON-bestand.'); return; }
+      const existing=await dbGetAll(); let ins=0, upd=0;
+      for(const raw of arr){
+        const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
+        const item={
+          id: ex?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
+          title: raw.title||ex?.title||'Onbekend',
+          type: raw.type||ex?.type||'film',
+          createdAt: ex?.createdAt || raw.createdAt || Date.now(),
+          imdbRating: raw.imdbRating || ex?.imdbRating || '',
+          year: raw.year || ex?.year || '',
+          runtime: raw.runtime || ex?.runtime || '',
+          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (ex?.poster||''),
+          streamingOn: raw.streamingOn || ex?.streamingOn || '',
+          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
+          dateSeen: raw.dateSeen || ex?.dateSeen || '',
+          imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
+        };
+        if(ex){ upd++; } else { ins++; }
+        await dbPut(item);
+      }
+      app.state.items=await dbGetAll(); app.render();
+      alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
+    }catch(e){ console.error(e); alert('Import fout.'); }
+  })();
+});
+// Button only opens picker (value reset for repeat imports)
+document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __fileInp.click(); }; __fileInp.click(); }catch(e){ console.error(e); app.importJSON(); } };
   document.getElementById('btn-export-json').onclick=exportAll;
   document.getElementById('btn-fetch-posters').onclick=fetchPostersForCurrent;
 
@@ -736,7 +773,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   try{
     app.state.items = await dbGetAll();
     app.render();
-    setStatus(`v3.24 actief — ${app.state.items.length} items geladen`);
+    setStatus(`v3.24b actief — ${app.state.items.length} items geladen`);
   }catch(e){
     console.error(e); setStatus('Kon lokale data niet laden.');
   }
