@@ -1,49 +1,43 @@
+
 <!doctype html>
 <html lang="nl">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <meta name="theme-color" content="#0f172a"/>
-  <title>MFS v3.24e — offline + netcheck</title>
+  <meta name="theme-color" content="#0ea5e9"/>
+  <title>MFS v3.25 — sync sharedata</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
-    .glass-card{background:rgba(255,255,255,.65);backdrop-filter:saturate(160%) blur(10px)}
-    #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#fff;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
-    ::placeholder{font-style:italic;color:#64748b}
-    select.italic { font-style: italic; color:#475569; }
-    .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
+    body{background:#0b1020; color:#e5e7eb}
+    .glass-card{background:rgba(255,255,255,.75); color:#0f172a; backdrop-filter:saturate(150%) blur(12px)}
+    #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#03111a;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
+    .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
+    .online {background:#22c55e;color:#052e16}
+    .offline {background:#ef4444;color:#7f1d1d}
     #suggest{position:fixed;display:none;z-index:100000}
     #suggest .card{max-height:360px;overflow:auto}
     #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
     #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
     #suggest .row:hover{background:rgba(2,6,23,.06)}
-    .progress{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}
-    .bar{height:100%;background:#10b981;width:0%}
-    .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
-    .online {background:#22c55e;color:#052e16}
-    .offline {background:#ef4444;color:#7f1d1d}
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900">
-<div class="max-w-6xl mx-auto p-4 pb-28">
-  <header class="mb-3">
-    <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">Mijn Films en Series
-        <span id="netBadge" class="badge">…</span>
-      </h1>
+<body>
+<div class="max-w-7xl mx-auto p-4 pb-28">
+  <header class="mb-4">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Mijn Films en Series <span id="netBadge" class="badge">…</span></h1>
       <div class="flex gap-2 items-center">
         <input id="file-import-json" type="file" accept="application/json" class="hidden"/>
-        <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
-        <button id="btn-export-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Exporteer alles</button>
-        <button id="btn-fetch-posters" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow text-sm">Posters ophalen</button>
+        <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm">Importeer JSON</button>
+        <button id="btn-export-json" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm">Exporteer alles</button>
+        <button id="btn-fetch-posters" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow text-sm">Posters ophalen</button>
       </div>
     </div>
 
-    <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-2">
-      <label for="sortBy" class="text-sm text-slate-600">Sorteren</label>
-      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
+    <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+      <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
+      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm">
         <option value="created_desc" selected>Nummer (recent → oud)</option>
         <option value="created_asc">Nummer (oud → recent)</option>
         <option value="imdb_desc">IMDb-score hoog → laag</option>
@@ -54,8 +48,8 @@
         <option value="title_desc">Titel Z → A</option>
       </select>
       <div class="h-5 w-px bg-slate-200 mx-1"></div>
-      <label for="filterStreaming" class="text-sm text-slate-600">Streaming</label>
-      <select id="filterStreaming" class="px-2 py-1.5 rounded-lg bg-white/80 shadow text-sm">
+      <label for="filterStreaming" class="text-sm text-slate-700">Streaming</label>
+      <select id="filterStreaming" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm">
         <option value="">Alle diensten</option>
         <option>Streamz</option>
         <option>Netflix</option>
@@ -67,23 +61,15 @@
         <option>Disney+</option>
         <option value="__UNKNOWN__">Onbekend</option>
       </select>
-
-      <span id="countBadge" class="ml-auto text-sm text-slate-600"></span>
-
-      <button id="btn-random-pick" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 3l2.1 5.1L19 10l-4.5 3.3L15 19l-3-2-3 2 0.5-5.7L5 10l4.9-1.9L12 3z"/>
-        </svg>
-        Kies iets voor me
-      </button>
+      <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
 
     <div class="glass-card rounded-xl p-3 shadow mb-3">
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[240px]">
-          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/80 shadow" autocomplete="off">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
         </div>
-        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/80 shadow">
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="film" selected>Film</option>
           <option value="serie">Serie</option>
           <option value="herman-film">H-Film</option>
@@ -91,7 +77,7 @@
           <option value="aan-het-kijken">Aan het kijken</option>
           <option value="bekeken">Bekeken</option>
         </select>
-        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/80 shadow">
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="">Onbekend</option>
           <option>Streamz</option>
           <option>Netflix</option>
@@ -102,39 +88,29 @@
           <option>NPO</option>
           <option>Disney+</option>
         </select>
-        <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 text-white shadow">Voeg toe</button>
+        <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
       </div>
     </div>
   </header>
 
   <section class="mb-3">
     <div id="filterControls" class="flex flex-wrap items-center gap-2">
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="film">Films</button>
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="serie">Series</button>
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-film">H-Films</button>
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="herman-serie">H-Series</button>
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="aan-het-kijken">Aan het kijken</button>
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="bekeken">Bekeken</button>
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/50" data-filter="all">Alles</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="film">Films</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="serie">Series</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="herman-film">H-Films</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="herman-serie">H-Series</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="aan-het-kijken">Aan het kijken</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="bekeken">Bekeken</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="all">Alles</button>
       <div class="flex-1"></div>
-      <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/70 shadow w-48"/>
+      <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56"/>
     </div>
   </section>
 
   <main>
-    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
-    <p id="emptyState" class="hidden text-center text-slate-600 py-10">Je lijst is leeg.</p>
+    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    <p id="emptyState" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
   </main>
-
-  <div id="progressWrap" class="fixed left-1/2 -translate-x-1/2 bottom-3 w-[92vw] max-w-xl hidden">
-    <div class="glass-card px-3 py-2 rounded-xl shadow">
-      <div class="flex items-center justify-between mb-1">
-        <div class="text-sm font-medium">Posters ophalen</div>
-        <div id="progLabel" class="text-xs text-slate-600">0 / 0</div>
-      </div>
-      <div class="progress"><div id="progBar" class="bar"></div></div>
-    </div>
-  </div>
 </div>
 
 <!-- Suggest overlay -->
@@ -145,181 +121,23 @@
   </div>
 </div>
 
-<!-- Confirm add modal -->
-<div id="add-backdrop" class="backdrop"></div>
-<div id="add-modal" class="modal">
-  <div class="bg-white rounded-2xl shadow-2xl w-[92vw] max-w-lg overflow-hidden">
-    <div class="flex items-start gap-3 p-3 border-b border-slate-200">
-      <img id="add-preview" class="w-20 h-28 object-cover rounded-lg" alt="Poster"/>
-      <div class="flex-1">
-        <h3 id="add-title" class="text-lg font-semibold leading-tight">Titel</h3>
-        <p id="add-sub" class="text-sm text-slate-600"></p>
-        <div class="grid grid-cols-2 gap-2 mt-2">
-          <div>
-            <label class="block text-xs text-slate-600 mb-1">Categorie</label>
-            <select id="confirm-type" class="w-full px-2 py-1.5 rounded-md bg-white/90 border border-slate-200">
-              <option value="film">Film</option>
-              <option value="serie">Serie</option>
-              <option value="herman-film">H-Film</option>
-              <option value="herman-serie">H-Serie</option>
-              <option value="aan-het-kijken">Aan het kijken</option>
-              <option value="bekeken">Bekeken</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-slate-600 mb-1">Waar te bekijken</label>
-            <select id="confirm-stream" class="w-full px-2 py-1.5 rounded-md bg-white/90 border border-slate-200">
-              <option value="">Onbekend</option>
-              <option>Streamz</option>
-              <option>Netflix</option>
-              <option>Prime Video</option>
-              <option>Apple TV+</option>
-              <option>VRT MAX</option>
-              <option>Go Play</option>
-              <option>NPO</option>
-              <option>Disney+</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <button id="add-close" class="ml-1 text-slate-500 hover:text-slate-700 p-1" title="Sluiten">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-    <div class="p-3 flex justify-end gap-2">
-      <button id="add-cancel" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700">Annuleer</button>
-      <button id="add-confirm" class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white">Voeg toe</button>
-    </div>
-  </div>
-</div>
-
-<!-- IMDb modal -->
-<div id="imdb-backdrop" class="backdrop"></div>
-<div id="imdb-modal" class="modal">
-  <div class="bg-white rounded-2xl shadow-2xl w-[92vw] max-w-3xl overflow-hidden">
-    <div class="flex items-start p-3 gap-3 border-b border-slate-200">
-      <img id="imdb-poster" alt="Poster" class="w-24 h-36 object-cover rounded-lg">
-      <div class="flex-1 min-w-0">
-        <h3 id="imdb-title" class="text-lg font-semibold leading-tight truncate">Titel</h3>
-        <p id="imdb-sub" class="text-sm text-slate-600 mt-0.5"></p>
-        <p id="imdb-genre" class="text-sm text-slate-600 mt-0.5"></p>
-        <p id="imdb-crew" class="text-sm text-slate-600 mt-0.5"></p>
-      </div>
-      <button id="imdb-close" class="ml-1 text-slate-500 hover:text-slate-700 p-1" title="Sluiten">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-    <div class="p-3">
-      <p id="imdb-plot" class="text-sm leading-relaxed"></p>
-      <div id="imdb-ratings" class="text-sm text-slate-700 mt-2"></div>
-      <div class="mt-3">
-        <a id="imdb-link" target="_blank" rel="noopener" class="underline text-indigo-700">Open op IMDb</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bekeken prompt modal -->
-<div id="bk-backdrop" class="backdrop"></div>
-<div id="bk-modal" class="modal">
-  <div class="bg-white rounded-2xl shadow-2xl w-[92vw] max-w-md overflow-hidden">
-    <div class="p-3 border-b border-slate-200">
-      <h3 class="text-lg font-semibold">Markeer als bekeken</h3>
-      <p class="text-sm text-slate-600 mt-1">Geef je score en datum.</p>
-    </div>
-    <div class="p-3 space-y-3">
-      <div>
-        <label class="block text-xs text-slate-600 mb-1">Onze score</label>
-        <input id="bk-score" type="text" placeholder="bv. 8,6" class="w-full px-3 py-2 rounded-lg bg-white/90 border border-slate-200">
-      </div>
-      <div>
-        <label class="block text-xs text-slate-600 mb-1">Datum</label>
-        <input id="bk-date" type="date" class="w-full px-3 py-2 rounded-lg bg-white/90 border border-slate-200">
-      </div>
-    </div>
-    <div class="p-3 flex justify-end gap-2">
-      <button id="bk-cancel" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700">Annuleer</button>
-      <button id="bk-confirm" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white">Opslaan</button>
-    </div>
-  </div>
-</div>
-
-<!-- Random modal -->
-<div id="random-backdrop" class="backdrop"></div>
-<div id="random-modal" class="modal">
-  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-[90vw] overflow-hidden">
-    <div class="flex gap-3 p-3">
-      <img id="rnd-poster" alt="Poster" class="w-24 h-36 object-cover rounded-lg flex-shrink-0">
-      <div class="flex flex-col">
-        <h3 id="rnd-title" class="text-lg font-semibold leading-snug"></h3>
-        <p id="rnd-meta" class="text-sm text-slate-600 mt-1"></p>
-        <div id="rnd-stream" class="text-xs text-slate-500 mt-1"></div>
-        <div class="mt-auto flex gap-2 pt-2">
-          <button id="rnd-ok" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="status">v3.24e geladen…</div>
+<div id="status">v3.25 — sync sharedata geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
-const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const OMDB_KEY='8a70a767';
-let SUGGEST_LOCK=false, omdbSearchAbort=null, omdbSearchSeq=0;
-
-// --- Network status monitor (fixes iOS PWA stale offline state) ---
 let IS_ONLINE = navigator.onLine;
 const netBadge = document.getElementById('netBadge');
-function setNetBadge(){
-  if(IS_ONLINE){ netBadge.textContent='online'; netBadge.className='badge online'; }
-  else { netBadge.textContent='offline'; netBadge.className='badge offline'; }
-}
-async function pingOnline(){
-  try{
-    const r = await fetch('./manifest.json?ping=' + Date.now(), {cache:'no-store'});
-    IS_ONLINE = r.ok;
-  }catch(e){
-    IS_ONLINE = false;
-  }
-  setNetBadge();
-}
-window.addEventListener('online', ()=>{ IS_ONLINE=true; setNetBadge(); });
-window.addEventListener('offline', ()=>{ IS_ONLINE=false; setNetBadge(); });
-setInterval(pingOnline, 5000);
-pingOnline();
-
-function normalizeStream(raw){
-  const s=(raw||'').toString().trim(); if(!s) return '';
-  const low=s.toLowerCase();
-  if(low.startsWith('appl')) return 'Apple TV+';
-  if(low.startsWith('netf')) return 'Netflix';
-  if(low.startsWith('vrt'))  return 'VRT MAX';
-  if(low.startsWith('vtm'))  return 'VTM Go';
-  if(low.startsWith('prim')) return 'Prime Video';
-  if(low.includes('play'))   return 'Go Play';
-  if(low.startsWith('np'))   return 'NPO';
-  if(low.startsWith('strea'))return 'Streamz';
-  if(low.startsWith('disn')) return 'Disney+';
-  return '';
-}
-const STREAM_ORDER=['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
-
-function poster(u,w=400,h=600){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+`&w=${w}&h=${h}&fit=cover&output=jpg`):''}
-function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
-function parseScore(s){if(s==null)return NaN;let t=String(s).trim(); if(!t) return NaN; if(t.toLowerCase()==='nan') return NaN; t=t.replace(',', '.'); const v=parseFloat(t); return isNaN(v)?NaN:v}
+function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline');}
+async function pingOnline(){try{const r=await fetch('./manifest.json?ping='+Date.now(),{cache:'no-store'});IS_ONLINE=r.ok;}catch(e){IS_ONLINE=false;}setNetBadge();}
+window.addEventListener('online',()=>{IS_ONLINE=true;setNetBadge()});window.addEventListener('offline',()=>{IS_ONLINE=false;setNetBadge()});setInterval(pingOnline,5000);pingOnline();
 
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
+async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
@@ -327,446 +145,179 @@ const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filt
 app.render=function(){
   const list=document.getElementById('list');
   const empty=document.getElementById('emptyState');
-  const count=document.getElementById('countBadge');
   const items=app.filtered();
   document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
     const a = btn.dataset.filter === app.state.filter;
-    btn.classList.toggle('bg-indigo-600', a);
+    btn.classList.toggle('bg-sky-500', a);
     btn.classList.toggle('text-white', a);
-    btn.classList.toggle('bg-white/50', !a);
-    btn.classList.toggle('text-slate-800', !a);
+    btn.classList.toggle('bg-white/30', !a);
   });
-  count.textContent = `${items.length} items`;
   list.innerHTML='';
   if(items.length===0){ empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
-  items.forEach((it,idx)=> list.appendChild(app.card(it, idx+1)) );
+  items.forEach((it,idx)=>{
+    const div=document.createElement('div');div.className='glass-card rounded-xl overflow-hidden shadow';
+    const poster=(it.poster&&it.poster!=='N/A')?it.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+    const tagMap={film:['bg-sky-200/80 text-sky-900','Film'],serie:['bg-amber-200/80 text-amber-900','Serie'],'herman-film':['bg-purple-200/80 text-purple-900','H-Film'],'herman-serie':['bg-pink-200/80 text-pink-900','H-Serie'],'aan-het-kijken':['bg-blue-200/80 text-blue-900','Aan het kijken'],bekeken:['bg-green-200/80 text-green-900','Bekeken']};
+    const tag=tagMap[it.type]||['bg-slate-200/80 text-slate-900',it.type];
+    div.innerHTML = \`
+      <div class="flex">
+        <div class="w-1/2 flex-shrink-0 relative">
+          <div class="aspect-[2/3] w-full"><img src="\${poster}" class="w-full h-full object-cover" alt=""></div>
+          <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">\${idx+1}</div>
+        </div>
+        <div class="p-3 flex flex-col flex-grow w-1/2">
+          <div class="mb-2 flex justify-between items-center">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full \${tag[0]}">\${tag[1]}</span>
+            <button title="Verwijderen" class="btn-del bg-white/60 hover:bg-red-500 hover:text-white text-slate-700 w-7 h-7 flex items-center justify-center rounded-full transition">
+              <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <h3 class="font-bold text-base leading-tight mb-2">\${it.title||'—'}</h3>
+          <div class="text-sm text-slate-700 space-y-0.5 mb-2">
+            <p><strong>IMDB:</strong> \${it.imdbRating||'N/B'}</p>
+            <p><strong>Jaar:</strong> \${it.year||'N/B'}</p>
+            <p><strong>Duur:</strong> \${it.runtime||'N/B'}</p>
+          </div>
+          <div class="flex flex-col gap-2 mt-1">
+            <input type="text" value="\${it.ourScore||''}" class="our-score w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
+            <button class="btn-imdb w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs" data-imdbid="\${it.imdbID||''}">IMDb-info</button>
+          </div>
+        </div>
+      </div>\`;
+    // events
+    div.querySelector('.btn-del').onclick=async()=>{await dbDel(it.id); app.state.items=await dbGetAll(); app.render(); syncPush();};
+    div.querySelector('.our-score').onchange=async(e)=>{it.ourScore=e.target.value; await dbPut(it); syncPushDebounced();};
+    div.querySelector('.btn-imdb').onclick=()=>openImdb(it.imdbID);
+    list.appendChild(div);
+  });
 };
 
 app.filtered=function(){
   let a=app.state.items.slice();
   if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
-  const fs=app.state.filterStreaming;
-  if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
-  else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
   const term=(app.state.searchTerm||'').toLowerCase();
-  if(term){
-    a=a.filter(i=>{
-      const t=(i.title||'').toLowerCase();
-      const y=(i.year||'').toString();
-      const s=(normalizeStream(i.streamingOn)||'').toLowerCase();
-      const id=(i.imdbID||'').toLowerCase();
-      return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
-    });
-  }
+  if(term){ a=a.filter(i=>(i.title||'').toLowerCase().includes(term)); }
   const by=app.state.sortBy;
-  if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
-  else if(by==='imdb_asc'){ a.sort((x,y)=> (parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
-  else if(by==='score_desc'){ a.sort((x,y)=> (parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
-  else if(by==='score_asc'){ a.sort((x,y)=> (parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
-  else if(by==='title_asc'){ a.sort((x,y)=> (x.title||'').localeCompare(y.title||'')); }
-  else if(by==='title_desc'){ a.sort((x,y)=> (y.title||'').localeCompare(x.title||'')); }
+  function parseScore(s){ if(s==null) return NaN; let t=String(s).replace(',','.'); const v=parseFloat(t); return isNaN(v)?NaN:v; }
+  function parseImdb(v){ const f=parseFloat(String(v)); return isNaN(f)?NaN:f; }
+  if(by==='imdb_desc'){ a.sort((x,y)=>(parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
+  else if(by==='imdb_asc'){ a.sort((x,y)=>(parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
+  else if(by==='score_desc'){ a.sort((x,y)=>(parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
+  else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
+  else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
+  else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
   else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
 };
 
-function categoryOptionsHTML(type){
-  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
-  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+function openImdb(id){ if(!id){alert('Geen IMDb ID'); return;} window.open('https://www.imdb.com/title/'+encodeURIComponent(id)+'/','_blank'); }
+
+// UI binds
+function bindUI(){
+  const file=document.getElementById('file-import-json');
+  document.getElementById('btn-import-json').onclick=()=>{file.value='';file.click();};
+  file.onchange=()=>{const f=file.files&&file.files[0]; if(f) importJson(f);};
+  document.getElementById('btn-export-json').onclick=exportJson;
+  document.getElementById('filterControls').addEventListener('click',e=>{const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();});
+  document.getElementById('sortBy').onchange=(e)=>{app.state.sortBy=e.target.value; app.render();};
+  document.getElementById('search').oninput=(e)=>{app.state.searchTerm=e.target.value.trim(); app.render();};
 }
-function streamingOptionsHTML(sel){
-  const opts=[''].concat(STREAM_ORDER);
-  return opts.map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
+async function exportJson(){
+  const data=JSON.stringify({items:app.state.items},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mfs-backup.json'; a.click(); URL.revokeObjectURL(a.href);
 }
-
-let BK_TARGET=null;
-function openBekekenPrompt(item){
-  BK_TARGET = item;
-  const bd=document.getElementById('bk-backdrop');
-  const md=document.getElementById('bk-modal');
-  const score=document.getElementById('bk-score');
-  const date=document.getElementById('bk-date');
-  score.value = (item.ourScore && String(item.ourScore).toLowerCase()!=='nan') ? item.ourScore : '';
-  const today = new Date(); const m=String(today.getMonth()+1).padStart(2,'0'); const d=String(today.getDate()).padStart(2,'0'); const y=today.getFullYear();
-  date.value = item.dateSeen || `${y}-${m}-${d}`;
-  const close=()=>{bd.style.display='none'; md.style.display='none'; BK_TARGET=null;}
-  document.getElementById('bk-cancel').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
-  document.getElementById('bk-confirm').onclick=async()=>{
-    const s=score.value.trim();
-    const d=date.value;
-    const upd={...BK_TARGET, type:'bekeken', ourScore: s, dateSeen: d};
-    await dbPut(upd);
-    app.state.items = await dbGetAll();
-    app.render();
-    close();
-  };
-  bd.style.display='block'; md.style.display='flex';
-}
-
-app.card=function(item,idx){
-  const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
-  const tagMap={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};
-  const tag=tagMap[item.type]||{c:'bg-slate-200/80 text-slate-900',t:item.type};
-  const imgSrc=(item.poster&&item.poster!=='N/A')?poster(item.poster):'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
-  const scoreVal=(!item.ourScore||(''+item.ourScore).toLowerCase()==='nan')?'':item.ourScore;
-  const streamSel=normalizeStream(item.streamingOn);
-  el.innerHTML=`
-<div class="flex">
-  <div class="w-1/2 flex-shrink-0 relative">
-    <div class="aspect-[2/3] w-full"><img src="${imgSrc}" alt="Poster" class="w-full h-full object-cover"></div>
-    <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${idx}</div>
-  </div>
-  <div class="p-3 flex flex-col flex-grow w-1/2">
-    <div class="mb-2 flex justify-between items-center">
-      <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
-      <div class="flex items-center gap-1">
-        <button title="Markeer als bekeken" class="btn-mark-bekeken bg-white/60 hover:bg-emerald-600 hover:text-white text-emerald-700 w-7 h-7 flex items-center justify-center rounded-full transition-all">✓</button>
-        <button title="Verwijderen" data-id="${item.id}" class="btn-delete bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
-          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-    <h3 class="font-bold text-base leading-tight mb-2">${item.title||'—'}</h3>
-    <div class="text-sm text-slate-700 space-y-0.5 mb-2">
-      <p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p>
-      <p><strong>Jaar:</strong> ${item.year||'N/B'}</p>
-      <p><strong>Duur:</strong> ${item.runtime||'N/B'}</p>
-    </div>
-    <div class="flex flex-col gap-2 mt-1">
-      <input type="text" value="${scoreVal||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
-      <button class="btn-imdb w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs" data-imdbid="${item.imdbID||''}">IMDb-info</button>
-    </div>
-  </div>
-</div>
-<div class="p-3 pt-2 text-xs space-y-2 border-t border-white/20">
-  <div class="grid grid-cols-2 gap-2">
-    <div>
-      <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
-      <select class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
-        ${categoryOptionsHTML(item.type)}
-      </select>
-    </div>
-    <div>
-      <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
-      <select class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md ${streamSel?'':'italic'}">
-        ${streamingOptionsHTML(streamSel)}
-      </select>
-    </div>
-  </div>
-  ${item.type==='bekeken'?`<div><label class="block text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
-</div>`;
-
-  el.querySelector('.btn-delete').addEventListener('click', async()=>{
-    if(!confirm('Verwijderen?')) return;
-    await dbDel(item.id);
-    app.state.items = await dbGetAll();
-    app.render();
-  });
-  el.querySelector('.btn-imdb').addEventListener('click', (e)=>{
-    const id=e.currentTarget.dataset.imdbid;
-    if(!id){ alert('Geen IMDb ID'); return; }
-    openImdbOverlay(id);
-  });
-  el.querySelector('.btn-mark-bekeken').addEventListener('click', ()=> openBekekenPrompt(item));
-  el.querySelector('.category-select').addEventListener('change', async (e)=>{
-    const sel = e.currentTarget.value;
-    if(sel==='bekeken' && item.type!=='bekeken'){
-      e.currentTarget.value = item.type;
-      openBekekenPrompt(item);
-    }else{
-      const upd={...item, type: sel};
-      await dbPut(upd);
-      app.state.items = await dbGetAll();
-      app.render();
-    }
-  });
-  el.querySelector('.streaming-service-select').addEventListener('change', async (e)=>{
-    const upd={...item, streamingOn: e.currentTarget.value};
-    await dbPut(upd);
-    app.state.items = await dbGetAll();
-    app.render();
-  });
-  el.querySelector('.our-score-input').addEventListener('change', async (e)=>{
-    const v = e.currentTarget.value;
-    const upd={...item, ourScore: v};
-    await dbPut(upd);
-  });
-
-  return el;
-}
-
-function openImdbOverlay(imdbID){
-  const bd=document.getElementById('imdb-backdrop');
-  const md=document.getElementById('imdb-modal');
-  const close=()=>{ bd.style.display='none'; md.style.display='none'; }
-  document.getElementById('imdb-close').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
-
-  document.getElementById('imdb-title').textContent='Laden…';
-  document.getElementById('imdb-sub').textContent='';
-  document.getElementById('imdb-genre').textContent='';
-  document.getElementById('imdb-crew').textContent='';
-  document.getElementById('imdb-plot').textContent='';
-  document.getElementById('imdb-ratings').textContent='';
-  document.getElementById('imdb-poster').src='https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
-
-  fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(imdbID)}&plot=short`)
-    .then(r=>r.json())
-    .then(d=>{
-      if(!d || d.Response==='False'){ document.getElementById('imdb-title').textContent='Niet gevonden'; return; }
-      const posterUrl = (d.Poster && d.Poster!=='N/A')? poster(d.Poster,200,300) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
-      document.getElementById('imdb-poster').src = posterUrl;
-      document.getElementById('imdb-title').textContent = `${d.Title||''}`;
-      const sub = [d.Year, d.Rated, d.Runtime].filter(Boolean).join(' · ');
-      document.getElementById('imdb-sub').textContent = sub;
-      document.getElementById('imdb-genre').textContent = d.Genre? `Genre: ${d.Genre}` : '';
-      const crewBits = [];
-      if(d.Director && d.Director!=='N/A') crewBits.push(`Regie: ${d.Director}`);
-      if(d.Actors && d.Actors!=='N/A') crewBits.push(`Cast: ${d.Actors}`);
-      document.getElementById('imdb-crew').textContent = crewBits.join(' · ');
-      document.getElementById('imdb-plot').textContent = d.Plot && d.Plot!=='N/A' ? d.Plot : '—';
-      const ratings = [];
-      if(d.imdbRating && d.imdbRating!=='N/A') ratings.push(`IMDb: ${d.imdbRating} (${d.imdbVotes||'—'} stemmen)`);
-      if(Array.isArray(d.Ratings)){
-        d.Ratings.forEach(r=>{ if(r.Source && r.Value) ratings.push(`${r.Source}: ${r.Value}`); });
-      }
-      document.getElementById('imdb-ratings').innerHTML = ratings.map(r=>`<div>• ${r}</div>`).join('');
-    })
-    .catch(e=>{ console.error(e); document.getElementById('imdb-title').textContent='Kon details niet laden'; });
-}
-
-// Suggest overlay helpers
-function hideSuggest(){ const s=document.getElementById('suggest'); s.style.display='none'; const ul=document.getElementById('suggest-list'); if(ul) ul.innerHTML=''; const emp=document.getElementById('suggest-empty'); if(emp) emp.classList.add('hidden'); }
-function placeSuggestOverlay(){ const sug=document.getElementById('suggest'); if(sug.style.display!=='block') return; const input=document.getElementById('add-search'); const r=input.getBoundingClientRect(); const top=r.bottom + window.scrollY + 8; const left=r.left + window.scrollX; sug.style.top=top+'px'; sug.style.left=left+'px'; sug.style.width=r.width+'px'; }
-function renderSuggest(list){
-  const sug=document.getElementById('suggest'); const ul=document.getElementById('suggest-list'); const empty=document.getElementById('suggest-empty');
-  ul.innerHTML='';
-  if(!list.length){ empty.classList.remove('hidden'); sug.style.display='block'; placeSuggestOverlay(); return; }
-  empty.classList.add('hidden');
-  list.forEach(hit=>{
-    const row=document.createElement('button'); row.type='button'; row.className='row w-full text-left';
-    const p=(hit.Poster && hit.Poster!=='N/A')?poster(hit.Poster,80,120):'https://placehold.co/80x120/e2e8f0/94a3b8?text=—';
-    row.innerHTML=`<img src="${p}" alt=""><div class="flex flex-col"><div class="font-medium leading-tight">${hit.Title||'—'}</div><div class="text-xs text-slate-600">${hit.Year||''} · ${hit.Type}</div></div>`;
-    row.addEventListener('click',()=>openAddModal(hit));
-    ul.appendChild(row);
-  });
-  sug.style.display='block'; placeSuggestOverlay();
-}
-const omdbSearch=(function(){let t;return (q)=>{clearTimeout(t);t=setTimeout(async()=>{
-  if(!q || q.length<2){ hideSuggest(); return; }
-  try{
-    if(!IS_ONLINE){ renderSuggest([]); return; }
-    if(omdbSearchAbort){ try{ omdbSearchAbort.abort(); }catch(e){} }
-    omdbSearchAbort = new AbortController();
-    omdbSearchSeq++;
-    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}`; // altijd alle types
-    const res=await fetch(url,{signal:omdbSearchAbort.signal});
-    const data=await res.json();
-    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
-  }catch(e){ if(e.name!=='AbortError'){ console.error(e); renderSuggest([]);} }
-},250)}})();
-
-// Add flow
-let pendingHit=null;
-function openAddModal(hit){
-  pendingHit = hit;
-  hideSuggest();
-  const input=document.getElementById('add-search');
-  input.blur();
-  const img=(hit.Poster && hit.Poster!=='N/A')?hit.Poster:'';
-  document.getElementById('add-preview').src = img ? poster(img,160,240) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
-  document.getElementById('add-title').textContent = hit.Title || '—';
-  document.getElementById('add-sub').textContent = `${hit.Year||''} · ${hit.Type||''}`;
-  document.getElementById('confirm-type').value = document.getElementById('add-type').value || 'film';
-  document.getElementById('confirm-stream').value = document.getElementById('add-stream').value || '';
-  document.getElementById('add-backdrop').style.display='block';
-  document.getElementById('add-modal').style.display='flex';
-}
-function closeAddModal(){ document.getElementById('add-backdrop').style.display='none'; document.getElementById('add-modal').style.display='none'; const input=document.getElementById('add-search'); input.value=''; }
-async function confirmAddSelection(){
-  if(!pendingHit) return;
-  const typeSel=document.getElementById('confirm-type').value;
-  const streamSel=document.getElementById('confirm-stream').value;
-  const map={movie:'film',series:'serie'};
-  const item={
-    id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-    title:pendingHit.Title, type:typeSel || (map[pendingHit.Type]||'film'),
-    createdAt:Date.now(),
-    imdbRating:'', year:pendingHit.Year||'', runtime:'',
-    poster: (pendingHit.Poster && pendingHit.Poster!=='N/A')?pendingHit.Poster:'',
-    streamingOn: streamSel, ourScore:'', dateSeen:'',
-    imdbID:pendingHit.imdbID||''
-  };
-  await dbPut(item);
-  app.state.items=await dbGetAll(); app.render();
-  closeAddModal();
-}
-document.getElementById('add-close').onclick=closeAddModal;
-document.getElementById('add-cancel').onclick=closeAddModal;
-document.getElementById('add-confirm').onclick=confirmAddSelection;
-
-// Export/import
-function exportAll(){
-  const data = JSON.stringify({ items: app.state.items }, null, 2);
-  const blob = new Blob([data], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'mfs-backup.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-async function importFromPicker(file){
-  const text = await file.text();
-  const data = JSON.parse(text);
-  const arr = Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
-  if(!arr.length){ alert('Leeg JSON-bestand.'); return; }
-  const existing = await dbGetAll(); let ins=0, upd=0;
-  for(const raw of arr){
+async function importJson(file){
+  const text=await file.text(); const data=JSON.parse(text); const arr=Array.isArray(data)?data:(data.items||[]);
+  const existing=await dbGetAll(); let out=[]; const now=Date.now();
+  arr.forEach(raw=>{
     const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
-    const item={
-      id: ex?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-      title: raw.title||ex?.title||'Onbekend',
-      type: raw.type||ex?.type||'film',
-      createdAt: ex?.createdAt || raw.createdAt || Date.now(),
+    out.push({
+      id: ex?.id || raw.id || ('id-'+now+'-'+Math.random().toString(36).slice(2,7)),
+      title: raw.title || ex?.title || 'Onbekend',
+      type: raw.type || ex?.type || 'film',
+      createdAt: ex?.createdAt || raw.createdAt || now,
       imdbRating: raw.imdbRating || ex?.imdbRating || '',
       year: raw.year || ex?.year || '',
       runtime: raw.runtime || ex?.runtime || '',
-      poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (ex?.poster||''),
+      poster: raw.poster && raw.poster!=='N/A' ? raw.poster : (ex?.poster||''),
       streamingOn: raw.streamingOn || ex?.streamingOn || '',
       ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
       dateSeen: raw.dateSeen || ex?.dateSeen || '',
       imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
-    };
-    if(ex){ upd++; } else { ins++; }
-    await dbPut(item);
-  }
+    });
+  });
+  await dbBulkPut(out);
   app.state.items = await dbGetAll(); app.render();
-  alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
-}
-function bindUI(){
-  const __fileInp=document.getElementById('file-import-json');
-  __fileInp.addEventListener('change', ()=>{
-    const f = __fileInp.files && __fileInp.files[0];
-    if(!f) return;
-    importFromPicker(f).catch(e=>{console.error(e); alert('Import fout.');});
-  });
-  document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __fileInp.click(); };
-  document.getElementById('btn-export-json').onclick=exportAll;
-
-  const sortBy=document.getElementById('sortBy');
-  const filterStreaming=document.getElementById('filterStreaming');
-  sortBy.addEventListener('change',()=>{app.state.sortBy=sortBy.value;app.render()});
-  filterStreaming.addEventListener('change',()=>{app.state.filterStreaming=filterStreaming.value;app.render()});
-
-  document.getElementById('filterControls').addEventListener('click',e=>{
-    const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();
-  });
-
-  const search=document.getElementById('search');
-  ['input','keyup','change','search','paste','cut'].forEach(evt=>{
-    search.addEventListener(evt,(e)=>{app.state.searchTerm=e.target.value.trim();app.render()});
-  });
-
-  const addSearch=document.getElementById('add-search');
-  ['input','keyup','change','search','paste','cut'].forEach(evt=>{
-    addSearch.addEventListener(evt,(e)=>{ omdbSearch(e.target.value.trim()); });
-  });
-  document.addEventListener('click',(e)=>{
-    const input=document.getElementById('add-search');
-    const sug=document.getElementById('suggest');
-    if(e.target!==input && !sug.contains(e.target)) hideSuggest();
-  });
-  ['resize','scroll'].forEach(evt=>window.addEventListener(evt, placeSuggestOverlay));
-
-  document.getElementById('btn-random-pick').addEventListener('click',()=>{
-    const pool = app.filtered().filter(i=> i.type==='film' || i.type==='serie');
-    if(!pool.length){ alert('Geen films/series in deze selectie.'); return; }
-    const x = pool[Math.floor(Math.random()*pool.length)];
-    alert(`${x.title} (${x.year||'—'})`);
-  });
-
-  document.getElementById('btn-fetch-posters').addEventListener('click', fetchPostersBatch);
+  setStatus('Import klaar.');
+  syncPush(); // push naar SW
 }
 
-document.addEventListener('DOMContentLoaded',async()=>{
-  bindUI();
+/* ======= Sync met Service Worker (gedeelde dataset) ======= */
+let syncTimer=null;
+function syncPushDebounced(){ clearTimeout(syncTimer); syncTimer=setTimeout(syncPush, 800); }
+async function syncPush(){
   try{
+    if(!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const items = await dbGetAll();
+    reg.active && reg.active.postMessage({type:'MFS_SYNC_WRITE', payload:{items, ts: Date.now()}});
+  }catch(e){ console.warn('sync push fail', e); }
+}
+async function syncPull(){
+  try{
+    const res = await fetch('./__mfs_sync__.json?ts='+Date.now(), {cache:'no-store'});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(!data || !Array.isArray(data.items)) return;
+    // merge
+    const current = await dbGetAll();
+    const merged = [...current];
+    data.items.forEach(raw=>{
+      const ex = merged.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
+      if(ex){
+        // prefer newer createdAt / keep existing id
+        const newer = (raw.updatedAt||raw.createdAt||0) > (ex.updatedAt||ex.createdAt||0);
+        if(newer){
+          const keepId = ex.id;
+          merged.splice(merged.indexOf(ex),1,{...raw, id: keepId});
+        }
+      }else{
+        merged.push(raw);
+      }
+    });
+    await dbBulkPut(merged);
     app.state.items = await dbGetAll();
     app.render();
-    setStatus(`v3.24e actief — ${app.state.items.length} items geladen`);
-  }catch(e){
-    console.error(e); setStatus('Kon lokale data niet laden.');
-  }
+  }catch(e){ console.warn('sync pull fail', e); }
+}
+
+// Listen to SW pull request
+navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', async (ev)=>{
+  const msg = ev.data || {};
+  if(msg.type==='MFS_SYNC_PING'){ syncPush(); }
 });
 
-// ---- Posters ophalen (batch) ----
-async function fetchPosterFor(item){
-  // Skip if poster already present
-  if(item.poster && item.poster !== 'N/A') return item;
-  if(!IS_ONLINE) throw new Error('offline');
+document.addEventListener('DOMContentLoaded', async ()=>{
+  bindUI();
+  try{
+    await syncPull(); // haal gedeelde dataset binnen als die er is
+    app.state.items = await dbGetAll();
+    app.render();
+    setStatus('v3.25 — sync actief • '+app.state.items.length+' items');
+  }catch(e){ console.error(e); setStatus('Kon lokale data niet laden.'); }
+});
 
-  let data=null;
-  if(item.imdbID){
-    const r = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(item.imdbID)}`);
-    data = await r.json();
-  }else if(item.title){
-    const q = `${item.title}${item.year?(' '+item.year):''}`.trim();
-    const r = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(q)}`);
-    data = await r.json();
-  }
-  if(data && data.Poster && data.Poster !== 'N/A'){
-    return {...item, poster: data.Poster, imdbRating: item.imdbRating || data.imdbRating || '', year: item.year || data.Year || '', runtime: item.runtime || data.Runtime || ''};
-  }
-  return item;
-}
-
-async function fetchPostersBatch(){
-  if(!IS_ONLINE){
-    alert('Lijkt offline. Open even in Safari om de verbinding te “wekken”, of wacht enkele seconden.');
-    return;
-  }
-  const progWrap=document.getElementById('progressWrap');
-  const bar=document.getElementById('progBar');
-  const label=document.getElementById('progLabel');
-  progWrap.style.display='block';
-  const all = app.state.items.slice();
-  const need = all.filter(i => !i.poster || i.poster==='N/A');
-  const total = need.length;
-  let done=0, saved=0;
-
-  label.textContent = `${done} / ${total}`;
-  bar.style.width = `0%`;
-
-  for(const it of need){
-    try{
-      const upd = await fetchPosterFor(it);
-      if(upd !== it){
-        await dbPut(upd);
-        saved++;
-      }
-    }catch(e){/* ignore per-item errors */}
-    done++;
-    label.textContent = `${done} / ${total}`;
-    bar.style.width = `${total?Math.round(done*100/total):100}%`;
-    await new Promise(r=>setTimeout(r, 60)); // keep UI responsive
-  }
-
-  app.state.items = await dbGetAll();
-  app.render();
-  setTimeout(()=>{ progWrap.style.display='none'; }, 600);
-  alert(`Posters ophalen klaar. Bijgewerkt: ${saved}`);
-}
-
-// Register the service worker for offline support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?ver=20251004e').catch(()=>{});
+// SW registratie
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js?ver=20251004-sync').then(()=>{
+      navigator.serviceWorker.ready.then(reg=>{
+        if(reg.active) reg.active.postMessage({type:'MFS_SYNC_PING'});
+      });
+    });
   });
 }
 </script>
