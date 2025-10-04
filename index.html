@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.15 (kaarten behouden + toevoegen-zoek + random terug)</title>
+  <title>MFS — v3.16 (overlay + verwijderknop)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -14,9 +14,8 @@
     select.italic { font-style: italic; color:#475569; }
     .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
-    /* Suggestie overlay (toevoegen) */
-    #suggest-wrap{position:relative}
-    #suggest{position:absolute;left:0;right:0;top:100%;margin-top:.35rem;z-index:99990;display:none}
+    /* Suggestie overlay — echte overlay boven alles, position: fixed */
+    #suggest{position:fixed;display:none;z-index:100000}
     #suggest .card{max-height:360px;overflow:auto}
     #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
     #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
@@ -69,14 +68,8 @@
 
     <div class="glass-card rounded-xl p-3 shadow mb-3">
       <div class="flex flex-wrap items-center gap-2">
-        <div id="suggest-wrap" class="relative grow min-w-[240px]">
+        <div class="relative grow min-w-[240px]">
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (bv. Matrix)" class="w-full px-3 py-2 rounded-lg bg-white/80 shadow">
-          <div id="suggest">
-            <div class="card bg-white rounded-xl shadow-xl border border-slate-200">
-              <div id="suggest-list" class="p-2"></div>
-              <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
-            </div>
-          </div>
         </div>
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/80 shadow">
           <option value="film" selected>Film</option>
@@ -122,6 +115,14 @@
   </main>
 </div>
 
+<!-- Suggest overlay root in body met vaste positie en hoge z-index -->
+<div id="suggest">
+  <div class="card bg-white rounded-xl shadow-2xl border border-slate-200">
+    <div id="suggest-list" class="p-2"></div>
+    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
+  </div>
+</div>
+
 <!-- Random popover -->
 <div id="random-backdrop" class="backdrop"></div>
 <div id="random-modal" class="modal">
@@ -140,10 +141,9 @@
   </div>
 </div>
 
-<div id="status">v3.15 geladen…</div>
+<div id="status">v3.16 geladen…</div>
 
 <script>
-/* ======= BASIS: kaarten blijven staan, IndexedDB-first ======= */
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
@@ -167,13 +167,14 @@ function normalizeStream(raw){
 const STREAM_ORDER=['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
 
 function poster(u,w=400,h=600){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+`&w=${w}&h=${h}&fit=cover&output=jpg`):''}
-function norm(s){return (s||'').toString().trim().toLowerCase()}
 function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
+function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
+async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
@@ -185,13 +186,13 @@ app.filtered=function(){
   else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
   const term=(app.state.searchTerm||'').toLowerCase();
   if(term){
-    a=a.filter(i=>{
+    a=a.filter	i=>{
       const t=(i.title||'').toLowerCase();
       const y=(i.year||'').toString();
       const s=(normalizeStream(i.streamingOn)||'').toLowerCase();
       const id=(i.imdbID||'').toLowerCase();
       return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
-    });
+    };
   }
   const by=app.state.sortBy;
   if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
@@ -227,18 +228,23 @@ app.card=function(item,idx){
     <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${idx}</div>
   </div>
   <div class="p-3 flex flex-col flex-grow w-1/2">
+    <div class="mb-2 flex justify-between items-center">
+      <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
+      <button title="Verwijderen" data-id="${item.id}" class="btn-delete bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
+        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
     <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
     <div class="text-sm text-slate-700 space-y-0.5 mb-2">
       <p><strong>IMDB:</strong> ${item.imdbRating||'N/B'}</p>
       <p><strong>Jaar:</strong> ${item.year||'N/B'}</p>
       <p><strong>Duur:</strong> ${item.runtime||'N/B'}</p>
     </div>
-    <div class="mb-2 flex justify-between items-center">
-      <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
-    </div>
     <div class="flex flex-col gap-2 mt-1">
       <input type="text" value="${scoreVal||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
-      <button class="w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs">IMDb-info</button>
+      <button class="btn-imdb w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs" data-imdbid="${item.imdbID||''}">IMDb-info</button>
     </div>
   </div>
 </div>
@@ -259,6 +265,19 @@ app.card=function(item,idx){
   </div>
   ${item.type==='bekeken'?`<div><label class="block text-slate-600 mb-0.5">Laatst gezien op</label><input type="date" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md"></div>`:''}
 </div>`;
+
+  el.querySelector('.btn-delete').addEventListener('click', async()=>{
+    if(!confirm('Verwijderen?')) return;
+    await dbDel(item.id);
+    app.state.items = await dbGetAll();
+    app.render();
+  });
+  el.querySelector('.btn-imdb').addEventListener('click', (e)=>{
+    const id=e.currentTarget.dataset.imdbid;
+    if(!id){ alert('Geen IMDb ID'); return; }
+    window.open(`https://www.imdb.com/title/${id}/`, '_blank');
+  });
+
   return el;
 }
 
@@ -294,17 +313,17 @@ function bindUI(){
     search.addEventListener(evt,(e)=>{app.state.searchTerm=e.target.value.trim();app.render()});
   });
 
-  // Toevoegen-zoek overlay (OMDb)
   const addSearch=document.getElementById('add-search');
   ['input','keyup','change','search','paste','cut'].forEach(evt=>{
     addSearch.addEventListener(evt,(e)=>omdbSearch(e.target.value.trim()));
   });
   document.addEventListener('click',(e)=>{
-    const sw=document.getElementById('suggest-wrap');
-    if(!sw.contains(e.target)) hideSuggest();
+    const input=document.getElementById('add-search');
+    const sug=document.getElementById('suggest');
+    if(e.target!==input && !sug.contains(e.target)) hideSuggest();
   });
+  ['resize','scroll'].forEach(evt=>window.addEventListener(evt, placeSuggestOverlay));
 
-  // Random keuze
   document.getElementById('btn-random-pick').addEventListener('click',()=>{
     const pool = app.filtered().filter(i=> i.type==='film' || i.type==='serie');
     if(!pool.length){ alert('Geen films/series in deze selectie.'); return; }
@@ -313,13 +332,25 @@ function bindUI(){
   });
 }
 
+function placeSuggestOverlay(){
+  const sug=document.getElementById('suggest');
+  if(sug.style.display!=='block') return;
+  const input=document.getElementById('add-search');
+  const r=input.getBoundingClientRect();
+  const top=r.bottom + window.scrollY + 8;
+  const left=r.left + window.scrollX;
+  const width=r.width;
+  sug.style.top = top+'px';
+  sug.style.left = left+'px';
+  sug.style.width = width+'px';
+}
 function hideSuggest(){document.getElementById('suggest').style.display='none'}
 function renderSuggest(list){
-  const wrap=document.getElementById('suggest');
+  const sug=document.getElementById('suggest');
   const ul=document.getElementById('suggest-list');
   const empty=document.getElementById('suggest-empty');
   ul.innerHTML='';
-  if(!list.length){ empty.classList.remove('hidden'); wrap.style.display='block'; return; }
+  if(!list.length){ empty.classList.remove('hidden'); sug.style.display='block'; placeSuggestOverlay(); return; }
   empty.classList.add('hidden');
   list.forEach(hit=>{
     const row=document.createElement('button'); row.type='button'; row.className='row w-full text-left';
@@ -328,7 +359,8 @@ function renderSuggest(list){
     row.addEventListener('click',()=>addFromOmdb(hit));
     ul.appendChild(row);
   });
-  wrap.style.display='block';
+  sug.style.display='block';
+  placeSuggestOverlay();
 }
 const omdbSearch = debounce(async(q)=>{
   if(!q || q.length<2){ hideSuggest(); return; }
@@ -337,10 +369,9 @@ const omdbSearch = debounce(async(q)=>{
     const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
     const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
     const res=await fetch(url); const data=await res.json();
-    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
+    if(data and data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
   }catch(e){ console.error(e); renderSuggest([]); }
 },200);
-function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
 async function addFromOmdb(hit){
   const typeSel=document.getElementById('add-type').value;
@@ -351,7 +382,7 @@ async function addFromOmdb(hit){
     title:hit.Title, type:typeSel || (map[hit.Type]||'film'),
     createdAt:Date.now(),
     imdbRating:'', year:hit.Year||'', runtime:'',
-    poster: (hit.Poster && hit.Poster!=='N/A')?hit.Poster:'',
+    poster: (hit.Poster and hit.Poster!=='N/A')?hit.Poster:'',
     streamingOn: streamSel, ourScore:'', dateSeen:'',
     imdbID:hit.imdbID||''
   };
@@ -362,7 +393,6 @@ async function addFromOmdb(hit){
   app.state.items=await dbGetAll(); app.render();
 }
 
-/* Random popover */
 function showRandom(item){
   const bd=document.getElementById('random-backdrop');
   const md=document.getElementById('random-modal');
@@ -390,18 +420,18 @@ app.importJSON=function(){
       for(const raw of arr){
         const existing = all.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
         const item={
-          id: existing?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-          title: raw.title||existing?.title||'Onbekend',
-          type: raw.type||existing?.type||'film',
-          createdAt: existing?.createdAt || raw.createdAt || Date.now(),
-          imdbRating: raw.imdbRating || existing?.imdbRating || '',
-          year: raw.year || existing?.year || '',
-          runtime: raw.runtime || existing?.runtime || '',
-          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (existing?.poster||''),
-          streamingOn: normalizeStream(raw.streamingOn||raw.stream||existing?.streamingOn||''),
-          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (existing?.ourScore||'') : String(raw.ourScore),
-          dateSeen: raw.dateSeen || existing?.dateSeen || '',
-          imdbID: raw.imdbID || raw.imdbId || existing?.imdbID || ''
+          id: existing?.id or raw.id or ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
+          title: raw.title or existing?.title or 'Onbekend',
+          type: raw.type or existing?.type or 'film',
+          createdAt: existing?.createdAt or raw.createdAt or Date.now(),
+          imdbRating: raw.imdbRating or existing?.imdbRating or '',
+          year: raw.year or existing?.year or '',
+          runtime: raw.runtime or existing?.runtime or '',
+          poster: (raw.poster and raw.poster!=='N/A') ? raw.poster : (existing?.poster or ''),
+          streamingOn: normalizeStream(raw.streamingOn or raw.stream or existing?.streamingOn or ''),
+          ourScore: (raw.ourScore==None or String(raw.ourScore).toLowerCase()==='nan') ? (existing?.ourScore or '') : String(raw.ourScore),
+          dateSeen: raw.dateSeen or existing?.dateSeen or '',
+          imdbID: raw.imdbID or raw.imdbId or existing?.imdbID or ''
         };
         if(existing){ upd++; } else { ins++; }
         await dbPut(item);
@@ -416,7 +446,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
   try{
     app.state.items = await dbGetAll();
-    setStatus(`v3.15 actief — ${app.state.items.length} items geladen`);
+    setStatus(`v3.16 actief — ${app.state.items.length} items geladen`);
     app.render();
   }catch(e){
     console.error(e); setStatus('Kon lokale data niet laden.');
