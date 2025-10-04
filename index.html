@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.19 (herstel + 1 overlay + sorting)</title>
+  <title>MFS — v3.19b (render fix)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -194,7 +194,7 @@
   </div>
 </div>
 
-<div id="status">v3.19 geladen…</div>
+<div id="status">v3.19b geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -233,6 +233,40 @@ async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+
+// ---------- RENDER (FIX) ----------
+app.render=function(){
+  try{
+    const list=document.getElementById('list');
+    const empty=document.getElementById('emptyState');
+    const count=document.getElementById('countBadge');
+    const items=app.filtered();
+    // Set active filter button styles
+    document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
+      const active = btn.dataset.filter === app.state.filter;
+      btn.classList.toggle('bg-indigo-600', active);
+      btn.classList.toggle('text-white', active);
+      btn.classList.toggle('bg-white/50', !active);
+      btn.classList.toggle('text-slate-800', !active);
+    });
+    // Count badge
+    count.textContent = `${items.length} items`;
+    // Build list
+    list.innerHTML='';
+    if(items.length===0){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    items.forEach((it,idx)=>{
+      const card=app.card(it, idx+1);
+      list.appendChild(card);
+    });
+  }catch(e){
+    console.error('render error', e);
+  }
+};
+// ----------------------------------
 
 app.filtered=function(){
   let a=app.state.items.slice();
@@ -434,7 +468,7 @@ const omdbSearch = debounce(async(q)=>{
 let pendingHit=null;
 function openAddModal(hit){
   pendingHit = hit;
-  hideSuggest(); // sluit suggestie-overlay op selectie (1 overlay policy)
+  hideSuggest();
   const img=(hit.Poster && hit.Poster!=='N/A')?hit.Poster:'';
   document.getElementById('add-preview').src = img ? poster(img,160,240) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
   document.getElementById('add-title').textContent = hit.Title || '—';
@@ -529,13 +563,11 @@ document.addEventListener('DOMContentLoaded',async()=>{
   try{
     app.state.items = await dbGetAll();
     if(!app.state.items.length){
-      setStatus('Herstellen uit /data…');
       const files=['data/aanhetkijken.json','data/films.json','data/series.json','data/herman-film.json','data/herman-serie.json'];
       let total=0;
       for(const file of files){
         try{
-          const res=await fetch(file);
-          if(!res.ok) continue;
+          const res=await fetch(file); if(!res.ok) continue;
           const json=await res.json();
           const arr=Array.isArray(json)?json:(json.items||[]);
           for(const raw of arr){
@@ -560,7 +592,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
       app.state.items = await dbGetAll();
       setStatus(`Herstel klaar (${total} items).`);
     }else{
-      setStatus(`v3.19 actief — ${app.state.items.length} items geladen`);
+      setStatus(`v3.19b actief — ${app.state.items.length} items geladen`);
     }
     app.render();
   }catch(e){
