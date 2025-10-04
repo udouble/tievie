@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.19c (overlay reopen fix)</title>
+  <title>MFS — v3.19d (overlay lock)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -72,7 +72,7 @@
     <div class="glass-card rounded-xl p-3 shadow mb-3">
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[240px]">
-          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (bv. Matrix)" class="w-full px-3 py-2 rounded-lg bg-white/80 shadow">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (bv. Matrix)" class="w-full px-3 py-2 rounded-lg bg-white/80 shadow" autocomplete="off">
         </div>
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/80 shadow">
           <option value="film" selected>Film</option>
@@ -194,13 +194,17 @@
   </div>
 </div>
 
-<div id="status">v3.19c geladen…</div>
+<div id="status">v3.19d geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const OMDB_KEY='8a70a767';
+
+let SUGGEST_LOCK=false;     // <-- NIEUW: vergrendeling zolang modal open is
+let omdbAbort=null;         // abort controller voor fetch
+let omdbSeq=0;              // sequence guard
 
 async function ensurePersistent(){ if(navigator.storage && navigator.storage.persist) { try{ const granted = await navigator.storage.persist(); console.log('persist?', granted); }catch(e){} } }
 
@@ -226,7 +230,6 @@ function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return
 function parseYear(y){const n=parseInt(y,10);return isNaN(n)?NaN:n}
 function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
-// IndexedDB helpers
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
@@ -240,13 +243,12 @@ app.render=function(){
   const empty=document.getElementById('emptyState');
   const count=document.getElementById('countBadge');
   const items=app.filtered();
-  // toggle active buttons
   document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
-    const active = btn.dataset.filter === app.state.filter;
-    btn.classList.toggle('bg-indigo-600', active);
-    btn.classList.toggle('text-white', active);
-    btn.classList.toggle('bg-white/50', !active);
-    btn.classList.toggle('text-slate-800', !active);
+    const a = btn.dataset.filter === app.state.filter;
+    btn.classList.toggle('bg-indigo-600', a);
+    btn.classList.toggle('text-white', a);
+    btn.classList.toggle('bg-white/50', !a);
+    btn.classList.toggle('text-slate-800', !a);
   });
   count.textContent = `${items.length} items`;
   list.innerHTML='';
@@ -359,31 +361,15 @@ app.card=function(item,idx){
   return el;
 }
 
-// ---------- SUGGEST: abortable + sequence guard ----------
-let omdbAbort=null;
-let omdbSeq=0;
-const omdbSearch = debounce(async(q)=>{
-  if(!q || q.length<2){ hideSuggest(); return; }
-  try{
-    // cancel any in-flight
-    if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
-    omdbAbort = new AbortController();
-    const mySeq = ++omdbSeq;
-    const typeSel=document.getElementById('add-type').value;
-    const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
-    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
-    const res=await fetch(url,{signal:omdbAbort.signal});
-    const data=await res.json();
-    if(mySeq!==omdbSeq) return; // stale
-    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
-  }catch(e){
-    if(e.name==='AbortError') return;
-    console.error(e); renderSuggest([]);
-  }
-},200);
-
-function hideSuggest(){document.getElementById('suggest').style.display='none'}
+// ---------- Suggest overlay helpers ----------
+function hideSuggest(){
+  const s=document.getElementById('suggest');
+  s.style.display='none';
+  const ul=document.getElementById('suggest-list'); if(ul) ul.innerHTML='';
+  const emp=document.getElementById('suggest-empty'); if(emp) emp.classList.add('hidden');
+}
 function placeSuggestOverlay(){
+  if(SUGGEST_LOCK) return; // geen overlay tonen tijdens modal
   const sug=document.getElementById('suggest');
   if(sug.style.display!=='block') return;
   const input=document.getElementById('add-search');
@@ -396,6 +382,7 @@ function placeSuggestOverlay(){
   sug.style.width = width+'px';
 }
 function renderSuggest(list){
+  if(SUGGEST_LOCK) return; // overlay volledig geblokkeerd
   const sug=document.getElementById('suggest');
   const ul=document.getElementById('suggest-list');
   const empty=document.getElementById('suggest-empty');
@@ -413,15 +400,38 @@ function renderSuggest(list){
   placeSuggestOverlay();
 }
 
+// ---------- OMDb search (debounced + abort + lock + sequence) ----------
+const omdbSearch = debounce(async(q)=>{
+  if(SUGGEST_LOCK) return;         // helemaal niet zoeken tijdens modal
+  if(!q || q.length<2){ hideSuggest(); return; }
+  try{
+    if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
+    omdbAbort = new AbortController();
+    const mySeq = ++omdbSeq;
+    const typeSel=document.getElementById('add-type').value;
+    const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
+    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
+    const res=await fetch(url,{signal:omdbAbort.signal});
+    const data=await res.json();
+    if(SUGGEST_LOCK || mySeq!==omdbSeq) return; // extra guard
+    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
+  }catch(e){
+    if(e.name==='AbortError') return;
+    console.error(e); renderSuggest([]);
+  }
+}, 250);
+
+// ---------- Add modal flow ----------
 let pendingHit=null;
 function openAddModal(hit){
   pendingHit = hit;
-  // stop incoming results & hide list
+  // lock: geen suggesties meer tot we klaar zijn
+  SUGGEST_LOCK = true;
   if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
-  omdbSeq++; // invalidate any late arrivals
+  omdbSeq++; // invalideer andere responses
   hideSuggest();
   const input=document.getElementById('add-search');
-  input.blur(); // voorkom nieuwe key events
+  input.blur();
   const img=(hit.Poster && hit.Poster!=='N/A')?hit.Poster:'';
   document.getElementById('add-preview').src = img ? poster(img,160,240) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
   document.getElementById('add-title').textContent = hit.Title || '—';
@@ -434,7 +444,10 @@ function openAddModal(hit){
 function closeAddModal(){
   document.getElementById('add-backdrop').style.display='none';
   document.getElementById('add-modal').style.display='none';
-  hideSuggest(); // extra safety
+  hideSuggest();
+  const input=document.getElementById('add-search');
+  input.value=''; // reset
+  SUGGEST_LOCK = false; // unlock
 }
 async function confirmAddSelection(){
   if(!pendingHit) return;
@@ -443,11 +456,25 @@ async function confirmAddSelection(){
   await addFromOmdbWithChoices(pendingHit, typeSel, streamSel);
   pendingHit=null;
   closeAddModal();
-  const input=document.getElementById('add-search');
-  input.value='';
 }
 
-// Random modal
+async function addFromOmdbWithChoices(hit, typeSel, streamSel){
+  const map={movie:'film',series:'serie'};
+  const item={
+    id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+    title:hit.Title, type:typeSel || (map[hit.Type]||'film'),
+    createdAt:Date.now(),
+    imdbRating:'', year:hit.Year||'', runtime:'',
+    poster: (hit.Poster && hit.Poster!=='N/A')?hit.Poster:'',
+    streamingOn: normalizeStream(streamSel), ourScore:'', dateSeen:'',
+    imdbID:hit.imdbID||''
+  };
+  await dbPut(item);
+  setStatus(`Toegevoegd: ${item.title}`);
+  app.state.items=await dbGetAll(); app.render();
+}
+
+// ---------- Random modal ----------
 function showRandom(item){
   const bd=document.getElementById('random-backdrop');
   const md=document.getElementById('random-modal');
@@ -462,7 +489,7 @@ function showRandom(item){
   bd.style.display='block'; md.style.display='flex';
 }
 
-// UI bindings
+// ---------- UI bindings ----------
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
   document.getElementById('btn-export-json').onclick=exportAll;
@@ -483,7 +510,10 @@ function bindUI(){
 
   const addSearch=document.getElementById('add-search');
   ['input','keyup','change','search','paste','cut'].forEach(evt=>{
-    addSearch.addEventListener(evt,(e)=>omdbSearch(e.target.value.trim()));
+    addSearch.addEventListener(evt,(e)=>{
+      if(SUGGEST_LOCK) return;
+      omdbSearch(e.target.value.trim());
+    });
   });
   document.addEventListener('click',(e)=>{
     const input=document.getElementById('add-search');
@@ -584,7 +614,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
       app.state.items = await dbGetAll();
       setStatus(`Herstel klaar (${total} items).`);
     }else{
-      setStatus(`v3.19c actief — ${app.state.items.length} items geladen`);
+      setStatus(`v3.19d actief — ${app.state.items.length} items geladen`);
     }
     app.render();
   }catch(e){
