@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.22 (Posters ophalen)</title>
+  <title>MFS — v3.23b (Sort: Onze score)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -45,9 +45,10 @@
         <option value="created_asc">Nummer (oud → recent)</option>
         <option value="imdb_desc">IMDb-score hoog → laag</option>
         <option value="imdb_asc">IMDb-score laag → hoog</option>
+        <option value="score_desc">Onze score hoog → laag</option>
+        <option value="score_asc">Onze score laag → hoog</option>
         <option value="title_asc">Titel A → Z</option>
         <option value="title_desc">Titel Z → A</option>
-        <option value="year_desc">Jaar nieuw → oud</option>
         <option value="year_asc">Jaar oud → nieuw</option>
       </select>
       <div class="h-5 w-px bg-slate-200 mx-1"></div>
@@ -263,7 +264,7 @@
   </div>
 </div>
 
-<div id="status">v3.22 geladen…</div>
+<div id="status">v3.23b geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -297,6 +298,7 @@ const STREAM_ORDER=['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go 
 function poster(u,w=400,h=600){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+`&w=${w}&h=${h}&fit=cover&output=jpg`):''}
 function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
 function parseYear(y){const n=parseInt(y,10);return isNaN(n)?NaN:n}
+function parseScore(s){if(s==null)return NaN;let t=String(s).trim(); if(!t) return NaN; if(t.toLowerCase()==='nan') return NaN; t=t.replace(',', '.'); const v=parseFloat(t); return isNaN(v)?NaN:v}
 function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
@@ -345,10 +347,11 @@ app.filtered=function(){
   const by=app.state.sortBy;
   if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
   else if(by==='imdb_asc'){ a.sort((x,y)=> (parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
+  else if(by==='score_desc'){ a.sort((x,y)=> (parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
+  else if(by==='score_asc'){ a.sort((x,y)=> (parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=> (x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=> (y.title||'').localeCompare(x.title||'')); }
   else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  else if(by==='year_desc'){ a.sort((x,y)=> (parseYear(y.year)||-1)-(parseYear(x.year)||-1)); }
   else if(by==='year_asc'){ a.sort((x,y)=> (parseYear(x.year)||-1)-(parseYear(y.year)||-1)); }
   else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
@@ -484,7 +487,7 @@ app.card=function(item,idx){
   return el;
 }
 
-// IMDb overlay (same as v3.20)
+// IMDb overlay
 function openImdbOverlay(imdbID){
   if(!imdbID){ alert('Geen IMDb ID'); return; }
   const bd=document.getElementById('imdb-backdrop');
@@ -535,7 +538,7 @@ function openImdbOverlay(imdbID){
     });
 }
 
-// Suggest overlay helpers + OMDb quick search (same stable behavior as v3.20/v3.21)
+// Suggest overlay + search
 let omdbSearchAbort=null; let omdbSearchSeq=0;
 function hideSuggest(){
   const s=document.getElementById('suggest'); s.style.display='none';
@@ -590,7 +593,7 @@ const omdbSearch = (function(){let t;return (q)=>{clearTimeout(t);t=setTimeout(a
   }catch(e){ if(e.name!=='AbortError'){ console.error(e); renderSuggest([]);} }
 },250)}})();
 
-// Add modal flow (unchanged)
+// Add modal flow
 let pendingHit=null;
 function openAddModal(hit){
   pendingHit = hit;
@@ -641,7 +644,7 @@ async function addFromOmdbWithChoices(hit, typeSel, streamSel){
   app.state.items=await dbGetAll(); app.render();
 }
 
-// Posters ophalen (current filtered set, only missing poster OR title/year/runtime)
+// Posters ophalen (current filtered set)
 async function fetchPostersForCurrent(){
   const btn = document.getElementById('btn-fetch-posters');
   btn.disabled = true;
@@ -676,7 +679,6 @@ async function fetchPostersForCurrent(){
     done++;
     lab.textContent = `${done} / ${total}`;
     bar.style.width = `${total?Math.round(done*100/total):100}%`;
-    // OMDb gratis API: throttle ~1/sec
     await sleep(1100);
   }
 
@@ -833,7 +835,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
       app.state.items = await dbGetAll();
       setStatus(`Herstel klaar (${total} items).`);
     }else{
-      setStatus(`v3.22 actief — ${app.state.items.length} items geladen`);
+      setStatus(`v3.23b actief — ${app.state.items.length} items geladen`);
     }
     app.render();
   }catch(e){
