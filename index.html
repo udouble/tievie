@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.16 (overlay + verwijderknop)</title>
+  <title>MFS — v3.16b (auto-restore data + overlay + delete)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -14,7 +14,6 @@
     select.italic { font-style: italic; color:#475569; }
     .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
-    /* Suggestie overlay — echte overlay boven alles, position: fixed */
     #suggest{position:fixed;display:none;z-index:100000}
     #suggest .card{max-height:360px;overflow:auto}
     #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
@@ -29,6 +28,7 @@
       <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
       <div class="flex gap-2 items-center">
         <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
+        <button id="btn-export-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Exporteer alles</button>
       </div>
     </div>
 
@@ -115,7 +115,6 @@
   </main>
 </div>
 
-<!-- Suggest overlay root in body met vaste positie en hoge z-index -->
 <div id="suggest">
   <div class="card bg-white rounded-xl shadow-2xl border border-slate-200">
     <div id="suggest-list" class="p-2"></div>
@@ -123,7 +122,6 @@
   </div>
 </div>
 
-<!-- Random popover -->
 <div id="random-backdrop" class="backdrop"></div>
 <div id="random-modal" class="modal">
   <div class="bg-white rounded-2xl shadow-2xl max-w-md w-[90vw] overflow-hidden">
@@ -141,13 +139,15 @@
   </div>
 </div>
 
-<div id="status">v3.16 geladen…</div>
+<div id="status">v3.16b geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
 const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const OMDB_KEY='8a70a767';
+
+async function ensurePersistent(){ if(navigator.storage && navigator.storage.persist) { try{ const granted = await navigator.storage.persist(); console.log('persist?', granted); }catch(e){} } }
 
 function normalizeStream(raw){
   const s=(raw||'').toString().trim();
@@ -174,7 +174,6 @@ function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
-async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
@@ -186,13 +185,13 @@ app.filtered=function(){
   else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
   const term=(app.state.searchTerm||'').toLowerCase();
   if(term){
-    a=a.filter	i=>{
+    a=a.filter(i=>{
       const t=(i.title||'').toLowerCase();
       const y=(i.year||'').toString();
       const s=(normalizeStream(i.streamingOn)||'').toLowerCase();
       const id=(i.imdbID||'').toLowerCase();
       return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
-    };
+    });
   }
   const by=app.state.sortBy;
   if(by==='imdb_desc'){ a.sort((x,y)=> (parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
@@ -281,6 +280,10 @@ app.card=function(item,idx){
   return el;
 }
 
+function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
+async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
+
 app.render=function(){
   const list=document.getElementById('list'),empty=document.getElementById('emptyState');list.innerHTML='';
   document.querySelectorAll('#filterControls .filter-btn').forEach(b=>{
@@ -299,6 +302,8 @@ app.render=function(){
 
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
+  document.getElementById('btn-export-json').onclick=exportAll;
+
   const sortBy=document.getElementById('sortBy');
   const filterStreaming=document.getElementById('filterStreaming');
   sortBy.addEventListener('change',()=>{app.state.sortBy=sortBy.value;app.render()});
@@ -330,6 +335,16 @@ function bindUI(){
     const x = pool[Math.floor(Math.random()*pool.length)];
     showRandom(x);
   });
+}
+
+function exportAll(){
+  const data = JSON.stringify({ items: app.state.items }, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mfs-backup.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function placeSuggestOverlay(){
@@ -369,7 +384,7 @@ const omdbSearch = debounce(async(q)=>{
     const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
     const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
     const res=await fetch(url); const data=await res.json();
-    if(data and data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
+    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
   }catch(e){ console.error(e); renderSuggest([]); }
 },200);
 
@@ -382,7 +397,7 @@ async function addFromOmdb(hit){
     title:hit.Title, type:typeSel || (map[hit.Type]||'film'),
     createdAt:Date.now(),
     imdbRating:'', year:hit.Year||'', runtime:'',
-    poster: (hit.Poster and hit.Poster!=='N/A')?hit.Poster:'',
+    poster: (hit.Poster && hit.Poster!=='N/A')?hit.Poster:'',
     streamingOn: streamSel, ourScore:'', dateSeen:'',
     imdbID:hit.imdbID||''
   };
@@ -393,18 +408,37 @@ async function addFromOmdb(hit){
   app.state.items=await dbGetAll(); app.render();
 }
 
-function showRandom(item){
-  const bd=document.getElementById('random-backdrop');
-  const md=document.getElementById('random-modal');
-  document.getElementById('rnd-title').textContent=item.title||'—';
-  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
-  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
-  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
-  const close=()=>{bd.style.display='none'; md.style.display='none'};
-  document.getElementById('rnd-ok').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
-  bd.style.display='block'; md.style.display='flex';
+/* ===== Auto-restore van /data/* als DB leeg is (enkel eerste run of nieuwe origin) ===== */
+async function bootstrapFromData(){
+  const files=['data/aanhetkijken.json','data/films.json','data/series.json','data/herman-film.json','data/herman-serie.json'];
+  let total=0;
+  for(const file of files){
+    try{
+      const res=await fetch(file);
+      if(!res.ok) continue;
+      const json=await res.json();
+      const arr=Array.isArray(json)?json:(json.items||[]);
+      for(const raw of arr){
+        const item={
+          id: raw.id || 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+          title: raw.title || 'Onbekend',
+          type: raw.type || 'film',
+          createdAt: raw.createdAt || Date.now(),
+          imdbRating: raw.imdbRating || '',
+          year: raw.year || '',
+          runtime: raw.runtime || '',
+          poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
+          streamingOn: normalizeStream(raw.streamingOn||raw.stream||''),
+          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),
+          dateSeen: raw.dateSeen || '',
+          imdbID: raw.imdbID || raw.imdbId || ''
+        };
+        await dbPut(item);
+        total++;
+      }
+    }catch(e){console.warn('Skip', file, e)}
+  }
+  return total;
 }
 
 app.importJSON=function(){
@@ -420,18 +454,18 @@ app.importJSON=function(){
       for(const raw of arr){
         const existing = all.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
         const item={
-          id: existing?.id or raw.id or ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-          title: raw.title or existing?.title or 'Onbekend',
-          type: raw.type or existing?.type or 'film',
-          createdAt: existing?.createdAt or raw.createdAt or Date.now(),
-          imdbRating: raw.imdbRating or existing?.imdbRating or '',
-          year: raw.year or existing?.year or '',
-          runtime: raw.runtime or existing?.runtime or '',
-          poster: (raw.poster and raw.poster!=='N/A') ? raw.poster : (existing?.poster or ''),
-          streamingOn: normalizeStream(raw.streamingOn or raw.stream or existing?.streamingOn or ''),
-          ourScore: (raw.ourScore==None or String(raw.ourScore).toLowerCase()==='nan') ? (existing?.ourScore or '') : String(raw.ourScore),
-          dateSeen: raw.dateSeen or existing?.dateSeen or '',
-          imdbID: raw.imdbID or raw.imdbId or existing?.imdbID or ''
+          id: existing?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
+          title: raw.title||existing?.title||'Onbekend',
+          type: raw.type||existing?.type||'film',
+          createdAt: existing?.createdAt || raw.createdAt || Date.now(),
+          imdbRating: raw.imdbRating || existing?.imdbRating || '',
+          year: raw.year || existing?.year || '',
+          runtime: raw.runtime || existing?.runtime || '',
+          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (existing?.poster||''),
+          streamingOn: normalizeStream(raw.streamingOn||raw.stream||existing?.streamingOn||''),
+          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (existing?.ourScore||'') : String(raw.ourScore),
+          dateSeen: raw.dateSeen || existing?.dateSeen || '',
+          imdbID: raw.imdbID || raw.imdbId || existing?.imdbID || ''
         };
         if(existing){ upd++; } else { ins++; }
         await dbPut(item);
@@ -444,9 +478,17 @@ app.importJSON=function(){
 
 document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
+  await ensurePersistent(); // vraag browser om persistent storage
   try{
     app.state.items = await dbGetAll();
-    setStatus(`v3.16 actief — ${app.state.items.length} items geladen`);
+    if(!app.state.items.length){
+      setStatus('Eerste run op deze locatie — herstellen uit /data…');
+      const n = await bootstrapFromData();
+      app.state.items = await dbGetAll();
+      setStatus(`Herstel klaar (${n} items).`);
+    }else{
+      setStatus(`v3.16b actief — ${app.state.items.length} items geladen`);
+    }
     app.render();
   }catch(e){
     console.error(e); setStatus('Kon lokale data niet laden.');
