@@ -4,8 +4,37 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>MFS v3.26 — autoseed + PWA</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>MFS v3.26c — autoseed + PWA + cache-touch</title>
+<script src="https://cdn.tailwindcss.com">
+// === Cache touch (click or long-press on version badge) ===
+function attachResetGesture(){
+  const el = document.getElementById('status');
+  if(!el) return;
+  let timer=null;
+  async function doReset(){
+    if(!confirm('Cache wissen & herladen?')) return;
+    try{
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k=>caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.unregister()));
+      }
+    }catch(e){ console.warn('reset error', e); }
+    // Hard reload with cache-busting
+    const base = location.pathname.replace(/index\.html?$/,'') || '/';
+    location.href = base + '?v=26c-' + Date.now();
+  }
+  el.addEventListener('click', doReset);
+  el.addEventListener('touchstart', ()=>{ timer=setTimeout(doReset, 3000); }, {passive:true});
+  ['touchend','touchcancel','touchmove','pointerup','pointercancel','mouseup','mouseleave'].forEach(ev=>{
+    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
+  });
+}
+
+</script>
 <link rel="manifest" href="./manifest.json">
 <style>
   :root { color-scheme: dark; }
@@ -136,7 +165,7 @@
   </div>
 </div>
 
-<div id="status">v3.26 — autoseed + PWA</div>
+<div id="status">v3.26c — autoseed + PWA + cache-touch</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
@@ -428,7 +457,7 @@ async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg
 async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
-document.addEventListener('DOMContentLoaded',async()=>{
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
     await syncPull();
@@ -441,6 +470,35 @@ document.addEventListener('DOMContentLoaded',async()=>{
 });
 
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?ver=20251004-autoseed').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+
+// === Cache touch (click or long-press on version badge) ===
+function attachResetGesture(){
+  const el = document.getElementById('status');
+  if(!el) return;
+  let timer=null;
+  async function doReset(){
+    if(!confirm('Cache wissen & herladen?')) return;
+    try{
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k=>caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.unregister()));
+      }
+    }catch(e){ console.warn('reset error', e); }
+    // Hard reload with cache-busting
+    const base = location.pathname.replace(/index\.html?$/,'') || '/';
+    location.href = base + '?v=26c-' + Date.now();
+  }
+  el.addEventListener('click', doReset);
+  el.addEventListener('touchstart', ()=>{ timer=setTimeout(doReset, 3000); }, {passive:true});
+  ['touchend','touchcancel','touchmove','pointerup','pointercancel','mouseup','mouseleave'].forEach(ev=>{
+    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
+  });
+}
+
 </script>
 </body>
 </html>
