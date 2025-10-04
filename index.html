@@ -841,6 +841,12 @@ document.addEventListener('DOMContentLoaded',async()=>{
     console.error(e); setStatus('Kon lokale data niet laden.');
   }
 });
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
 </script>
 </body>
 </html>
