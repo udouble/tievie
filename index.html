@@ -49,7 +49,6 @@
         <option value="score_asc">Onze score laag → hoog</option>
         <option value="title_asc">Titel A → Z</option>
         <option value="title_desc">Titel Z → A</option>
-        <option value="year_asc">Jaar oud → nieuw</option>
       </select>
       <div class="h-5 w-px bg-slate-200 mx-1"></div>
       <label for="filterStreaming" class="text-sm text-slate-600">Streaming</label>
@@ -584,8 +583,8 @@ const omdbSearch = (function(){let t;return (q)=>{clearTimeout(t);t=setTimeout(a
     omdbSearchAbort = new AbortController();
     const mySeq = ++omdbSearchSeq;
     const typeSel=document.getElementById('add-type').value;
-    const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
-    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
+    /* Zoek altijd in alle types (movie + series); categorie kies je pas bij toevoegen */
+    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}`;
     const res=await fetch(url,{signal:omdbSearchAbort.signal});
     const data=await res.json();
     if(SUGGEST_LOCK || mySeq!==omdbSearchSeq) return;
