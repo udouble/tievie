@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS v3.24b — stabiel</title>
+  <title>MFS v3.24c — full (no SW)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -261,7 +261,7 @@
   </div>
 </div>
 
-<div id="status">v3.24b geladen…</div>
+<div id="status">v3.24c geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -288,10 +288,7 @@ const STREAM_ORDER=['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go 
 
 function poster(u,w=400,h=600){return u?('https://wsrv.nl/?url='+encodeURIComponent(u)+`&w=${w}&h=${h}&fit=cover&output=jpg`):''}
 function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return isNaN(f)?NaN:f}
-function parseYear(y){const n=parseInt(y,10);return isNaN(n)?NaN:n}
 function parseScore(s){if(s==null)return NaN;let t=String(s).trim(); if(!t) return NaN; if(t.toLowerCase()==='nan') return NaN; t=t.replace(',', '.'); const v=parseFloat(t); return isNaN(v)?NaN:v}
-function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
-function todayISO(){ const d=new Date(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${d.getFullYear()}-${m}-${da}`; }
 
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
@@ -588,50 +585,6 @@ document.getElementById('add-cancel').onclick=closeAddModal;
 document.getElementById('add-confirm').onclick=confirmAddSelection;
 
 // Export/import/posters/random
-async function fetchPostersForCurrent(){
-  const btn = document.getElementById('btn-fetch-posters');
-  btn.disabled = true;
-  const wrap = document.getElementById('progressWrap');
-  const bar = document.getElementById('progBar');
-  const lab = document.getElementById('progLabel');
-  wrap.classList.remove('hidden');
-
-  const items = app.filtered().filter(i => i.imdbID && ( !i.poster || i.poster==='N/A' || !i.title || !i.year || !i.runtime ));
-  const total = items.length;
-  let done = 0;
-  lab.textContent = `${done} / ${total}`;
-  bar.style.width = `0%`;
-
-  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
-
-  for(const it of items){
-    try{
-      const url = `https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(it.imdbID)}&plot=short`;
-      const res = await fetch(url);
-      const d = await res.json();
-      if(d && d.Response!=='False'){
-        const upd = {...it};
-        if(d.Title && (!upd.title || upd.title==='Onbekend')) upd.title = d.Title;
-        if(d.Year && !upd.year) upd.year = d.Year;
-        if(d.Runtime && !upd.runtime) upd.runtime = d.Runtime;
-        if(d.imdbRating && !upd.imdbRating) upd.imdbRating = d.imdbRating;
-        if(d.Poster && d.Poster!=='N/A') upd.poster = d.Poster;
-        await dbPut(upd);
-      }
-    }catch(e){ console.error(e); }
-    done++;
-    lab.textContent = `${done} / ${total}`;
-    bar.style.width = `${total?Math.round(done*100/total):100}%`;
-    await sleep(1100);
-  }
-
-  app.state.items = await dbGetAll();
-  app.render();
-  wrap.classList.add('hidden');
-  btn.disabled = false;
-  alert(`Posters aangevuld: ${done}/${total}`);
-}
-
 function exportAll(){
   const data = JSON.stringify({ items: app.state.items }, null, 2);
   const blob = new Blob([data], {type:'application/json'});
@@ -642,98 +595,46 @@ function exportAll(){
   URL.revokeObjectURL(a.href);
 }
 
-app.importJSON=function(){
-  const picker=document.getElementById('file-import-json');
-  picker.onchange=()=>{(async()=>{
-    try{
-      const f=picker.files[0]; if(!f) return;
-      const text=await f.text(); let data=JSON.parse(text);
-      let arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
-      if(!arr.length){alert('Leeg JSON-bestand.');return}
-      let ins=0,upd=0;
-      const existing=await dbGetAll();
-      for(const raw of arr){
-        const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
-        const item={
-          id: ex?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-          title: raw.title||ex?.title||'Onbekend',
-          type: raw.type||ex?.type||'film',
-          createdAt: ex?.createdAt || raw.createdAt || Date.now(),
-          imdbRating: raw.imdbRating || ex?.imdbRating || '',
-          year: raw.year || ex?.year || '',
-          runtime: raw.runtime || ex?.runtime || '',
-          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (ex?.poster||''),
-          streamingOn: raw.streamingOn || ex?.streamingOn || '',
-          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
-          dateSeen: raw.dateSeen || ex?.dateSeen || '',
-          imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
-        };
-        if(ex){ upd++; } else { ins++; }
-        await dbPut(item);
-      }
-      app.state.items=await dbGetAll(); app.render();
-      alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
-    }catch(e){console.error(e); alert('Import fout.');}
-  })()};
-  picker.value=''; picker.click();
-};
-
-function showRandom(item){
-  const bd=document.getElementById('random-backdrop');
-  const md=document.getElementById('random-modal');
-  document.getElementById('rnd-title').textContent=item.title||'—';
-  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
-  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
-  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
-  const close=()=>{bd.style.display='none'; md.style.display='none'};
-  document.getElementById('rnd-ok').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
-  bd.style.display='block'; md.style.display='flex';
+async function importFromPicker(file){
+  const text = await file.text();
+  const data = JSON.parse(text);
+  const arr = Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
+  if(!arr.length){ alert('Leeg JSON-bestand.'); return; }
+  const existing = await dbGetAll(); let ins=0, upd=0;
+  for(const raw of arr){
+    const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
+    const item={
+      id: ex?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
+      title: raw.title||ex?.title||'Onbekend',
+      type: raw.type||ex?.type||'film',
+      createdAt: ex?.createdAt || raw.createdAt || Date.now(),
+      imdbRating: raw.imdbRating || ex?.imdbRating || '',
+      year: raw.year || ex?.year || '',
+      runtime: raw.runtime || ex?.runtime || '',
+      poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (ex?.poster||''),
+      streamingOn: raw.streamingOn || ex?.streamingOn || '',
+      ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
+      dateSeen: raw.dateSeen || ex?.dateSeen || '',
+      imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
+    };
+    if(ex){ upd++; } else { ins++; }
+    await dbPut(item);
+  }
+  app.state.items = await dbGetAll(); app.render();
+  alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
 }
 
 function bindUI(){
   const __fileInp=document.getElementById('file-import-json');
-  const __fileInp=document.getElementById('file-import-json');
-// Bind once: when a file is chosen, process it
-__fileInp.addEventListener('change', ()=>{
-  (async()=>{
-    try{
-      const f=__fileInp.files && __fileInp.files[0];
-      if(!f){ return; }
-      const text=await f.text();
-      const data=JSON.parse(text);
-      const arr=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
-      if(!arr.length){ alert('Leeg JSON-bestand.'); return; }
-      const existing=await dbGetAll(); let ins=0, upd=0;
-      for(const raw of arr){
-        const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
-        const item={
-          id: ex?.id || raw.id || ('id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)),
-          title: raw.title||ex?.title||'Onbekend',
-          type: raw.type||ex?.type||'film',
-          createdAt: ex?.createdAt || raw.createdAt || Date.now(),
-          imdbRating: raw.imdbRating || ex?.imdbRating || '',
-          year: raw.year || ex?.year || '',
-          runtime: raw.runtime || ex?.runtime || '',
-          poster: (raw.poster && raw.poster!=='N/A') ? raw.poster : (ex?.poster||''),
-          streamingOn: raw.streamingOn || ex?.streamingOn || '',
-          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
-          dateSeen: raw.dateSeen || ex?.dateSeen || '',
-          imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
-        };
-        if(ex){ upd++; } else { ins++; }
-        await dbPut(item);
-      }
-      app.state.items=await dbGetAll(); app.render();
-      alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
-    }catch(e){ console.error(e); alert('Import fout.'); }
-  })();
-});
-// Button only opens picker (value reset for repeat imports)
-document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __fileInp.click(); }; __fileInp.click(); }catch(e){ console.error(e); app.importJSON(); } };
+  // hard-bind change so iOS/Mac always trigger
+  __fileInp.addEventListener('change', ()=>{
+    const f = __fileInp.files && __fileInp.files[0];
+    if(!f) return;
+    importFromPicker(f).catch(e=>{console.error(e); alert('Import fout.');});
+  });
+  document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __fileInp.click(); };
   document.getElementById('btn-export-json').onclick=exportAll;
-  document.getElementById('btn-fetch-posters').onclick=fetchPostersForCurrent;
+  document.getElementById('btn-fetch-posters').onclick=()=>alert('Gebruik voorlopig IMDb-info of importeer verrijkte JSON; posters ophalen blijft beschikbaar in eerdere build.');
 
   const sortBy=document.getElementById('sortBy');
   const filterStreaming=document.getElementById('filterStreaming');
@@ -749,6 +650,7 @@ document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __f
     search.addEventListener(evt,(e)=>{app.state.searchTerm=e.target.value.trim();app.render()});
   });
 
+  // Suggest search (always both films/series)
   const addSearch=document.getElementById('add-search');
   ['input','keyup','change','search','paste','cut'].forEach(evt=>{
     addSearch.addEventListener(evt,(e)=>{ omdbSearch(e.target.value.trim()); });
@@ -764,7 +666,8 @@ document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __f
     const pool = app.filtered().filter(i=> i.type==='film' || i.type==='serie');
     if(!pool.length){ alert('Geen films/series in deze selectie.'); return; }
     const x = pool[Math.floor(Math.random()*pool.length)];
-    showRandom(x);
+    // simple reveal
+    alert(`${x.title} (${x.year||'—'})`);
   });
 }
 
@@ -773,18 +676,13 @@ document.addEventListener('DOMContentLoaded',async()=>{
   try{
     app.state.items = await dbGetAll();
     app.render();
-    setStatus(`v3.24b actief — ${app.state.items.length} items geladen`);
+    setStatus(`v3.24c actief — ${app.state.items.length} items geladen`);
   }catch(e){
     console.error(e); setStatus('Kon lokale data niet laden.');
   }
 });
 
-// SW registreren
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js');
-  });
-}
+// NO service worker registration in this build.
 </script>
 </body>
 </html>
