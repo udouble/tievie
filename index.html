@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS v3.24d — OFFLINE</title>
+  <title>MFS v3.24e — offline + netcheck</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -21,13 +21,18 @@
     #suggest .row:hover{background:rgba(2,6,23,.06)}
     .progress{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}
     .bar{height:100%;background:#10b981;width:0%}
+    .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
+    .online {background:#22c55e;color:#052e16}
+    .offline {background:#ef4444;color:#7f1d1d}
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
 <div class="max-w-6xl mx-auto p-4 pb-28">
   <header class="mb-3">
     <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">Mijn Films en Series</h1>
+      <h1 class="text-2xl font-bold">Mijn Films en Series
+        <span id="netBadge" class="badge">…</span>
+      </h1>
       <div class="flex gap-2 items-center">
         <input id="file-import-json" type="file" accept="application/json" class="hidden"/>
         <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white shadow text-sm">Importeer JSON</button>
@@ -261,7 +266,7 @@
   </div>
 </div>
 
-<div id="status">v3.24d (OFFLINE) geladen…</div>
+<div id="status">v3.24e geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -269,6 +274,27 @@ const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
 const PLACEHOLDER='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 const OMDB_KEY='8a70a767';
 let SUGGEST_LOCK=false, omdbSearchAbort=null, omdbSearchSeq=0;
+
+// --- Network status monitor (fixes iOS PWA stale offline state) ---
+let IS_ONLINE = navigator.onLine;
+const netBadge = document.getElementById('netBadge');
+function setNetBadge(){
+  if(IS_ONLINE){ netBadge.textContent='online'; netBadge.className='badge online'; }
+  else { netBadge.textContent='offline'; netBadge.className='badge offline'; }
+}
+async function pingOnline(){
+  try{
+    const r = await fetch('./manifest.json?ping=' + Date.now(), {cache:'no-store'});
+    IS_ONLINE = r.ok;
+  }catch(e){
+    IS_ONLINE = false;
+  }
+  setNetBadge();
+}
+window.addEventListener('online', ()=>{ IS_ONLINE=true; setNetBadge(); });
+window.addEventListener('offline', ()=>{ IS_ONLINE=false; setNetBadge(); });
+setInterval(pingOnline, 5000);
+pingOnline();
 
 function normalizeStream(raw){
   const s=(raw||'').toString().trim(); if(!s) return '';
@@ -535,6 +561,7 @@ function renderSuggest(list){
 const omdbSearch=(function(){let t;return (q)=>{clearTimeout(t);t=setTimeout(async()=>{
   if(!q || q.length<2){ hideSuggest(); return; }
   try{
+    if(!IS_ONLINE){ renderSuggest([]); return; }
     if(omdbSearchAbort){ try{ omdbSearchAbort.abort(); }catch(e){} }
     omdbSearchAbort = new AbortController();
     omdbSearchSeq++;
@@ -631,7 +658,6 @@ function bindUI(){
   });
   document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __fileInp.click(); };
   document.getElementById('btn-export-json').onclick=exportAll;
-  document.getElementById('btn-fetch-posters').onclick=()=>alert('Posters ophalen werkt online; offline gebruikt de app de laatst bekende posters.');
 
   const sortBy=document.getElementById('sortBy');
   const filterStreaming=document.getElementById('filterStreaming');
@@ -664,22 +690,83 @@ function bindUI(){
     const x = pool[Math.floor(Math.random()*pool.length)];
     alert(`${x.title} (${x.year||'—'})`);
   });
+
+  document.getElementById('btn-fetch-posters').addEventListener('click', fetchPostersBatch);
 }
+
 document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
   try{
     app.state.items = await dbGetAll();
     app.render();
-    setStatus(`v3.24d (OFFLINE) actief — ${app.state.items.length} items geladen`);
+    setStatus(`v3.24e actief — ${app.state.items.length} items geladen`);
   }catch(e){
     console.error(e); setStatus('Kon lokale data niet laden.');
   }
 });
 
+// ---- Posters ophalen (batch) ----
+async function fetchPosterFor(item){
+  // Skip if poster already present
+  if(item.poster && item.poster !== 'N/A') return item;
+  if(!IS_ONLINE) throw new Error('offline');
+
+  let data=null;
+  if(item.imdbID){
+    const r = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(item.imdbID)}`);
+    data = await r.json();
+  }else if(item.title){
+    const q = `${item.title}${item.year?(' '+item.year):''}`.trim();
+    const r = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(q)}`);
+    data = await r.json();
+  }
+  if(data && data.Poster && data.Poster !== 'N/A'){
+    return {...item, poster: data.Poster, imdbRating: item.imdbRating || data.imdbRating || '', year: item.year || data.Year || '', runtime: item.runtime || data.Runtime || ''};
+  }
+  return item;
+}
+
+async function fetchPostersBatch(){
+  if(!IS_ONLINE){
+    alert('Lijkt offline. Open even in Safari om de verbinding te “wekken”, of wacht enkele seconden.');
+    return;
+  }
+  const progWrap=document.getElementById('progressWrap');
+  const bar=document.getElementById('progBar');
+  const label=document.getElementById('progLabel');
+  progWrap.style.display='block';
+  const all = app.state.items.slice();
+  const need = all.filter(i => !i.poster || i.poster==='N/A');
+  const total = need.length;
+  let done=0, saved=0;
+
+  label.textContent = `${done} / ${total}`;
+  bar.style.width = `0%`;
+
+  for(const it of need){
+    try{
+      const upd = await fetchPosterFor(it);
+      if(upd !== it){
+        await dbPut(upd);
+        saved++;
+      }
+    }catch(e){/* ignore per-item errors */}
+    done++;
+    label.textContent = `${done} / ${total}`;
+    bar.style.width = `${total?Math.round(done*100/total):100}%`;
+    await new Promise(r=>setTimeout(r, 60)); // keep UI responsive
+  }
+
+  app.state.items = await dbGetAll();
+  app.render();
+  setTimeout(()=>{ progWrap.style.display='none'; }, 600);
+  alert(`Posters ophalen klaar. Bijgewerkt: ${saved}`);
+}
+
 // Register the service worker for offline support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?ver=20251004d').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js?ver=20251004e').catch(()=>{});
   });
 }
 </script>

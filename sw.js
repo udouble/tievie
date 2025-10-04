@@ -1,5 +1,5 @@
-// tievie Service Worker — v3.24d
-const CACHE = 'tievie-v3.24d-2025-10-04';
+// tievie Service Worker — v3.24e
+const CACHE = 'tievie-v3.24e-2025-10-04';
 const CORE = [
   './',
   './index.html',
@@ -23,11 +23,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
-
-  // Never intercept file input / blob / POST
   if (req.method !== 'GET') return;
 
-  // App shell: serve cached index for navigations (offline-ready SPA)
   if (req.mode === 'navigate') {
     event.respondWith(
       caches.match('./index.html').then(hit => hit || fetch(req).then(res => {
@@ -39,7 +36,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin: stale-while-revalidate
   if (url.origin === location.origin) {
     event.respondWith(
       caches.match(req).then(hit => {
@@ -54,7 +50,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // External (OMDb, wsrv): network with cache fallback
   if (/omdbapi\.com|wsrv\.nl/.test(url.hostname)) {
     event.respondWith(
       fetch(req).then(res => {
