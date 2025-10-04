@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.16b (auto-restore data + overlay + delete)</title>
+  <title>MFS — v3.17 (confirm add)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -14,6 +14,7 @@
     select.italic { font-style: italic; color:#475569; }
     .backdrop{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;z-index:99998}
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:99999}
+    /* Suggestie overlay — echte overlay boven alles, position: fixed */
     #suggest{position:fixed;display:none;z-index:100000}
     #suggest .card{max-height:360px;overflow:auto}
     #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
@@ -115,6 +116,7 @@
   </main>
 </div>
 
+<!-- Suggest overlay -->
 <div id="suggest">
   <div class="card bg-white rounded-xl shadow-2xl border border-slate-200">
     <div id="suggest-list" class="p-2"></div>
@@ -122,6 +124,57 @@
   </div>
 </div>
 
+<!-- Confirm add modal -->
+<div id="add-backdrop" class="backdrop"></div>
+<div id="add-modal" class="modal">
+  <div class="bg-white rounded-2xl shadow-2xl w-[92vw] max-w-lg overflow-hidden">
+    <div class="flex items-start gap-3 p-3 border-b border-slate-200">
+      <img id="add-preview" class="w-20 h-28 object-cover rounded-lg" alt="Poster"/>
+      <div class="flex-1">
+        <h3 id="add-title" class="text-lg font-semibold leading-tight">Titel</h3>
+        <p id="add-sub" class="text-sm text-slate-600"></p>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <div>
+            <label class="block text-xs text-slate-600 mb-1">Categorie</label>
+            <select id="confirm-type" class="w-full px-2 py-1.5 rounded-md bg-white/90 border border-slate-200">
+              <option value="film">Film</option>
+              <option value="serie">Serie</option>
+              <option value="herman-film">H-Film</option>
+              <option value="herman-serie">H-Serie</option>
+              <option value="aan-het-kijken">Aan het kijken</option>
+              <option value="bekeken">Bekeken</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-600 mb-1">Waar te bekijken</label>
+            <select id="confirm-stream" class="w-full px-2 py-1.5 rounded-md bg-white/90 border border-slate-200">
+              <option value="">Onbekend</option>
+              <option>Streamz</option>
+              <option>Netflix</option>
+              <option>Prime Video</option>
+              <option>Apple TV+</option>
+              <option>VRT MAX</option>
+              <option>Go Play</option>
+              <option>NPO</option>
+              <option>Disney+</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button id="add-close" class="ml-1 text-slate-500 hover:text-slate-700 p-1" title="Sluiten">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="p-3 flex justify-end gap-2">
+      <button id="add-cancel" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700">Annuleer</button>
+      <button id="add-confirm" class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white">Voeg toe</button>
+    </div>
+  </div>
+</div>
+
+<!-- Random popover -->
 <div id="random-backdrop" class="backdrop"></div>
 <div id="random-modal" class="modal">
   <div class="bg-white rounded-2xl shadow-2xl max-w-md w-[90vw] overflow-hidden">
@@ -139,7 +192,7 @@
   </div>
 </div>
 
-<div id="status">v3.16b geladen…</div>
+<div id="status">v3.17 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -335,6 +388,11 @@ function bindUI(){
     const x = pool[Math.floor(Math.random()*pool.length)];
     showRandom(x);
   });
+
+  // Confirm modal buttons
+  document.getElementById('add-close').onclick=closeAddModal;
+  document.getElementById('add-cancel').onclick=closeAddModal;
+  document.getElementById('add-confirm').onclick=confirmAddSelection;
 }
 
 function exportAll(){
@@ -371,7 +429,7 @@ function renderSuggest(list){
     const row=document.createElement('button'); row.type='button'; row.className='row w-full text-left';
     const p=(hit.Poster && hit.Poster!=='N/A')?poster(hit.Poster,80,120):'https://placehold.co/80x120/e2e8f0/94a3b8?text=—';
     row.innerHTML=`<img src="${p}" alt=""><div class="flex flex-col"><div class="font-medium leading-tight">${hit.Title||'—'}</div><div class="text-xs text-slate-600">${hit.Year||''} · ${hit.Type}</div></div>`;
-    row.addEventListener('click',()=>addFromOmdb(hit));
+    row.addEventListener('click',()=>openAddModal(hit));
     ul.appendChild(row);
   });
   sug.style.display='block';
@@ -388,9 +446,39 @@ const omdbSearch = debounce(async(q)=>{
   }catch(e){ console.error(e); renderSuggest([]); }
 },200);
 
-async function addFromOmdb(hit){
-  const typeSel=document.getElementById('add-type').value;
-  const streamSel=normalizeStream(document.getElementById('add-stream').value);
+let pendingHit=null;
+function openAddModal(hit){
+  pendingHit = hit;
+  // Prefill modal
+  const img=(hit.Poster && hit.Poster!=='N/A')?hit.Poster:'';
+  document.getElementById('add-preview').src = img ? poster(img,160,240) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
+  document.getElementById('add-title').textContent = hit.Title || '—';
+  document.getElementById('add-sub').textContent = `${hit.Year||''} · ${hit.Type||''}`;
+
+  // Defaults from the small selectors (so jouw voorkeur telt)
+  document.getElementById('confirm-type').value = document.getElementById('add-type').value || 'film';
+  document.getElementById('confirm-stream').value = document.getElementById('add-stream').value || '';
+
+  // Show modal
+  document.getElementById('add-backdrop').style.display='block';
+  document.getElementById('add-modal').style.display='flex';
+}
+function closeAddModal(){
+  document.getElementById('add-backdrop').style.display='none';
+  document.getElementById('add-modal').style.display='none';
+}
+async function confirmAddSelection(){
+  if(!pendingHit) return;
+  const typeSel=document.getElementById('confirm-type').value;
+  const streamSel=document.getElementById('confirm-stream').value;
+  await addFromOmdbWithChoices(pendingHit, typeSel, streamSel);
+  pendingHit=null;
+  closeAddModal();
+  hideSuggest();
+  document.getElementById('add-search').value='';
+}
+
+async function addFromOmdbWithChoices(hit, typeSel, streamSel){
   const map={movie:'film',series:'serie'};
   const item={
     id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
@@ -398,47 +486,26 @@ async function addFromOmdb(hit){
     createdAt:Date.now(),
     imdbRating:'', year:hit.Year||'', runtime:'',
     poster: (hit.Poster && hit.Poster!=='N/A')?hit.Poster:'',
-    streamingOn: streamSel, ourScore:'', dateSeen:'',
+    streamingOn: normalizeStream(streamSel), ourScore:'', dateSeen:'',
     imdbID:hit.imdbID||''
   };
   await dbPut(item);
   setStatus(`Toegevoegd: ${item.title}`);
-  document.getElementById('add-search').value='';
-  hideSuggest();
   app.state.items=await dbGetAll(); app.render();
 }
 
-/* ===== Auto-restore van /data/* als DB leeg is (enkel eerste run of nieuwe origin) ===== */
-async function bootstrapFromData(){
-  const files=['data/aanhetkijken.json','data/films.json','data/series.json','data/herman-film.json','data/herman-serie.json'];
-  let total=0;
-  for(const file of files){
-    try{
-      const res=await fetch(file);
-      if(!res.ok) continue;
-      const json=await res.json();
-      const arr=Array.isArray(json)?json:(json.items||[]);
-      for(const raw of arr){
-        const item={
-          id: raw.id || 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-          title: raw.title || 'Onbekend',
-          type: raw.type || 'film',
-          createdAt: raw.createdAt || Date.now(),
-          imdbRating: raw.imdbRating || '',
-          year: raw.year || '',
-          runtime: raw.runtime || '',
-          poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
-          streamingOn: normalizeStream(raw.streamingOn||raw.stream||''),
-          ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),
-          dateSeen: raw.dateSeen || '',
-          imdbID: raw.imdbID || raw.imdbId || ''
-        };
-        await dbPut(item);
-        total++;
-      }
-    }catch(e){console.warn('Skip', file, e)}
-  }
-  return total;
+function showRandom(item){
+  const bd=document.getElementById('random-backdrop');
+  const md=document.getElementById('random-modal');
+  document.getElementById('rnd-title').textContent=item.title||'—';
+  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
+  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
+  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
+  const close=()=>{bd.style.display='none'; md.style.display='none'};
+  document.getElementById('rnd-ok').onclick=close;
+  bd.onclick=close;
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
+  bd.style.display='block'; md.style.display='flex';
 }
 
 app.importJSON=function(){
@@ -483,11 +550,38 @@ document.addEventListener('DOMContentLoaded',async()=>{
     app.state.items = await dbGetAll();
     if(!app.state.items.length){
       setStatus('Eerste run op deze locatie — herstellen uit /data…');
-      const n = await bootstrapFromData();
+      // bootstrap function is kept minimal here to avoid duplicates; JSONs already normalized
+      const files=['data/aanhetkijken.json','data/films.json','data/series.json','data/herman-film.json','data/herman-serie.json'];
+      let total=0;
+      for(const file of files){
+        try{
+          const res=await fetch(file);
+          if(!res.ok) continue;
+          const json=await res.json();
+          const arr=Array.isArray(json)?json:(json.items||[]);
+          for(const raw of arr){
+            const item={
+              id: raw.id || 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+              title: raw.title || 'Onbekend',
+              type: raw.type || 'film',
+              createdAt: raw.createdAt || Date.now(),
+              imdbRating: raw.imdbRating || '',
+              year: raw.year || '',
+              runtime: raw.runtime || '',
+              poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
+              streamingOn: normalizeStream(raw.streamingOn||raw.stream||''),
+              ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),
+              dateSeen: raw.dateSeen || '',
+              imdbID: raw.imdbID || raw.imdbId || ''
+            };
+            await dbPut(item); total++;
+          }
+        }catch(e){}
+      }
       app.state.items = await dbGetAll();
-      setStatus(`Herstel klaar (${n} items).`);
+      setStatus(`Herstel klaar (${total} items).`);
     }else{
-      setStatus(`v3.16b actief — ${app.state.items.length} items geladen`);
+      setStatus(`v3.17 actief — ${app.state.items.length} items geladen`);
     }
     app.render();
   }catch(e){
