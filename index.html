@@ -4,10 +4,11 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>MFS v3.25c — full UI + sync</title>
+<title>MFS v3.26 — overlay + search fix</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="manifest" href="./manifest.json">
 <style>
+  :root { color-scheme: dark; }
   body{background:#0b1020;color:#e5e7eb}
   .glass{background:rgba(255,255,255,.78);color:#0f172a;backdrop-filter:saturate(150%) blur(12px)}
   .pill{border:1px solid rgba(15,23,42,.08)}
@@ -16,6 +17,17 @@
   .online {background:#22c55e;color:#052e16}
   .offline {background:#ef4444;color:#7f1d1d}
   ::placeholder{font-style:italic;color:#64748b}
+  /* IMDb overlay */
+  #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
+  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
+  /* Suggest overlay */
+  #suggest{position:fixed;display:none;z-index:100001}
+  #suggest .card{max-height:420px;overflow:auto}
+  #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
+  #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
+  #suggest .row:hover{background:rgba(2,6,23,.06)}
 </style>
 </head>
 <body>
@@ -59,6 +71,34 @@
       </select>
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
+
+    <div class="glass rounded-xl p-3 shadow mb-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative grow min-w-[260px]">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+        </div>
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="film" selected>Film</option>
+          <option value="serie">Serie</option>
+          <option value="herman-film">H-Film</option>
+          <option value="herman-serie">H-Serie</option>
+          <option value="aan-het-kijken">Aan het kijken</option>
+          <option value="bekeken">Bekeken</option>
+        </select>
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="">Onbekend</option>
+          <option>Streamz</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
+        </select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+      </div>
+    </div>
   </header>
 
   <section class="mb-3">
@@ -81,7 +121,28 @@
   </main>
 </div>
 
-<div id="status">v3.25c — full UI + sync geladen…</div>
+<!-- IMDb overlay -->
+<div id="imdbOverlay">
+  <div id="imdbPanel">
+    <div id="imdbBar">
+      <div class="flex items-center gap-2">
+        <span class="text-sm opacity-80">IMDb</span>
+      </div>
+      <button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
+    </div>
+    <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+  </div>
+</div>
+
+<!-- Suggest overlay -->
+<div id="suggest">
+  <div class="card glass rounded-xl shadow-2xl border border-slate-200 p-2">
+    <div id="suggest-list"></div>
+    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
+  </div>
+</div>
+
+<div id="status">v3.26 — overlay + search fix geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
@@ -100,6 +161,7 @@ async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{co
 
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
+/* === helpers === */
 function normalizeStream(raw){
   const s=(raw||'').toString().trim().toLowerCase(); if(!s) return '';
   if(s.startsWith('appl')) return 'Apple TV+';
@@ -113,10 +175,10 @@ function normalizeStream(raw){
   if(s.startsWith('disn')) return 'Disney+';
   return '';
 }
-
 function parseScore(s){ if(s==null) return NaN; let t=String(s).trim(); if(!t||t.toLowerCase()==='nan') return NaN; t=t.replace(',','.'); const v=parseFloat(t); return isNaN(v)?NaN:v }
 function parseImdb(v){ const f=parseFloat(String(v)); return isNaN(f)?NaN:f }
 
+/* === render === */
 app.render=function(){
   const list=document.getElementById('list'); const empty=document.getElementById('empty');
   let items=app.filtered(); list.innerHTML='';
@@ -158,6 +220,15 @@ app.filtered=function(){
   else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
 };
+
+function categoryOptionsHTML(type){
+  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
+  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+}
+function streamingOptionsHTML(sel){
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
+}
 
 function card(item, index){
   const div=document.createElement('div');
@@ -201,10 +272,7 @@ function card(item, index){
         </div>
         <div class="flex flex-col gap-2 mt-1">
           <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-          <button data-imdbid="${item.imdbID||''}" class="btn-imdb w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22.44 15.6c.33.58.17 1.32-.39 1.7-.56.38-1.3.22-1.68-.36L18 13.28V20a1 1 0 01-1 1H7a1 1 0 01-1-1v-6.72l-2.37 3.66c-.38.58-1.12.74-1.68.36-.56-.38-.73-1.12-.39-1.7L5.1 9.42c.3-.53.83-.85 1.4-.85h10c.57 0 1.1.32 1.4.85l3.54 6.18zM18 4h-5V3a1 1 0 00-1-1H7a1 1 0 00-1 1v1H2a1 1 0 00-1 1v2a1 1 0 001 1h16a1 1 0 001-1V5a1 1 0 00-1-1z"/></svg>
-            IMDb Info
-          </button>
+          <button data-imdbid="${item.imdbID||''}" class="btn-imdb w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5">IMDb Info</button>
         </div>
       </div>
     </div>
@@ -225,26 +293,83 @@ function card(item, index){
       </div>
       ${dateSeenHTML}
     </div>`;
-  // wire events
+  // events
   div.querySelector('[data-action="delete"]').onclick=async()=>{await dbDel(item.id); app.state.items=await dbGetAll(); app.render(); syncPushDebounced();};
   div.querySelector('.our-score-input').onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();};
   const catSel=div.querySelector('.category-select'); catSel.onchange=async(e)=>{item.type=e.target.value; await dbPut(item); app.render(); syncPushDebounced();};
   const stSel=div.querySelector('.streaming-service-select'); stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();};
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  div.querySelector('.btn-imdb').onclick=()=>{ if(!item.imdbID){alert('Geen IMDb ID');return;} window.open('https://www.imdb.com/title/'+encodeURIComponent(item.imdbID)+'/','_blank'); };
+  div.querySelector('.btn-imdb').onclick=()=>openImdbOverlay(item.imdbID);
   return div;
 }
 
-function categoryOptionsHTML(type){
-  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
-  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+/* === search suggest (global OMDb) === */
+const suggestBox=document.getElementById('suggest'); const suggestList=document.getElementById('suggest-list'); const suggestEmpty=document.getElementById('suggest-empty');
+let suggestOpen=false, suggestTimer=null;
+document.getElementById('add-search').addEventListener('input', (e)=>{
+  const q=e.target.value.trim(); clearTimeout(suggestTimer);
+  if(!q){ hideSuggest(); return; }
+  suggestTimer=setTimeout(()=>doSuggest(q), 280);
+});
+document.body.addEventListener('click', (e)=>{
+  if(suggestOpen && !suggestBox.contains(e.target) && e.target.id!=='add-search'){ hideSuggest(); }
+});
+async function doSuggest(q){
+  if(!IS_ONLINE){ setStatus('Online nodig voor zoeken.'); return; }
+  try{
+    const byT = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&s='+encodeURIComponent(q)+'&type=movie').then(r=>r.json());
+    const byS = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&s='+encodeURIComponent(q)+'&type=series').then(r=>r.json());
+    const results = [...(byT.Search||[]), ...(byS.Search||[])];
+    renderSuggest(results);
+  }catch(e){ renderSuggest([]); }
 }
-function streamingOptionsHTML(sel){
-  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
-  return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
+function renderSuggest(arr){
+  if(!arr || arr.length===0){
+    suggestList.innerHTML=''; suggestEmpty.classList.remove('hidden'); showSuggest(); return;
+  }
+  suggestEmpty.classList.add('hidden');
+  suggestList.innerHTML = arr.map(r=>`<div class="row cursor-pointer" data-imdbid="${r.imdbID}" data-title="${(r.Title||'').replace(/"/g,'&quot;')}" data-year="${r.Year||''}" data-type="${r.Type||''}" data-poster="${r.Poster&&r.Poster!=='N/A'?r.Poster:''}">
+    <img src="${r.Poster&&r.Poster!=='N/A'?r.Poster:'https://placehold.co/44x66/e2e8f0/94a3b8?text=—'}" alt="">
+    <div class="flex flex-col">
+      <span class="text-sm font-semibold">${r.Title||'—'}</span>
+      <span class="text-xs opacity-70">${(r.Type||'').toUpperCase()} • ${r.Year||''}</span>
+    </div>
+  </div>`).join('');
+  showSuggest();
+  // bind clicks
+  Array.from(suggestList.children).forEach(row=>{
+    row.addEventListener('click', async ()=>{
+      hideSuggest();
+      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+      const typeSel=document.getElementById('add-type').value;
+      const streamSel=document.getElementById('add-stream').value;
+      const it={
+        id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+        title, year, imdbID, poster,
+        type:typeSel, streamingOn:streamSel, createdAt:Date.now()
+      };
+      await dbPut(it); app.state.items=await dbGetAll(); app.render(); syncPushDebounced();
+      setStatus('Toegevoegd: '+title);
+      document.getElementById('add-search').value='';
+    });
+  });
 }
+function showSuggest(){
+  suggestBox.style.display='block'; suggestOpen=true;
+  const inp=document.getElementById('add-search'); const r=inp.getBoundingClientRect();
+  suggestBox.style.left=(r.left+window.scrollX)+'px';
+  suggestBox.style.top=(r.bottom+window.scrollY+6)+'px';
+  suggestBox.querySelector('.card').style.width=Math.max(320, r.width)+'px';
+}
+function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
-// UI binds
+/* === IMDb overlay === */
+const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
+function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
+imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
+
+/* === binds === */
 function bindUI(){
   const f=document.getElementById('file-import');
   document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
@@ -256,8 +381,8 @@ function bindUI(){
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
 }
 
+/* === import/export === */
 async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
-
 async function importJson(file){
   setStatus('Import JSON gestart…');
   try{
@@ -271,6 +396,7 @@ async function importJson(file){
   }catch(e){console.error(e); setStatus('Import JSON error');}
 }
 
+/* === posters ophalen === */
 async function fetchMissingPosters(){
   if(!IS_ONLINE){alert('Posters ophalen werkt enkel online.');return;}
   let items=await dbGetAll(); let changed=0;
@@ -294,18 +420,17 @@ async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Da
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 document.addEventListener('DOMContentLoaded',async()=>{
-  // UI + data
   bindUI();
   try{
     await syncPull();
     app.state.items=await dbGetAll();
     app.render();
-    setStatus('v3.25c — sync actief • '+app.state.items.length+' items');
-    await syncPush(); // seed naar SW zodat PWA/Safari gelijk lopen
+    setStatus('v3.26 — sync actief • '+app.state.items.length+' items');
+    await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
-if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?ver=20251004-fullui').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?ver=20251004-overlay-search').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
 </script>
 </body>
 </html>

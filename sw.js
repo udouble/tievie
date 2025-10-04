@@ -1,9 +1,9 @@
 
-const CACHE='tievie-v3.25c-fullui-2025-10-04';
+const CACHE='tievie-v3.26-overlay-search-2025-10-04';
 const CORE=['./','./index.html','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
 const SYNC_URL='/__mfs_sync__.json';
 
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));self.skipWaiting();});
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));self.skipWaiting());});
 self.addEventListener('activate',e=>{e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)));self.clients.claim();})())});
 
 self.addEventListener('message',async ev=>{
