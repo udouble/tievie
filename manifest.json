@@ -1,6 +1,6 @@
 {
-  "name": "Mijn Films en Series",
-  "short_name": "MFS",
+  "name": "Tievie",
+  "short_name": "Tievie",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

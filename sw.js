@@ -1,4 +1,4 @@
-const CACHE='tievie-v3.26-autoseed-2025-10-04';
+const CACHE='tievie-v3.26e-1759596363';
 const CORE=['./','./index.html','./manifest.json','./icons/icon-192.png','./icons/icon-512.png','./data/films.json','./data/series.json','./data/herman-film.json','./data/herman-serie.json','./data/aanhetkijken.json','./data/bekeken.json'];
 const SYNC_URL='./__mfs_sync__.json';
 
