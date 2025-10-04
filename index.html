@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.19b (render fix)</title>
+  <title>MFS — v3.19c (overlay reopen fix)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -194,7 +194,7 @@
   </div>
 </div>
 
-<div id="status">v3.19b geladen…</div>
+<div id="status">v3.19c geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -226,6 +226,7 @@ function parseImdb(v){if(v==null)return NaN;const f=parseFloat(String(v));return
 function parseYear(y){const n=parseInt(y,10);return isNaN(n)?NaN:n}
 function debounce(fn,ms){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 
+// IndexedDB helpers
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
 async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
@@ -234,39 +235,25 @@ async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{co
 
 const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
-// ---------- RENDER (FIX) ----------
 app.render=function(){
-  try{
-    const list=document.getElementById('list');
-    const empty=document.getElementById('emptyState');
-    const count=document.getElementById('countBadge');
-    const items=app.filtered();
-    // Set active filter button styles
-    document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
-      const active = btn.dataset.filter === app.state.filter;
-      btn.classList.toggle('bg-indigo-600', active);
-      btn.classList.toggle('text-white', active);
-      btn.classList.toggle('bg-white/50', !active);
-      btn.classList.toggle('text-slate-800', !active);
-    });
-    // Count badge
-    count.textContent = `${items.length} items`;
-    // Build list
-    list.innerHTML='';
-    if(items.length===0){
-      empty.classList.remove('hidden');
-      return;
-    }
-    empty.classList.add('hidden');
-    items.forEach((it,idx)=>{
-      const card=app.card(it, idx+1);
-      list.appendChild(card);
-    });
-  }catch(e){
-    console.error('render error', e);
-  }
+  const list=document.getElementById('list');
+  const empty=document.getElementById('emptyState');
+  const count=document.getElementById('countBadge');
+  const items=app.filtered();
+  // toggle active buttons
+  document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
+    const active = btn.dataset.filter === app.state.filter;
+    btn.classList.toggle('bg-indigo-600', active);
+    btn.classList.toggle('text-white', active);
+    btn.classList.toggle('bg-white/50', !active);
+    btn.classList.toggle('text-slate-800', !active);
+  });
+  count.textContent = `${items.length} items`;
+  list.innerHTML='';
+  if(items.length===0){ empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  items.forEach((it,idx)=> list.appendChild(app.card(it, idx+1)) );
 };
-// ----------------------------------
 
 app.filtered=function(){
   let a=app.state.items.slice();
@@ -372,6 +359,110 @@ app.card=function(item,idx){
   return el;
 }
 
+// ---------- SUGGEST: abortable + sequence guard ----------
+let omdbAbort=null;
+let omdbSeq=0;
+const omdbSearch = debounce(async(q)=>{
+  if(!q || q.length<2){ hideSuggest(); return; }
+  try{
+    // cancel any in-flight
+    if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
+    omdbAbort = new AbortController();
+    const mySeq = ++omdbSeq;
+    const typeSel=document.getElementById('add-type').value;
+    const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
+    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
+    const res=await fetch(url,{signal:omdbAbort.signal});
+    const data=await res.json();
+    if(mySeq!==omdbSeq) return; // stale
+    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
+  }catch(e){
+    if(e.name==='AbortError') return;
+    console.error(e); renderSuggest([]);
+  }
+},200);
+
+function hideSuggest(){document.getElementById('suggest').style.display='none'}
+function placeSuggestOverlay(){
+  const sug=document.getElementById('suggest');
+  if(sug.style.display!=='block') return;
+  const input=document.getElementById('add-search');
+  const r=input.getBoundingClientRect();
+  const top=r.bottom + window.scrollY + 8;
+  const left=r.left + window.scrollX;
+  const width=r.width;
+  sug.style.top = top+'px';
+  sug.style.left = left+'px';
+  sug.style.width = width+'px';
+}
+function renderSuggest(list){
+  const sug=document.getElementById('suggest');
+  const ul=document.getElementById('suggest-list');
+  const empty=document.getElementById('suggest-empty');
+  ul.innerHTML='';
+  if(!list.length){ empty.classList.remove('hidden'); sug.style.display='block'; placeSuggestOverlay(); return; }
+  empty.classList.add('hidden');
+  list.forEach(hit=>{
+    const row=document.createElement('button'); row.type='button'; row.className='row w-full text-left';
+    const p=(hit.Poster && hit.Poster!=='N/A')?poster(hit.Poster,80,120):'https://placehold.co/80x120/e2e8f0/94a3b8?text=—';
+    row.innerHTML=`<img src="${p}" alt=""><div class="flex flex-col"><div class="font-medium leading-tight">${hit.Title||'—'}</div><div class="text-xs text-slate-600">${hit.Year||''} · ${hit.Type}</div></div>`;
+    row.addEventListener('click',()=>openAddModal(hit));
+    ul.appendChild(row);
+  });
+  sug.style.display='block';
+  placeSuggestOverlay();
+}
+
+let pendingHit=null;
+function openAddModal(hit){
+  pendingHit = hit;
+  // stop incoming results & hide list
+  if(omdbAbort){ try{ omdbAbort.abort(); }catch(e){} }
+  omdbSeq++; // invalidate any late arrivals
+  hideSuggest();
+  const input=document.getElementById('add-search');
+  input.blur(); // voorkom nieuwe key events
+  const img=(hit.Poster && hit.Poster!=='N/A')?hit.Poster:'';
+  document.getElementById('add-preview').src = img ? poster(img,160,240) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
+  document.getElementById('add-title').textContent = hit.Title || '—';
+  document.getElementById('add-sub').textContent = `${hit.Year||''} · ${hit.Type||''}`;
+  document.getElementById('confirm-type').value = document.getElementById('add-type').value || 'film';
+  document.getElementById('confirm-stream').value = document.getElementById('add-stream').value || '';
+  document.getElementById('add-backdrop').style.display='block';
+  document.getElementById('add-modal').style.display='flex';
+}
+function closeAddModal(){
+  document.getElementById('add-backdrop').style.display='none';
+  document.getElementById('add-modal').style.display='none';
+  hideSuggest(); // extra safety
+}
+async function confirmAddSelection(){
+  if(!pendingHit) return;
+  const typeSel=document.getElementById('confirm-type').value;
+  const streamSel=document.getElementById('confirm-stream').value;
+  await addFromOmdbWithChoices(pendingHit, typeSel, streamSel);
+  pendingHit=null;
+  closeAddModal();
+  const input=document.getElementById('add-search');
+  input.value='';
+}
+
+// Random modal
+function showRandom(item){
+  const bd=document.getElementById('random-backdrop');
+  const md=document.getElementById('random-modal');
+  document.getElementById('rnd-title').textContent=item.title||'—';
+  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
+  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
+  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
+  const close=()=>{bd.style.display='none'; md.style.display='none'};
+  document.getElementById('rnd-ok').onclick=close;
+  bd.onclick=close;
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
+  bd.style.display='block'; md.style.display='flex';
+}
+
+// UI bindings
 function bindUI(){
   document.getElementById('btn-import-json').onclick=()=>app.importJSON();
   document.getElementById('btn-export-json').onclick=exportAll;
@@ -421,105 +512,6 @@ function exportAll(){
   a.download = 'mfs-backup.json';
   a.click();
   URL.revokeObjectURL(a.href);
-}
-
-function placeSuggestOverlay(){
-  const sug=document.getElementById('suggest');
-  if(sug.style.display!=='block') return;
-  const input=document.getElementById('add-search');
-  const r=input.getBoundingClientRect();
-  const top=r.bottom + window.scrollY + 8;
-  const left=r.left + window.scrollX;
-  const width=r.width;
-  sug.style.top = top+'px';
-  sug.style.left = left+'px';
-  sug.style.width = width+'px';
-}
-function hideSuggest(){document.getElementById('suggest').style.display='none'}
-function renderSuggest(list){
-  const sug=document.getElementById('suggest');
-  const ul=document.getElementById('suggest-list');
-  const empty=document.getElementById('suggest-empty');
-  ul.innerHTML='';
-  if(!list.length){ empty.classList.remove('hidden'); sug.style.display='block'; placeSuggestOverlay(); return; }
-  empty.classList.add('hidden');
-  list.forEach(hit=>{
-    const row=document.createElement('button'); row.type='button'; row.className='row w-full text-left';
-    const p=(hit.Poster && hit.Poster!=='N/A')?poster(hit.Poster,80,120):'https://placehold.co/80x120/e2e8f0/94a3b8?text=—';
-    row.innerHTML=`<img src="${p}" alt=""><div class="flex flex-col"><div class="font-medium leading-tight">${hit.Title||'—'}</div><div class="text-xs text-slate-600">${hit.Year||''} · ${hit.Type}</div></div>`;
-    row.addEventListener('click',()=>openAddModal(hit));
-    ul.appendChild(row);
-  });
-  sug.style.display='block';
-  placeSuggestOverlay();
-}
-
-const omdbSearch = debounce(async(q)=>{
-  if(!q || q.length<2){ hideSuggest(); return; }
-  try{
-    const typeSel=document.getElementById('add-type').value;
-    const omdbType=(typeSel==='film')?'movie':(typeSel==='serie')?'series':'';
-    const url=`https://www.omdbapi.com/?apikey=${OMDB_KEY}&s=${encodeURIComponent(q)}${omdbType?`&type=${omdbType}`:''}`;
-    const res=await fetch(url); const data=await res.json();
-    if(data && data.Search){ renderSuggest(data.Search.slice(0,40)); } else { renderSuggest([]); }
-  }catch(e){ console.error(e); renderSuggest([]); }
-},200);
-
-let pendingHit=null;
-function openAddModal(hit){
-  pendingHit = hit;
-  hideSuggest();
-  const img=(hit.Poster && hit.Poster!=='N/A')?hit.Poster:'';
-  document.getElementById('add-preview').src = img ? poster(img,160,240) : 'https://placehold.co/160x240/e2e8f0/94a3b8?text=—';
-  document.getElementById('add-title').textContent = hit.Title || '—';
-  document.getElementById('add-sub').textContent = `${hit.Year||''} · ${hit.Type||''}`;
-  document.getElementById('confirm-type').value = document.getElementById('add-type').value || 'film';
-  document.getElementById('confirm-stream').value = document.getElementById('add-stream').value || '';
-  document.getElementById('add-backdrop').style.display='block';
-  document.getElementById('add-modal').style.display='flex';
-}
-function closeAddModal(){
-  document.getElementById('add-backdrop').style.display='none';
-  document.getElementById('add-modal').style.display='none';
-}
-async function confirmAddSelection(){
-  if(!pendingHit) return;
-  const typeSel=document.getElementById('confirm-type').value;
-  const streamSel=document.getElementById('confirm-stream').value;
-  await addFromOmdbWithChoices(pendingHit, typeSel, streamSel);
-  pendingHit=null;
-  closeAddModal();
-  document.getElementById('add-search').value='';
-}
-
-async function addFromOmdbWithChoices(hit, typeSel, streamSel){
-  const map={movie:'film',series:'serie'};
-  const item={
-    id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-    title:hit.Title, type:typeSel || (map[hit.Type]||'film'),
-    createdAt:Date.now(),
-    imdbRating:'', year:hit.Year||'', runtime:'',
-    poster: (hit.Poster && hit.Poster!=='N/A')?hit.Poster:'',
-    streamingOn: normalizeStream(streamSel), ourScore:'', dateSeen:'',
-    imdbID:hit.imdbID||''
-  };
-  await dbPut(item);
-  setStatus(`Toegevoegd: ${item.title}`);
-  app.state.items=await dbGetAll(); app.render();
-}
-
-function showRandom(item){
-  const bd=document.getElementById('random-backdrop');
-  const md=document.getElementById('random-modal');
-  document.getElementById('rnd-title').textContent=item.title||'—';
-  document.getElementById('rnd-meta').textContent = `IMDb: ${item.imdbRating||'N/B'} · ${item.year||''}`;
-  document.getElementById('rnd-stream').textContent = normalizeStream(item.streamingOn)?`Beschikbaar op ${normalizeStream(item.streamingOn)}`:'';
-  document.getElementById('rnd-poster').src=(item.poster&&item.poster!=='N/A')?poster(item.poster,240,360):PLACEHOLDER;
-  const close=()=>{bd.style.display='none'; md.style.display='none'};
-  document.getElementById('rnd-ok').onclick=close;
-  bd.onclick=close;
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
-  bd.style.display='block'; md.style.display='flex';
 }
 
 app.importJSON=function(){
@@ -592,7 +584,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
       app.state.items = await dbGetAll();
       setStatus(`Herstel klaar (${total} items).`);
     }else{
-      setStatus(`v3.19b actief — ${app.state.items.length} items geladen`);
+      setStatus(`v3.19c actief — ${app.state.items.length} items geladen`);
     }
     app.render();
   }catch(e){
