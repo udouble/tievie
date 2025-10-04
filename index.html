@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS — v3.20 (IMDb overlay)</title>
+  <title>MFS — v3.21 (Bekeken-modal)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -208,6 +208,31 @@
   </div>
 </div>
 
+<!-- Bekeken prompt modal -->
+<div id="bk-backdrop" class="backdrop"></div>
+<div id="bk-modal" class="modal">
+  <div class="bg-white rounded-2xl shadow-2xl w-[92vw] max-w-md overflow-hidden">
+    <div class="p-3 border-b border-slate-200">
+      <h3 class="text-lg font-semibold">Markeer als bekeken</h3>
+      <p class="text-sm text-slate-600 mt-1">Geef je score en datum.</p>
+    </div>
+    <div class="p-3 space-y-3">
+      <div>
+        <label class="block text-xs text-slate-600 mb-1">Onze score</label>
+        <input id="bk-score" type="text" placeholder="bv. 8,6" class="w-full px-3 py-2 rounded-lg bg-white/90 border border-slate-200">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-600 mb-1">Datum</label>
+        <input id="bk-date" type="date" class="w-full px-3 py-2 rounded-lg bg-white/90 border border-slate-200">
+      </div>
+    </div>
+    <div class="p-3 flex justify-end gap-2">
+      <button id="bk-cancel" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700">Annuleer</button>
+      <button id="bk-confirm" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Random popover -->
 <div id="random-backdrop" class="backdrop"></div>
 <div id="random-modal" class="modal">
@@ -226,7 +251,7 @@
   </div>
 </div>
 
-<div id="status">v3.20 geladen…</div>
+<div id="status">v3.21 geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -326,6 +351,33 @@ function streamingOptionsHTML(sel){
   return opts.map(o=>`<option value="${o}" ${sel===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
 }
 
+function todayISO(){ const d=new Date(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${d.getFullYear()}-${m}-${da}`; }
+
+let BK_TARGET=null;
+function openBekekenPrompt(item){
+  BK_TARGET = item;
+  const bd=document.getElementById('bk-backdrop');
+  const md=document.getElementById('bk-modal');
+  const score=document.getElementById('bk-score');
+  const date=document.getElementById('bk-date');
+  score.value = (item.ourScore && String(item.ourScore).toLowerCase()!=='nan') ? item.ourScore : '';
+  date.value = item.dateSeen || todayISO();
+  const close=()=>{bd.style.display='none'; md.style.display='none'; BK_TARGET=null;}
+  document.getElementById('bk-cancel').onclick=close;
+  bd.onclick=close;
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, {once:true});
+  document.getElementById('bk-confirm').onclick=async()=>{
+    const s=score.value.trim();
+    const d=date.value;
+    const upd={...BK_TARGET, type:'bekeken', ourScore: s, dateSeen: d};
+    await dbPut(upd);
+    app.state.items = await dbGetAll();
+    app.render();
+    close();
+  };
+  bd.style.display='block'; md.style.display='flex';
+}
+
 app.card=function(item,idx){
   const el=document.createElement('div');el.className='glass-card rounded-xl flex flex-col overflow-hidden shadow-lg text-slate-800';
   const tagMap={film:{c:'bg-sky-200/80 text-sky-900',t:'Film'},serie:{c:'bg-amber-200/80 text-amber-900',t:'Serie'},'herman-film':{c:'bg-purple-200/80 text-purple-900',t:'H-Film'},'herman-serie':{c:'bg-pink-200/80 text-pink-900',t:'H-Serie'},'aan-het-kijken':{c:'bg-blue-200/80 text-blue-900',t:'Aan het kijken'},bekeken:{c:'bg-green-200/80 text-green-900',t:'Bekeken'}};
@@ -342,11 +394,14 @@ app.card=function(item,idx){
   <div class="p-3 flex flex-col flex-grow w-1/2">
     <div class="mb-2 flex justify-between items-center">
       <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tag.c}">${tag.t}</span>
-      <button title="Verwijderen" data-id="${item.id}" class="btn-delete bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
-        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <div class="flex items-center gap-1">
+        <button title="Markeer als bekeken" class="btn-mark-bekeken bg-white/60 hover:bg-emerald-600 hover:text-white text-emerald-700 w-7 h-7 flex items-center justify-center rounded-full transition-all">✓</button>
+        <button title="Verwijderen" data-id="${item.id}" class="btn-delete bg-white/50 text-slate-600 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition-all">
+          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
     <h3 class="font-bold text-base leading-tight mb-2">${item.title}</h3>
     <div class="text-sm text-slate-700 space-y-0.5 mb-2">
@@ -389,9 +444,44 @@ app.card=function(item,idx){
     if(!id){ alert('Geen IMDb ID'); return; }
     openImdbOverlay(id);
   });
+  el.querySelector('.btn-mark-bekeken').addEventListener('click', ()=> openBekekenPrompt(item));
+  // Intercept category change → if user picks 'bekeken', open prompt instead of immediate switch
+  el.querySelector('.category-select').addEventListener('change', async (e)=>{
+    const sel = e.currentTarget.value;
+    if(sel==='bekeken' && item.type!=='bekeken'){
+      // revert UI select instantly to previous until confirmed
+      e.currentTarget.value = item.type;
+      openBekekenPrompt(item);
+    }else{
+      // normal update
+      const upd={...item, type: sel};
+      await dbPut(upd);
+      app.state.items = await dbGetAll();
+      app.render();
+    }
+  });
+
+  // streaming change
+  el.querySelector('.streaming-service-select').addEventListener('change', async (e)=>{
+    const upd={...item, streamingOn: e.currentTarget.value};
+    await dbPut(upd);
+    app.state.items = await dbGetAll();
+    app.render();
+  });
+
+  // our score inline edit
+  el.querySelector('.our-score-input').addEventListener('change', async (e)=>{
+    const v = e.currentTarget.value;
+    const upd={...item, ourScore: v};
+    await dbPut(upd);
+  });
 
   return el;
 }
+
+// Suggest overlay helpers + OMDb + add flow + IMDb overlay identical to v3.20 (omitted for brevity below)
+
+// --- (For brevity in this environment, keeping same functions from v3.20 for search overlay + imdb overlay) ---
 
 // Suggest overlay helpers
 function hideSuggest(){
