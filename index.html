@@ -1,41 +1,33 @@
-
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <meta name="theme-color" content="#0ea5e9"/>
-  <title>MFS v3.25 — sync sharedata</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="manifest" href="./manifest.json">
-  <style>
-    body{background:#0b1020; color:#e5e7eb}
-    .glass-card{background:rgba(255,255,255,.75); color:#0f172a; backdrop-filter:saturate(150%) blur(12px)}
-    #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#03111a;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
-    .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
-    .online {background:#22c55e;color:#052e16}
-    .offline {background:#ef4444;color:#7f1d1d}
-    #suggest{position:fixed;display:none;z-index:100000}
-    #suggest .card{max-height:360px;overflow:auto}
-    #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
-    #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
-    #suggest .row:hover{background:rgba(2,6,23,.06)}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0ea5e9"/>
+<title>MFS v3.25b — sync seed + Films default</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="manifest" href="./manifest.json">
+<style>
+  body{background:#0b1020;color:#e5e7eb}
+  .glass{background:rgba(255,255,255,.78);color:#0f172a;backdrop-filter:saturate(150%) blur(12px)}
+  #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#03111a;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
+  .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
+  .online {background:#22c55e;color:#052e16}
+  .offline {background:#ef4444;color:#7f1d1d}
+</style>
 </head>
 <body>
-<div class="max-w-7xl mx-auto p-4 pb-28">
+<div class="max-w-7xl mx-auto p-4">
   <header class="mb-4">
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center justify-between gap-3 mb-3">
       <h1 class="text-2xl font-bold">Mijn Films en Series <span id="netBadge" class="badge">…</span></h1>
       <div class="flex gap-2 items-center">
-        <input id="file-import-json" type="file" accept="application/json" class="hidden"/>
-        <button id="btn-import-json" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm">Importeer JSON</button>
-        <button id="btn-export-json" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm">Exporteer alles</button>
-        <button id="btn-fetch-posters" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow text-sm">Posters ophalen</button>
+        <input id="file-import" type="file" accept="application/json" class="hidden"/>
+        <button id="btn-import" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm">Importeer JSON</button>
+        <button id="btn-export" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm">Exporteer alles</button>
       </div>
     </div>
-
-    <div class="glass-card rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+    <div class="glass rounded-xl p-3 mb-3 flex flex-wrap items-center gap-2">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm">
         <option value="created_desc" selected>Nummer (recent → oud)</option>
@@ -63,12 +55,9 @@
       </select>
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
-
-    <div class="glass-card rounded-xl p-3 shadow mb-3">
+    <div class="glass rounded-xl p-3 mb-3">
       <div class="flex flex-wrap items-center gap-2">
-        <div class="relative grow min-w-[240px]">
-          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-        </div>
+        <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="flex-1 min-w-[240px] px-3 py-2 rounded-lg bg-white/90 shadow">
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="film" selected>Film</option>
           <option value="serie">Serie</option>
@@ -88,14 +77,12 @@
           <option>NPO</option>
           <option>Disney+</option>
         </select>
-        <button id="btn-add-item" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
       </div>
     </div>
-  </header>
 
-  <section class="mb-3">
-    <div id="filterControls" class="flex flex-wrap items-center gap-2">
-      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="film">Films</button>
+    <div class="mb-3 flex flex-wrap items-center gap-2" id="filterControls">
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-sky-500 text-white" data-filter="film">Films</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="serie">Series</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="herman-film">H-Films</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white" data-filter="herman-serie">H-Series</button>
@@ -105,32 +92,22 @@
       <div class="flex-1"></div>
       <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56"/>
     </div>
-  </section>
+  </header>
 
   <main>
     <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-    <p id="emptyState" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
+    <p id="empty" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
   </main>
 </div>
 
-<!-- Suggest overlay -->
-<div id="suggest">
-  <div class="card bg-white rounded-xl shadow-2xl border border-slate-200">
-    <div id="suggest-list" class="p-2"></div>
-    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
-  </div>
-</div>
-
-<div id="status">v3.25 — sync sharedata geladen…</div>
+<div id="status">v3.25b — sync geladen…</div>
 
 <script>
-const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
-const DB_NAME='mfs-db', DB_VERSION=1, STORE='items';
-const OMDB_KEY='8a70a767';
-let IS_ONLINE = navigator.onLine;
-const netBadge = document.getElementById('netBadge');
-function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline');}
-async function pingOnline(){try{const r=await fetch('./manifest.json?ping='+Date.now(),{cache:'no-store'});IS_ONLINE=r.ok;}catch(e){IS_ONLINE=false;}setNetBadge();}
+const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
+const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
+let IS_ONLINE=navigator.onLine;const netBadge=document.getElementById('netBadge');
+function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline')}
+async function pingOnline(){try{const r=await fetch('./manifest.json?ping='+Date.now(),{cache:'no-store'});IS_ONLINE=r.ok}catch(e){IS_ONLINE=false}setNetBadge()}
 window.addEventListener('online',()=>{IS_ONLINE=true;setNetBadge()});window.addEventListener('offline',()=>{IS_ONLINE=false;setNetBadge()});setInterval(pingOnline,5000);pingOnline();
 
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
@@ -140,186 +117,70 @@ async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{
 async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
-const app={state:{items:[],filter:'all',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
-app.render=function(){
-  const list=document.getElementById('list');
-  const empty=document.getElementById('emptyState');
-  const items=app.filtered();
-  document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
-    const a = btn.dataset.filter === app.state.filter;
-    btn.classList.toggle('bg-sky-500', a);
-    btn.classList.toggle('text-white', a);
-    btn.classList.toggle('bg-white/30', !a);
-  });
-  list.innerHTML='';
-  if(items.length===0){ empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
-  items.forEach((it,idx)=>{
-    const div=document.createElement('div');div.className='glass-card rounded-xl overflow-hidden shadow';
-    const poster=(it.poster&&it.poster!=='N/A')?it.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
-    const tagMap={film:['bg-sky-200/80 text-sky-900','Film'],serie:['bg-amber-200/80 text-amber-900','Serie'],'herman-film':['bg-purple-200/80 text-purple-900','H-Film'],'herman-serie':['bg-pink-200/80 text-pink-900','H-Serie'],'aan-het-kijken':['bg-blue-200/80 text-blue-900','Aan het kijken'],bekeken:['bg-green-200/80 text-green-900','Bekeken']};
-    const tag=tagMap[it.type]||['bg-slate-200/80 text-slate-900',it.type];
-    div.innerHTML = \`
-      <div class="flex">
-        <div class="w-1/2 flex-shrink-0 relative">
-          <div class="aspect-[2/3] w-full"><img src="\${poster}" class="w-full h-full object-cover" alt=""></div>
-          <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">\${idx+1}</div>
-        </div>
-        <div class="p-3 flex flex-col flex-grow w-1/2">
-          <div class="mb-2 flex justify-between items-center">
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full \${tag[0]}">\${tag[1]}</span>
-            <button title="Verwijderen" class="btn-del bg-white/60 hover:bg-red-500 hover:text-white text-slate-700 w-7 h-7 flex items-center justify-center rounded-full transition">
-              <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-          <h3 class="font-bold text-base leading-tight mb-2">\${it.title||'—'}</h3>
-          <div class="text-sm text-slate-700 space-y-0.5 mb-2">
-            <p><strong>IMDB:</strong> \${it.imdbRating||'N/B'}</p>
-            <p><strong>Jaar:</strong> \${it.year||'N/B'}</p>
-            <p><strong>Duur:</strong> \${it.runtime||'N/B'}</p>
-          </div>
-          <div class="flex flex-col gap-2 mt-1">
-            <input type="text" value="\${it.ourScore||''}" class="our-score w-full p-1.5 border border-slate-300/50 rounded-md text-xs" placeholder="Nog geen score">
-            <button class="btn-imdb w-full bg-yellow-400/80 text-yellow-900 hover:bg-yellow-400 font-semibold py-1.5 px-2 rounded-md text-xs" data-imdbid="\${it.imdbID||''}">IMDb-info</button>
-          </div>
-        </div>
-      </div>\`;
-    // events
-    div.querySelector('.btn-del').onclick=async()=>{await dbDel(it.id); app.state.items=await dbGetAll(); app.render(); syncPush();};
-    div.querySelector('.our-score').onchange=async(e)=>{it.ourScore=e.target.value; await dbPut(it); syncPushDebounced();};
-    div.querySelector('.btn-imdb').onclick=()=>openImdb(it.imdbID);
-    list.appendChild(div);
-  });
-};
+function normStream(raw){const s=(raw||'').toLowerCase();if(!s)return'';if(s.startsWith('appl'))return'Apple TV+';if(s.startsWith('netf'))return'Netflix';if(s.startsWith('vrt'))return'VRT MAX';if(s.startsWith('vtm'))return'VTM Go';if(s.startsWith('prim'))return'Prime Video';if(s.includes('play'))return'Go Play';if(s.startsWith('np'))return'NPO';if(s.startsWith('strea'))return'Streamz';if(s.startsWith('disn'))return'Disney+';return''}
 
-app.filtered=function(){
-  let a=app.state.items.slice();
-  if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
-  const term=(app.state.searchTerm||'').toLowerCase();
-  if(term){ a=a.filter(i=>(i.title||'').toLowerCase().includes(term)); }
-  const by=app.state.sortBy;
-  function parseScore(s){ if(s==null) return NaN; let t=String(s).replace(',','.'); const v=parseFloat(t); return isNaN(v)?NaN:v; }
-  function parseImdb(v){ const f=parseFloat(String(v)); return isNaN(f)?NaN:f; }
-  if(by==='imdb_desc'){ a.sort((x,y)=>(parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
-  else if(by==='imdb_asc'){ a.sort((x,y)=>(parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
-  else if(by==='score_desc'){ a.sort((x,y)=>(parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
-  else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
-  else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
-  else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
-  else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
-  return a;
-};
+app.render=function(){const list=document.getElementById('list');const empty=document.getElementById('empty');const items=app.filtered();
+ document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{const a=btn.dataset.filter===app.state.filter;btn.classList.toggle('bg-sky-500',a);btn.classList.toggle('text-white',a);btn.classList.toggle('bg-white/30',!a)});
+ list.innerHTML=''; if(items.length===0){empty.classList.remove('hidden');return} empty.classList.add('hidden');
+ items.forEach((it,idx)=>{const d=document.createElement('div');d.className='glass rounded-xl overflow-hidden shadow';
+  const poster=(it.poster&&it.poster!=='N/A')?it.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+  d.innerHTML=`<div class="flex">
+    <div class="w-1/2 flex-shrink-0"><div class="aspect-[2/3] w-full"><img src="${poster}" class="w-full h-full object-cover"></div></div>
+    <div class="p-3 w-1/2">
+      <h3 class="font-bold text-base leading-tight mb-1">${it.title||'—'}</h3>
+      <div class="text-sm text-slate-700 space-y-0.5 mb-2">
+        <p><strong>IMDB:</strong> ${it.imdbRating||'N/B'}</p>
+        <p><strong>Jaar:</strong> ${it.year||'N/B'}</p>
+      </div>
+      <button class="btn-del bg-white/60 hover:bg-red-500 hover:text-white text-slate-700 w-7 h-7 flex items-center justify-center rounded-full transition" title="Verwijderen">
+        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div></div>`;
+  d.querySelector('.btn-del').onclick=async()=>{await dbDel(it.id);app.state.items=await dbGetAll();app.render();syncPushDebounced();};
+  list.appendChild(d);
+ })};
 
-function openImdb(id){ if(!id){alert('Geen IMDb ID'); return;} window.open('https://www.imdb.com/title/'+encodeURIComponent(id)+'/','_blank'); }
+app.filtered=function(){let a=app.state.items.slice(); if(app.state.filter!=='all')a=a.filter(i=>i.type===app.state.filter);
+ const fs=app.state.filterStreaming;if(fs==='__UNKNOWN__'){a=a.filter(i=>!normStream(i.streamingOn));}else if(fs){a=a.filter(i=>normStream(i.streamingOn)===fs);}
+ const term=(app.state.searchTerm||'').toLowerCase(); if(term){a=a.filter(i=>(i.title||'').toLowerCase().includes(term));}
+ const by=app.state.sortBy; function pS(s){if(s==null)return NaN;let t=String(s).replace(',','.');const v=parseFloat(t);return isNaN(v)?NaN:v} function pI(v){const f=parseFloat(String(v));return isNaN(f)?NaN:f}
+ if(by==='imdb_desc'){a.sort((x,y)=>(pI(y.imdbRating)||-1)-(pI(x.imdbRating)||-1));}
+ else if(by==='imdb_asc'){a.sort((x,y)=>(pI(x.imdbRating)||-1)-(pI(y.imdbRating)||-1));}
+ else if(by==='score_desc'){a.sort((x,y)=>(pS(y.ourScore)||-1)-(pS(x.ourScore)||-1));}
+ else if(by==='score_asc'){a.sort((x,y)=>(pS(x.ourScore)||-1)-(pS(y.ourScore)||-1));}
+ else if(by==='title_asc'){a.sort((x,y)=>(x.title||'').localeCompare(y.title||''));}
+ else if(by==='title_desc'){a.sort((x,y)=>(y.title||'').localeCompare(x.title||''));}
+ else if(by==='created_asc'){a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0));}
+ else {a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));}
+ return a;};
 
-// UI binds
 function bindUI(){
-  const file=document.getElementById('file-import-json');
-  document.getElementById('btn-import-json').onclick=()=>{file.value='';file.click();};
-  file.onchange=()=>{const f=file.files&&file.files[0]; if(f) importJson(f);};
-  document.getElementById('btn-export-json').onclick=exportJson;
-  document.getElementById('filterControls').addEventListener('click',e=>{const b=e.target.closest('.filter-btn'); if(!b) return; app.state.filter=b.dataset.filter; app.render();});
-  document.getElementById('sortBy').onchange=(e)=>{app.state.sortBy=e.target.value; app.render();};
-  document.getElementById('search').oninput=(e)=>{app.state.searchTerm=e.target.value.trim(); app.render();};
-}
-async function exportJson(){
-  const data=JSON.stringify({items:app.state.items},null,2);
-  const blob=new Blob([data],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mfs-backup.json'; a.click(); URL.revokeObjectURL(a.href);
-}
-async function importJson(file){
-  const text=await file.text(); const data=JSON.parse(text); const arr=Array.isArray(data)?data:(data.items||[]);
-  const existing=await dbGetAll(); let out=[]; const now=Date.now();
-  arr.forEach(raw=>{
-    const ex = existing.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
-    out.push({
-      id: ex?.id || raw.id || ('id-'+now+'-'+Math.random().toString(36).slice(2,7)),
-      title: raw.title || ex?.title || 'Onbekend',
-      type: raw.type || ex?.type || 'film',
-      createdAt: ex?.createdAt || raw.createdAt || now,
-      imdbRating: raw.imdbRating || ex?.imdbRating || '',
-      year: raw.year || ex?.year || '',
-      runtime: raw.runtime || ex?.runtime || '',
-      poster: raw.poster && raw.poster!=='N/A' ? raw.poster : (ex?.poster||''),
-      streamingOn: raw.streamingOn || ex?.streamingOn || '',
-      ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? (ex?.ourScore||'') : String(raw.ourScore),
-      dateSeen: raw.dateSeen || ex?.dateSeen || '',
-      imdbID: raw.imdbID || raw.imdbId || ex?.imdbID || ''
-    });
-  });
-  await dbBulkPut(out);
-  app.state.items = await dbGetAll(); app.render();
-  setStatus('Import klaar.');
-  syncPush(); // push naar SW
+  const f=document.getElementById('file-import');
+  document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
+  f.onchange=()=>{const file=f.files&&f.files[0];if(file)importJson(file)};
+  document.getElementById('btn-export').onclick=exportJson;
+  document.getElementById('filterControls').addEventListener('click',e=>{const b=e.target.closest('.filter-btn');if(!b)return;app.state.filter=b.dataset.filter;app.render()});
+  document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
+  document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
 }
 
-/* ======= Sync met Service Worker (gedeelde dataset) ======= */
-let syncTimer=null;
-function syncPushDebounced(){ clearTimeout(syncTimer); syncTimer=setTimeout(syncPush, 800); }
-async function syncPush(){
-  try{
-    if(!('serviceWorker' in navigator)) return;
-    const reg = await navigator.serviceWorker.ready;
-    const items = await dbGetAll();
-    reg.active && reg.active.postMessage({type:'MFS_SYNC_WRITE', payload:{items, ts: Date.now()}});
-  }catch(e){ console.warn('sync push fail', e); }
-}
-async function syncPull(){
-  try{
-    const res = await fetch('./__mfs_sync__.json?ts='+Date.now(), {cache:'no-store'});
-    if(!res.ok) return;
-    const data = await res.json();
-    if(!data || !Array.isArray(data.items)) return;
-    // merge
-    const current = await dbGetAll();
-    const merged = [...current];
-    data.items.forEach(raw=>{
-      const ex = merged.find(x=> (x.imdbID && x.imdbID===raw.imdbID) || (x.title===raw.title && x.type===raw.type));
-      if(ex){
-        // prefer newer createdAt / keep existing id
-        const newer = (raw.updatedAt||raw.createdAt||0) > (ex.updatedAt||ex.createdAt||0);
-        if(newer){
-          const keepId = ex.id;
-          merged.splice(merged.indexOf(ex),1,{...raw, id: keepId});
-        }
-      }else{
-        merged.push(raw);
-      }
-    });
-    await dbBulkPut(merged);
-    app.state.items = await dbGetAll();
-    app.render();
-  }catch(e){ console.warn('sync pull fail', e); }
-}
+async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
 
-// Listen to SW pull request
-navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', async (ev)=>{
-  const msg = ev.data || {};
-  if(msg.type==='MFS_SYNC_PING'){ syncPush(); }
-});
+async function importJson(file){const text=await file.text();const data=JSON.parse(text);const arr=Array.isArray(data)?data:(data.items||[]);const existing=await dbGetAll();const out=[];const now=Date.now();
+ arr.forEach(raw=>{const ex=existing.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));
+  out.push({id:ex?.id||raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||ex?.title||'Onbekend',type:raw.type||ex?.type||'film',createdAt:ex?.createdAt||raw.createdAt||now,imdbRating:raw.imdbRating||ex?.imdbRating||'',year:raw.year||ex?.year||'',runtime:raw.runtime||ex?.runtime||'',poster:(raw.poster&&raw.poster!=='N/A')?raw.poster:(ex?.poster||''),streamingOn:raw.streamingOn||ex?.streamingOn||'',ourScore:(raw.ourScore==null||String(raw.ourScore).toLowerCase()==='nan')?(ex?.ourScore||''):String(raw.ourScore),dateSeen:raw.dateSeen||ex?.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||ex?.imdbID||''});});
+ await dbBulkPut(out); app.state.items=await dbGetAll(); app.render(); setStatus('Import klaar.'); syncPush();}
 
-document.addEventListener('DOMContentLoaded', async ()=>{
-  bindUI();
-  try{
-    await syncPull(); // haal gedeelde dataset binnen als die er is
-    app.state.items = await dbGetAll();
-    app.render();
-    setStatus('v3.25 — sync actief • '+app.state.items.length+' items');
-  }catch(e){ console.error(e); setStatus('Kon lokale data niet laden.'); }
-});
+let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
+async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
+async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
+navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
-// SW registratie
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js?ver=20251004-sync').then(()=>{
-      navigator.serviceWorker.ready.then(reg=>{
-        if(reg.active) reg.active.postMessage({type:'MFS_SYNC_PING'});
-      });
-    });
-  });
-}
+document.addEventListener('DOMContentLoaded',async()=>{bindUI();try{await syncPull();app.state.items=await dbGetAll();app.render();setStatus('v3.25b — sync actief • '+app.state.items.length+' items');await syncPush();}catch(e){console.error(e);setStatus('Kon lokale data niet laden.')}});
+
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?ver=20251004-seed').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
 </script>
 </body>
 </html>
