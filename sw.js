@@ -1,20 +1,21 @@
-// tievie Service Worker — offline caching for GitHub Pages submap
-const CACHE_NAME = 'tievie-cache-v1-2025-10-04';
-const BASE = self.registration.scope; // e.g., https://udouble.github.io/tievie/
-
+// tievie Service Worker — v3.24d
+const CACHE = 'tievie-v3.24d-2025-10-04';
 const CORE = [
-  '', 'index.html', 'manifest.json',
-  'icons/icon-192.png', 'icons/icon-512.png'
-].map(p => new URL(p, BASE).toString());
+  './',
+  './index.html',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
+];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE)));
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
   );
   self.clients.claim();
 });
@@ -22,35 +23,44 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  const baseURL = new URL(BASE);
 
+  // Never intercept file input / blob / POST
+  if (req.method !== 'GET') return;
+
+  // App shell: serve cached index for navigations (offline-ready SPA)
   if (req.mode === 'navigate') {
     event.respondWith(
-      caches.match(new URL('index.html', BASE).toString()).then(cached => cached || fetch(req))
+      caches.match('./index.html').then(hit => hit || fetch(req).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put('./index.html', clone));
+        return res;
+      }))
     );
     return;
   }
 
-  if (url.origin === baseURL.origin && url.href.startsWith(BASE)) {
+  // Same-origin: stale-while-revalidate
+  if (url.origin === location.origin) {
     event.respondWith(
       caches.match(req).then(hit => {
-        if (hit) return hit;
-        return fetch(req).then(resp => {
-          const clone = resp.clone();
-          caches.open(CACHE_NAME).then(c => c.put(req, clone));
-          return resp;
-        }).catch(() => caches.match(new URL('index.html', BASE).toString()));
+        const net = fetch(req).then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone));
+          return res;
+        }).catch(() => hit || caches.match('./index.html'));
+        return hit || net;
       })
     );
     return;
   }
 
-  if (/wsrv\.nl|omdbapi\.com/.test(url.host)) {
+  // External (OMDb, wsrv): network with cache fallback
+  if (/omdbapi\.com|wsrv\.nl/.test(url.hostname)) {
     event.respondWith(
-      fetch(req).then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, clone));
-        return resp;
+      fetch(req).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(req, clone));
+        return res;
       }).catch(() => caches.match(req))
     );
   }

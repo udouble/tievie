@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f172a"/>
-  <title>MFS v3.24c — full (no SW)</title>
+  <title>MFS v3.24d — OFFLINE</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="./manifest.json">
   <style>
@@ -261,7 +261,7 @@
   </div>
 </div>
 
-<div id="status">v3.24c geladen…</div>
+<div id="status">v3.24d (OFFLINE) geladen…</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl){statusEl.textContent=t}console.log('[STATUS]',t)}
@@ -584,7 +584,7 @@ document.getElementById('add-close').onclick=closeAddModal;
 document.getElementById('add-cancel').onclick=closeAddModal;
 document.getElementById('add-confirm').onclick=confirmAddSelection;
 
-// Export/import/posters/random
+// Export/import
 function exportAll(){
   const data = JSON.stringify({ items: app.state.items }, null, 2);
   const blob = new Blob([data], {type:'application/json'});
@@ -594,7 +594,6 @@ function exportAll(){
   a.click();
   URL.revokeObjectURL(a.href);
 }
-
 async function importFromPicker(file){
   const text = await file.text();
   const data = JSON.parse(text);
@@ -623,10 +622,8 @@ async function importFromPicker(file){
   app.state.items = await dbGetAll(); app.render();
   alert(`Import klaar. Nieuw: ${ins} · Bijgewerkt: ${upd}`);
 }
-
 function bindUI(){
   const __fileInp=document.getElementById('file-import-json');
-  // hard-bind change so iOS/Mac always trigger
   __fileInp.addEventListener('change', ()=>{
     const f = __fileInp.files && __fileInp.files[0];
     if(!f) return;
@@ -634,7 +631,7 @@ function bindUI(){
   });
   document.getElementById('btn-import-json').onclick=()=>{ __fileInp.value=''; __fileInp.click(); };
   document.getElementById('btn-export-json').onclick=exportAll;
-  document.getElementById('btn-fetch-posters').onclick=()=>alert('Gebruik voorlopig IMDb-info of importeer verrijkte JSON; posters ophalen blijft beschikbaar in eerdere build.');
+  document.getElementById('btn-fetch-posters').onclick=()=>alert('Posters ophalen werkt online; offline gebruikt de app de laatst bekende posters.');
 
   const sortBy=document.getElementById('sortBy');
   const filterStreaming=document.getElementById('filterStreaming');
@@ -650,7 +647,6 @@ function bindUI(){
     search.addEventListener(evt,(e)=>{app.state.searchTerm=e.target.value.trim();app.render()});
   });
 
-  // Suggest search (always both films/series)
   const addSearch=document.getElementById('add-search');
   ['input','keyup','change','search','paste','cut'].forEach(evt=>{
     addSearch.addEventListener(evt,(e)=>{ omdbSearch(e.target.value.trim()); });
@@ -666,23 +662,26 @@ function bindUI(){
     const pool = app.filtered().filter(i=> i.type==='film' || i.type==='serie');
     if(!pool.length){ alert('Geen films/series in deze selectie.'); return; }
     const x = pool[Math.floor(Math.random()*pool.length)];
-    // simple reveal
     alert(`${x.title} (${x.year||'—'})`);
   });
 }
-
 document.addEventListener('DOMContentLoaded',async()=>{
   bindUI();
   try{
     app.state.items = await dbGetAll();
     app.render();
-    setStatus(`v3.24c actief — ${app.state.items.length} items geladen`);
+    setStatus(`v3.24d (OFFLINE) actief — ${app.state.items.length} items geladen`);
   }catch(e){
     console.error(e); setStatus('Kon lokale data niet laden.');
   }
 });
 
-// NO service worker registration in this build.
+// Register the service worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js?ver=20251004d').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
