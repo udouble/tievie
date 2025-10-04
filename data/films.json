@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "title": "Demo Film",
+      "type": "film",
+      "imdbRating": "7.1",
+      "year": "2022",
+      "runtime": "100 min",
+      "poster": "",
+      "streamingOn": "Netflix",
+      "ourScore": "",
+      "imdbID": "tt0111161",
+      "createdAt": 1759594036887
+    }
+  ]
+}

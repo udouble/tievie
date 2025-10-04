@@ -1,31 +1,19 @@
-const CACHE='tievie-v3.25d-scopefix-2025-10-04';
-const CORE=['./','./index.html','./manifest.json','./icons/icon-192.png','./icons/icon-512.png'];
-const SYNC_URL='./__mfs_sync__.json'; // IMPORTANT: relative path works in GitHub Pages subpath
+const CACHE='tievie-v3.26-autoseed-2025-10-04';
+const CORE=['./','./index.html','./manifest.json','./icons/icon-192.png','./icons/icon-512.png','./data/films.json','./data/series.json','./data/herman-film.json','./data/herman-serie.json','./data/aanhetkijken.json','./data/bekeken.json'];
+const SYNC_URL='./__mfs_sync__.json';
 
-self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));
-  self.skipWaiting();
-});
-self.addEventListener('activate',e=>{
-  e.waitUntil((async()=>{
-    const ks=await caches.keys();
-    await Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
-    self.clients.claim();
-  })());
-});
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)));self.clients.claim();})())});
 
 self.addEventListener('message',async ev=>{
   const msg=ev.data||{};
-  if(msg.type==='MFS_SYNC_WRITE' && msg.payload){
+  if(msg.type==='MFS_SYNC_WRITE'&&msg.payload){
     const blob=new Blob([JSON.stringify(msg.payload)],{type:'application/json'});
     const cache=await caches.open(CACHE);
     const res=new Response(blob,{headers:{'Content-Type':'application/json'}});
     await cache.put(SYNC_URL,res);
     const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     for(const c of clients){ try{ c.postMessage({type:'MFS_SYNC_AVAILABLE',ts:Date.now()}); }catch(e){} }
-  }
-  if(msg.type==='MFS_SYNC_PING'){
-    // noop; used to wake the SW. Could reply to clients if needed.
   }
 });
 

@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "title": "Demo Serie",
+      "type": "serie",
+      "imdbRating": "8.0",
+      "year": "2023",
+      "runtime": "50 min",
+      "poster": "",
+      "streamingOn": "Apple TV+",
+      "ourScore": "",
+      "imdbID": "tt2395695",
+      "createdAt": 1759594036887
+    }
+  ]
+}
