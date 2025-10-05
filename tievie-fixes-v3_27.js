@@ -132,8 +132,6 @@
         close();
       };
     }
-
-    // IMDb meta refresh knop
     const bar = document.querySelector('header .mb-3 .flex.gap-2') || document.querySelector('header .flex.gap-2');
     if(bar && !document.getElementById('btn-refresh-meta')){
       const btn = document.createElement('button');
