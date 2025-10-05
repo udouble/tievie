@@ -1,0 +1,60 @@
+{
+  "items": [
+    {
+      "id": "id-1759594887311-0",
+      "title": "Ray Donovan",
+      "type": "herman-serie",
+      "createdAt": 1759594887311,
+      "imdbRating": 8.3,
+      "year": "2013",
+      "runtime": "",
+      "poster": "",
+      "streamingOn": "",
+      "ourScore": "",
+      "dateSeen": "",
+      "imdbID": ""
+    },
+    {
+      "id": "id-1759594887311-1",
+      "title": "The Handmaid's Tale",
+      "type": "herman-serie",
+      "createdAt": 1759594887311,
+      "imdbRating": 8.3,
+      "year": "2017",
+      "runtime": "",
+      "poster": "",
+      "streamingOn": "",
+      "ourScore": "",
+      "dateSeen": "",
+      "imdbID": ""
+    },
+    {
+      "id": "id-1759594887311-2",
+      "title": "Black Rabbit",
+      "type": "herman-serie",
+      "createdAt": 1759594887311,
+      "imdbRating": 7.3,
+      "year": "2025",
+      "runtime": "",
+      "poster": "",
+      "streamingOn": "",
+      "ourScore": "",
+      "dateSeen": "",
+      "imdbID": ""
+    },
+    {
+      "id": "id-1759594887311-3",
+      "title": "Slow Horses",
+      "type": "herman-serie",
+      "createdAt": 1759594887311,
+      "imdbRating": 8.3,
+      "year": "2022",
+      "runtime": "",
+      "poster": "",
+      "streamingOn": "",
+      "ourScore": "",
+      "dateSeen": "",
+      "imdbID": ""
+    }
+  ]
+}
