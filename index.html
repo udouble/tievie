@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>Tievie v3.26ec — autoseed + PWA + cache-touch</title>
+<title>Tievie v3.29ec — autoseed + PWA + cache-touch</title>
 <script src="https://cdn.tailwindcss.com">
 // === Cache touch (click or long-press on version badge) ===
 function attachResetGesture(){
@@ -178,7 +178,7 @@ function attachResetGesture(){
   </div>
 </div>
 
-<div id="status">v3.26e — stijl + Tievie (Safari/iPad)</div>
+<div id="status">v3.29e — stijl + Tievie (Safari/iPad)</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
@@ -477,12 +477,12 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
     app.render();
-    setStatus('v3.26 — autoseed actief • '+app.state.items.length+' items');
+    setStatus('v3.29 — autoseed actief • '+app.state.items.length+' items');
     await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
-if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?ver=20251004-autoseed').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.27').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
 
 // === Cache touch (click or long-press on version badge) ===
 function attachResetGesture(){
@@ -513,7 +513,7 @@ function attachResetGesture(){
 }
 
 </script>
-<script src="./tievie-fixes-v3_31.js"></script>
-<div data-version-pill class="fixed bottom-4 right-4 text-xs bg-sky-600 text-white px-2 py-1 rounded-full shadow">v3.31 — streaming overlay fix</div>
+<script src="./tievie-fixes-v3_32.js"></script>
+<div data-version-pill class="fixed bottom-4 right-4 text-xs bg-sky-600 text-white px-2 py-1 rounded-full shadow">v3.32 — streaming dropdown</div>
 </body>
 </html>
