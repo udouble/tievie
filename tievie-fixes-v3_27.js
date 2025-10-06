@@ -1,11 +1,13 @@
 
-/* === Tievie fixes (v3.27 -> upgraded body, multi-select streaming inline) ===
-   v3.31d logic: Streaming multi-select with checkboxes (inline dropdown next to “Sorteren”).
-   Safe drop-in: you may upload this as tievie-fixes-v3_27.js (no index.html edits needed).
+/* Tievie fixes (v3.27 overlay patch) — streaming multi-select as true overlay, single control
+   - Replaces ANY existing streaming <select> (old dropdown) by one overlay control
+   - Ensures z-index above all (999999)
+   - Stores selection in localStorage (tievie_stream_multi_v2)
+   - Filters items via app.filtered() wrapper, no other logic touched
 */
 (function(){
   const ORDER = ["Streamz","Netflix","Prime Video","Apple TV+","VRT MAX","Go Play","NPO","Disney+","Onbekend"];
-  const normalize = (s) => {
+  const NORMALIZE = (s) => {
     if(!s) return "";
     s = (""+s).trim().toLowerCase();
     if(s.startsWith("appl")) return "Apple TV+";
@@ -19,203 +21,177 @@
     if(s.startsWith("disn")) return "Disney+";
     return "";
   };
-  const toLabel = v => v || "Onbekend";
+  const LABEL = v => v || "Onbekend";
 
-  const css = `
-    .tv-stream-wrap{position:relative;display:inline-block;margin-left:.5rem}
-    .tv-stream-panel{
-      position:absolute; left:0; top:calc(100% + 6px);
-      min-width:280px; max-width:360px; max-height:300px;
-      overflow:auto;
-      background:#0b1020; color:#e5e7eb;
-      border:1px solid rgba(148,163,184,.25);
-      border-radius:12px; box-shadow:0 12px 36px rgba(0,0,0,.45);
-      padding:10px; z-index:10060; display:none;
-    }
-    .tv-stream-panel.show{display:block}
-    .tv-stream-panel h4{margin:.2rem 0 .5rem 0;font-size:.95rem}
-    .tv-stream-actions{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-    .tv-stream-actions button{
-      background:#111827; color:#e5e7eb; border:1px solid rgba(148,163,184,.25);
-      padding:.25rem .55rem; border-radius:8px; font-size:.85rem;
-    }
-    .tv-stream-list{display:grid; gap:6px}
-    .tv-stream-list label{
-      display:flex; align-items:center; gap:8px;
-      background:rgba(255,255,255,.04);
-      padding:.35rem .5rem; border-radius:8px;
-      border:1px solid rgba(255,255,255,.06);
-    }
-    .tv-chip{margin-left:8px; background:rgba(125,211,252,.12); border:1px solid rgba(125,211,252,.35);
-      color:#7dd3fc; border-radius:10px; padding:2px 8px; font-size:.8rem; display:none}
-    .tv-chip.show{display:inline-block}
-    .tv-row-end{display:flex; justify-content:flex-end; gap:8px; margin-top:8px}
-  `;
-  const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+  const STKEY = "tievie_stream_multi_v2";
 
-  function ensureState(){
-    window.app = window.app || {};
-    app.state = app.state || {};
-    try{
-      const raw = localStorage.getItem("tievie_stream_multi");
-      if(raw) app.state.streamSel = JSON.parse(raw);
-    }catch(e){}
-    if(!app.state.streamSel) app.state.streamSel = { mode:"include", selected:[] };
+  function getState(){
+    try{ return JSON.parse(localStorage.getItem(STKEY) || "{}"); }catch(e){}
+    return {};
   }
-  function saveState(){ try{ localStorage.setItem("tievie_stream_multi", JSON.stringify(app.state.streamSel)); }catch(e){} }
-
-  function patchFilter(){
-    if(typeof app.filtered === "function" && !app.__streamMultiPatched){
-      const orig = app.filtered.bind(app);
-      app.filtered = function(){
-        let arr = orig();
-        const sel = app.state.streamSel || {mode:"include", selected:[]};
-        const picked = sel.selected || [];
-        if(picked.length===0) return arr; // no filter
-        if(sel.mode==="exclude"){
-          return arr.filter(it => !picked.includes(toLabel(normalize(it.streamingOn))));
-        }else{
-          return arr.filter(it => picked.includes(toLabel(normalize(it.streamingOn))));
-        }
-      };
-      app.__streamMultiPatched = true;
-    }
+  function saveState(st){
+    try{ localStorage.setItem(STKEY, JSON.stringify(st || {})); }catch(e){}
   }
 
-  function findStreamingSelect(){
+  function ensureFilterPatch(){
+    if(typeof window.app!=="object") return;
+    if(app.__streamFilterPatched) return;
+    if(typeof app.filtered!=="function") return;
+
+    const orig = app.filtered.bind(app);
+    app.filtered = function(){
+      let arr = orig();
+      const st = getState();
+      const mode = st.mode || "include";
+      const sel = Array.isArray(st.selected)? st.selected : [];
+      if(sel.length===0) return arr;
+      if(mode==="exclude"){
+        return arr.filter(it => !sel.includes(LABEL(NORMALIZE(it.streamingOn))));
+      }else{
+        return arr.filter(it => sel.includes(LABEL(NORMALIZE(it.streamingOn))));
+      }
+    };
+    app.__streamFilterPatched = true;
+  }
+
+  function removeOldStreamingSelects(){
+    // Hide ANY existing “Streaming” <select> to prevent duplicates
     const selects = Array.from(document.querySelectorAll("select"));
-    for(const s of selects){
-      const txt = Array.from(s.options).map(o=>o.textContent.trim()).join("|").toLowerCase();
-      if(txt.includes("alle diensten") && txt.includes("netflix") && txt.includes("apple tv")) return s;
-    }
-    return null;
+    selects.forEach(s=>{
+      const txt = Array.from(s.options).map(o=>o.textContent.trim().toLowerCase()).join("|");
+      const looksLikeStreaming = txt.includes("alle diensten") && txt.includes("netflix") && txt.includes("apple tv");
+      if(looksLikeStreaming) s.style.display = "none";
+    });
   }
 
-  function buildInlineDropdown(anchor){
-    const parent = anchor?.parentElement;
-    if(!parent) return;
-
-    // Hide original select
-    anchor.style.display = "none";
-
-    const wrap = document.createElement("span");
-    wrap.className = "tv-stream-wrap";
+  function buildOverlayButton(){
+    // Find area near “Sorteren” row (first toolbar)
+    const toolbar = document.querySelector("select,button, input")?.closest("div");
+    if(!toolbar) return;
+    if(document.getElementById("tvStreamBtn")) return;
 
     const btn = document.createElement("button");
+    btn.id = "tvStreamBtn";
     btn.type = "button";
-    btn.className = "px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white shadow text-sm";
+    btn.className = "px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white shadow text-sm ml-2";
     btn.textContent = "Streaming ▾";
-    wrap.appendChild(btn);
+    toolbar.appendChild(btn);
 
-    const panel = document.createElement("div");
-    panel.className = "tv-stream-panel";
-    panel.innerHTML = `
-      <h4>Filter op streaming</h4>
-      <div class="tv-stream-actions">
-        <button type="button" data-act="all">Alles</button>
-        <button type="button" data-act="none">Geen</button>
-        <button type="button" data-act="invert">Omkeren</button>
-        <label style="display:flex;align-items:center;gap:8px;margin-left:auto">
-          <input type="checkbox" id="modeExclude"> Alles behalve
-        </label>
-      </div>
-      <div class="tv-stream-list" id="streamList"></div>
-      <div class="tv-row-end">
-        <button type="button" id="streamClose">Sluiten</button>
-        <button type="button" id="streamApply" style="background:#4f46e5;color:#fff;border:0;padding:.45rem .8rem;border-radius:10px">Toepassen</button>
+    const chip = document.createElement("span");
+    chip.id = "tvStreamChip";
+    chip.className = "ml-2 text-sky-300 text-sm italic";
+    toolbar.appendChild(chip);
+
+    btn.addEventListener("click", openOverlay);
+    renderChip();
+  }
+
+  function renderChip(){
+    const chip = document.getElementById("tvStreamChip");
+    if(!chip) return;
+    const st = getState();
+    const sel = Array.isArray(st.selected)? st.selected : [];
+    if(sel.length===0){ chip.textContent = ""; return; }
+    chip.textContent = (st.mode==="exclude" ? "Alles behalve: " : "Streaming: ") + sel.join(", ");
+  }
+
+  function openOverlay(){
+    if(document.getElementById("tvStreamModal")){ return; }
+    const st = getState();
+    const selected = new Set(Array.isArray(st.selected)? st.selected : []);
+
+    const wrap = document.createElement("div");
+    wrap.id = "tvStreamModal";
+    wrap.innerHTML = `
+      <div class="tv-modal-backdrop"></div>
+      <div class="tv-modal">
+        <div class="tv-modal-head">
+          <h3>Filter op streaming</h3>
+          <button type="button" id="tvClose" aria-label="Sluiten">×</button>
+        </div>
+        <div class="tv-modal-body">
+          <div class="tv-actions">
+            <button type="button" data-act="all">Alles</button>
+            <button type="button" data-act="none">Geen</button>
+            <button type="button" data-act="invert">Omkeren</button>
+            <label class="tv-ex">
+              <input type="checkbox" id="tvModeExclude"> Alles behalve
+            </label>
+          </div>
+          <div class="tv-grid" id="tvList"></div>
+        </div>
+        <div class="tv-modal-foot">
+          <button type="button" id="tvCancel">Annuleer</button>
+          <button type="button" id="tvApply" class="tv-apply">Toepassen</button>
+        </div>
       </div>
     `;
-    wrap.appendChild(panel);
+    document.body.appendChild(wrap);
 
-    if(anchor.nextSibling){
-      parent.insertBefore(wrap, anchor.nextSibling);
-    } else {
-      parent.appendChild(wrap);
+    const css = `
+    #tvStreamModal{position:fixed; inset:0; z-index:999999; display:flex; align-items:center; justify-content:center}
+    .tv-modal-backdrop{position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:saturate(120%) blur(2px)}
+    .tv-modal{
+      position:relative; width:min(560px, 92vw); max-height:82vh;
+      background:#0b1020; color:#e5e7eb; border:1px solid rgba(148,163,184,.25);
+      border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.6); overflow:hidden; display:flex; flex-direction:column;
     }
+    .tv-modal-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:linear-gradient(180deg,#111827,#0b1020)}
+    .tv-modal-head h3{margin:0; font-size:1rem}
+    .tv-modal-head button{background:transparent; border:0; color:#e5e7eb; font-size:1.25rem; line-height:1}
+    .tv-modal-body{padding:12px 16px; overflow:auto}
+    .tv-actions{display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+    .tv-actions button{background:#111827; color:#e5e7eb; border:1px solid rgba(148,163,184,.25); padding:.35rem .6rem; border-radius:10px; font-size:.9rem}
+    .tv-ex{margin-left:auto; display:flex; align-items:center; gap:8px; font-size:.9rem}
+    .tv-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+    .tv-grid label{display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:.45rem .6rem}
+    .tv-modal-foot{padding:12px 16px; display:flex; justify-content:flex-end; gap:10px; background:linear-gradient(180deg,#0b1020,#0a0f1a)}
+    .tv-modal-foot .tv-apply{background:#4f46e5; color:#fff; border:0; padding:.5rem .9rem; border-radius:10px}
+    `;
+    const stl = document.createElement("style"); stl.textContent = css; document.head.appendChild(stl);
 
-    let chip = document.getElementById("streamingChip");
-    if(!chip){
-      chip = document.createElement("span");
-      chip.id = "streamingChip";
-      chip.className = "tv-chip";
-      wrap.appendChild(chip);
-    }
+    const list = wrap.querySelector("#tvList");
+    ORDER.forEach(name=>{
+      const row = document.createElement("label");
+      row.innerHTML = `<input type="checkbox" ${selected.has(name)?"checked":""}> <span>${name}</span>`;
+      list.appendChild(row);
+    });
+    wrap.querySelector("#tvModeExclude").checked = (st.mode==="exclude");
 
-    const list = panel.querySelector("#streamList");
-    const modeExclude = panel.querySelector("#modeExclude");
-
-    function labelText(sel){
-      if(!sel || !sel.selected || sel.selected.length===0) return "";
-      const prefix = (sel.mode==="exclude") ? "Alles behalve: " : "Streaming: ";
-      return prefix + sel.selected.join(", ");
-    }
-    function rebuild(){
-      list.innerHTML = "";
-      ORDER.forEach(name=>{
-        const row = document.createElement("label");
-        const id = "chk_"+name.replace(/\W+/g,"");
-        row.innerHTML = `<input type="checkbox" id="${id}"> <span>${name}</span>`;
-        const inp = row.querySelector("input");
-        inp.checked = (app.state.streamSel.selected||[]).includes(name);
-        list.appendChild(row);
-      });
-      modeExclude.checked = (app.state.streamSel.mode==="exclude");
-      const txt = labelText(app.state.streamSel);
-      chip.textContent = txt;
-      chip.classList.toggle("show", !!txt);
-    }
-    rebuild();
-
-    btn.addEventListener("click", ()=> panel.classList.toggle("show"));
-    document.addEventListener("click", (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove("show"); });
-    panel.querySelector("#streamClose").addEventListener("click", ()=> panel.classList.remove("show"));
-
-    panel.addEventListener("click", (e)=>{
-      const act = e.target?.getAttribute?.("data-act");
-      if(!act) return;
-      let cur = new Set(app.state.streamSel.selected || []);
-      if(act==="all"){ ORDER.forEach(n=>cur.add(n)); }
-      if(act==="none"){ cur.clear(); }
-      if(act==="invert"){
-        const next = new Set();
-        ORDER.forEach(n=>{ if(!cur.has(n)) next.add(n); });
-        cur = next;
+    wrap.addEventListener("click", (e)=>{
+      if(e.target.id==="tvClose" || e.target.id==="tvCancel" || e.target.classList.contains("tv-modal-backdrop")){
+        wrap.remove();
       }
-      app.state.streamSel.selected = Array.from(cur);
-      rebuild();
-    });
-
-    panel.querySelector("#streamApply").addEventListener("click", ()=>{
-      const picked = [];
-      list.querySelectorAll('input[type="checkbox"]').forEach(inp=>{
-        if(inp.checked){
-          const label = inp.nextElementSibling?.textContent?.trim();
-          if(label) picked.push(label);
-        }
-      });
-      app.state.streamSel.selected = picked;
-      app.state.streamSel.mode = modeExclude.checked ? "exclude" : "include";
-      saveState();
-      panel.classList.remove("show");
-      if(typeof app.render==="function") app.render();
-      rebuild();
-    });
+      const act = e.target?.getAttribute?.("data-act");
+      if(act){
+        const checks = list.querySelectorAll('input[type="checkbox"]');
+        if(act==="all"){ checks.forEach(c=>c.checked=true); }
+        if(act==="none"){ checks.forEach(c=>c.checked=false); }
+        if(act==="invert"){ checks.forEach(c=>c.checked=!c.checked); }
+      }
+      if(e.target?.id==="tvApply"){
+        const picked = [];
+        list.querySelectorAll('input[type="checkbox"]').forEach(c=>{
+          if(c.checked){ picked.push(c.nextElementSibling.textContent.trim()); }
+        });
+        const mode = wrap.querySelector("#tvModeExclude").checked ? "exclude" : "include";
+        saveState({ selected:picked, mode });
+        wrap.remove();
+        renderChip();
+        if(typeof app?.render==="function") app.render();
+      }
+    }, true);
   }
 
   function init(){
-    ensureState();
-    patchFilter();
-    const anchor = findStreamingSelect();
-    if(anchor && !window.__tvStreamDropdownMounted){
-      buildInlineDropdown(anchor);
-      window.__tvStreamDropdownMounted = true;
-    }
+    ensureFilterPatch();
+    removeOldStreamingSelects();
+    buildOverlayButton();
   }
 
-  if(document.readyState === "loading"){
+  if(document.readyState==="loading"){
     document.addEventListener("DOMContentLoaded", init);
   } else {
     init();
   }
 })();
-/* === end inline multi-select === */
