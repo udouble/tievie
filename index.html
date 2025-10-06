@@ -8,18 +8,15 @@
   <link rel="icon" href="./icon-192.png">
 </head>
 <body>
+  <div id="app"></div>
   <script>
   (function(){
-    const id='verBadge';
-    const tag=document.createElement('div');
-    tag.id=id;
-    Object.assign(tag.style,{
-      position:'fixed',right:'12px',bottom:'12px',padding:'6px 10px',borderRadius:'10px',
-      background:'rgba(20,60,120,.9)',color:'#fff',font:'12px/1.1 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial',
-      zIndex:'999999'
-    });
-    tag.textContent='v3.36 — init';
-    document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(tag));
+    var old=document.getElementById('verBadge'); if(old&&old.parentNode) old.parentNode.removeChild(old);
+    var b=document.createElement('div'); b.id='verBadge';
+    b.textContent='v3.37 — nocache';
+    Object.assign(b.style,{position:'fixed',right:'12px',bottom:'12px',padding:'6px 10px',borderRadius:'10px',
+      background:'rgba(20,60,120,.9)',color:'#fff',font:'12px/1.1 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial',zIndex:'999999'});
+    document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(b));
   })();
   </script>
   <script src="./tievie-fixes.js"></script>
