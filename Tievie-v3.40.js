@@ -25,7 +25,7 @@
     /* --- FIX: streaming multi-select altijd als overlay boven alles (Safari-proof) --- */
     const dropdownMenu = document.getElementById('streamingDropdownMenu');
     if (dropdownMenu) {
-      // Verplaats buiten eventuele containers die een lagere stacking-context/overflow hebben
+      // Verplaats buiten containers die stacking/overflow beperken
       if (dropdownMenu.parentElement !== document.body) {
         document.body.appendChild(dropdownMenu);
       }
@@ -42,7 +42,7 @@
       });
     }
 
-    // Bewaak de vinkjes → filter toepassen
+    // Vinkjes → filter toepassen
     app.state.filterStreaming = app.state.filterStreaming || [];
     const checkboxes = dropdownMenu ? dropdownMenu.querySelectorAll('input[type="checkbox"]') : [];
     const selectAll = document.getElementById('selectAllStreaming');
