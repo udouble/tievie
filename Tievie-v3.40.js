@@ -1,4 +1,4 @@
-/* Tievie fixes (v3.41) — enkel gevraagde functionaliteit, verder niets. */
+/* Tievie fixes (v3.42) — enkel gevraagde functionaliteit, verder niets. */
 (function(){
   const OMDB_KEY = '8a70a767';
   const norm = s => {
@@ -16,18 +16,26 @@
     return '';
   };
   function ensureState(){ window.app = window.app || {}; app.state = app.state || {}; }
+
   document.addEventListener('DOMContentLoaded', ()=>{
     ensureState();
-    
-    // --- FIX: streaming dropdown always on top (overlay style)
+
+    /* --- FIX: streaming dropdown altijd zichtbaar boven alles (Safari proof overlay) --- */
     const dropdownMenu = document.getElementById('streamingDropdownMenu');
-    if(dropdownMenu){
-      dropdownMenu.style.position = 'absolute';
-      dropdownMenu.style.zIndex = '999999';
-      dropdownMenu.style.background = '#0b1020';
-      dropdownMenu.style.border = '1px solid rgba(148,163,184,.25)';
-      dropdownMenu.style.borderRadius = '12px';
-      dropdownMenu.style.boxShadow = '0 10px 40px rgba(0,0,0,.5)';
+    if (dropdownMenu) {
+      // verplaats het menu naar de body zodat het buiten eventuele containers valt
+      document.body.appendChild(dropdownMenu);
+      Object.assign(dropdownMenu.style, {
+        position: 'fixed',
+        top: '80px',
+        right: '20px',
+        zIndex: '999999',
+        background: '#0b1020',
+        border: '1px solid rgba(148,163,184,.25)',
+        borderRadius: '12px',
+        boxShadow: '0 10px 40px rgba(0,0,0,.5)',
+        padding: '12px'
+      });
     }
 
     app.state.filterStreaming = app.state.filterStreaming || [];
@@ -78,6 +86,7 @@
       app.__streamPatched = true;
     }
 
+    /* IMDb overlay */
     const iframe = document.getElementById('imdbFrame');
     const overlay= document.getElementById('imdbOverlay');
     const close  = document.getElementById('imdbClose');
