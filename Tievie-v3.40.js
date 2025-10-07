@@ -1,6 +1,7 @@
 /* Tievie fixes (v3.42) — enkel gevraagde functionaliteit, verder niets. */
 (function(){
   const OMDB_KEY = '8a70a767';
+
   const norm = s => {
     if(!s) return '';
     s = (''+s).trim().toLowerCase();
@@ -15,16 +16,19 @@
     if(s.startsWith('disn')) return 'Disney+';
     return '';
   };
+
   function ensureState(){ window.app = window.app || {}; app.state = app.state || {}; }
 
   document.addEventListener('DOMContentLoaded', ()=>{
     ensureState();
 
-    /* --- FIX: streaming dropdown altijd zichtbaar boven alles (Safari proof overlay) --- */
+    /* --- FIX: streaming multi-select altijd als overlay boven alles (Safari-proof) --- */
     const dropdownMenu = document.getElementById('streamingDropdownMenu');
     if (dropdownMenu) {
-      // verplaats het menu naar de body zodat het buiten eventuele containers valt
-      document.body.appendChild(dropdownMenu);
+      // Verplaats buiten eventuele containers die een lagere stacking-context/overflow hebben
+      if (dropdownMenu.parentElement !== document.body) {
+        document.body.appendChild(dropdownMenu);
+      }
       Object.assign(dropdownMenu.style, {
         position: 'fixed',
         top: '80px',
@@ -38,37 +42,39 @@
       });
     }
 
+    // Bewaak de vinkjes → filter toepassen
     app.state.filterStreaming = app.state.filterStreaming || [];
     const checkboxes = dropdownMenu ? dropdownMenu.querySelectorAll('input[type="checkbox"]') : [];
     const selectAll = document.getElementById('selectAllStreaming');
     const selectNone = document.getElementById('selectNoneStreaming');
 
     const updateSelectedStreams = () => {
-        const selected = Array.from(checkboxes)
-          .filter(cb => cb.checked && !['selectAllStreaming','selectNoneStreaming'].includes(cb.id))
-          .map(cb => cb.value);
-        app.state.filterStreaming = selected;
-        app.render();
+      const selected = Array.from(checkboxes)
+        .filter(cb => cb.checked && !['selectAllStreaming','selectNoneStreaming'].includes(cb.id))
+        .map(cb => cb.value);
+      app.state.filterStreaming = selected;
+      if (typeof app.render === 'function') app.render();
     };
 
     checkboxes.forEach(cb => {
-        cb.addEventListener('change', (e) => {
-            if(e.target === selectAll) {
-                const isChecked = selectAll.checked;
-                checkboxes.forEach(ocb => ocb.checked = isChecked);
-                if(selectNone) selectNone.checked = false;
-            } else if (e.target === selectNone) {
-                const isChecked = selectNone.checked;
-                checkboxes.forEach(ocb => ocb.checked = !isChecked);
-                if(selectAll) selectAll.checked = false;
-            } else {
-                if(selectAll) selectAll.checked = false;
-                if(selectNone) selectNone.checked = false;
-            }
-            updateSelectedStreams();
-        });
+      cb.addEventListener('change', (e) => {
+        if(e.target === selectAll) {
+          const isChecked = selectAll.checked;
+          checkboxes.forEach(ocb => ocb.checked = isChecked);
+          if(selectNone) selectNone.checked = false;
+        } else if (e.target === selectNone) {
+          const isChecked = selectNone.checked;
+          checkboxes.forEach(ocb => ocb.checked = !isChecked);
+          if(selectAll) selectAll.checked = false;
+        } else {
+          if(selectAll) selectAll.checked = false;
+          if(selectNone) selectNone.checked = false;
+        }
+        updateSelectedStreams();
+      });
     });
 
+    // Filter integreren in app.filtered zonder de rest aan te raken
     if(typeof app.filtered === 'function' && !app.__streamPatched){
       const orig = app.filtered.bind(app);
       app.filtered = function(){
@@ -86,7 +92,7 @@
       app.__streamPatched = true;
     }
 
-    /* IMDb overlay */
+    /* IMDb overlay (ongewijzigd) */
     const iframe = document.getElementById('imdbFrame');
     const overlay= document.getElementById('imdbOverlay');
     const close  = document.getElementById('imdbClose');
