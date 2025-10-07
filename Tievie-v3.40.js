@@ -1,178 +1,329 @@
-/* Tievie fixes (v3.43, safe) — enkel gevraagde functionaliteit, met harde guards tegen witte pagina. */
-(function(){
-  const OMDB_KEY = '8a70a767';
+<script>
+/* Tievie fixes v3.40
+   - Streaming multi-select als overlay (boven alles, met Apply/Reset)
+   - Filter werkt bovenop bestaande zoek/categorie-logica via app.filtered() wrapper
+   - IMDb-score inline bewerken (dubbelklik op de IMDb-score in een kaart)
+   - Hardening: alles guarded; geen hard errors → geen “witte pagina”
+*/
 
-  // Veilig loggen zonder crash
-  const log = (...a)=>{ try{ console.log('[Tievie v3.43]', ...a);}catch(_){} };
-  const warn = (...a)=>{ try{ console.warn('[Tievie v3.43]', ...a);}catch(_){} };
+(function () {
+  "use strict";
 
-  const norm = s => {
-    if(!s) return '';
-    s = (''+s).trim().toLowerCase();
-    if(s.startsWith('appl')) return 'Apple TV+';
-    if(s.startsWith('netf')) return 'Netflix';
-    if(s.startsWith('prim')) return 'Prime Video';
-    if(s.startsWith('vrt'))  return 'VRT MAX';
-    if(s.startsWith('vtm'))  return 'VTM Go';
-    if(s.includes('play'))   return 'Go Play';
-    if(s.startsWith('np'))   return 'NPO';
-    if(s.startsWith('strea'))return 'Streamz';
-    if(s.startsWith('disn')) return 'Disney+';
-    return '';
+  // ---------- Helpers ----------
+  const OMDB_KEY = "8a70a767"; // gebruikt voor eventuele refresh/overlay (ongewijzigd)
+  const byId = (id) => document.getElementById(id);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const safe = (fn) => { try { return fn(); } catch (_) { return undefined; } };
+
+  // Normalisatie van streaming-diensten (sluit aan bij eerdere afspraken)
+  const normalizeStream = (s) => {
+    if (!s) return "";
+    const v = String(s).trim().toLowerCase();
+    if (v.startsWith("appl")) return "Apple TV+";
+    if (v.startsWith("netf")) return "Netflix";
+    if (v.startsWith("prim")) return "Prime Video";
+    if (v.startsWith("vrt")) return "VRT MAX";
+    if (v.startsWith("vtm")) return "VTM Go";
+    if (v.includes("play")) return "Go Play";
+    if (v.startsWith("np")) return "NPO";
+    if (v.startsWith("strea")) return "Streamz";
+    if (v.startsWith("disn")) return "Disney+";
+    return ""; // Onbekend
   };
 
-  function ensureState(){
-    try{
-      window.app = window.app || {};
-      app.state = app.state || {};
-    }catch(e){ /* laat nooit crashen */ }
+  const STREAM_LIST = [
+    "Streamz",
+    "Netflix",
+    "Prime Video",
+    "Apple TV+",
+    "VRT MAX",
+    "Go Play",
+    "NPO",
+    "Disney+",
+    "Onbekend"
+  ];
+
+  function ensureAppState() {
+    window.app = window.app || {};
+    app.state = app.state || {};
+    if (!Array.isArray(app.state.filterStreaming)) {
+      // leeg = geen filter
+      app.state.filterStreaming = [];
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    try{
-      ensureState();
+  // ---------- Streaming multi-select overlay ----------
+  function buildStreamingOverlay(anchorButton) {
+    if (byId("streaming-overlay")) return;
 
-      // --- FIX: streaming multi-select altijd als overlay boven alles (Safari-proof) ---
-      let dropdownMenu = null;
-      try{
-        dropdownMenu = document.getElementById('streamingDropdownMenu') || null;
-        if (dropdownMenu) {
-          // verplaats naar body om stacking/overflow issues te vermijden
-          if (dropdownMenu.parentElement !== document.body) {
-            document.body.appendChild(dropdownMenu);
-          }
-          Object.assign(dropdownMenu.style, {
-            position: 'fixed',
-            top: '80px',
-            right: '20px',
-            zIndex: '999999',
-            background: '#0b1020',
-            border: '1px solid rgba(148,163,184,.25)',
-            borderRadius: '12px',
-            boxShadow: '0 10px 40px rgba(0,0,0,.5)',
-            padding: '12px'
-          });
-        } else {
-          warn('streamingDropdownMenu niet gevonden (OK als UI dit nog niet rendert).');
-        }
-      }catch(e){
-        warn('Overlay-fix error:', e);
-      }
+    const wrap = document.createElement("div");
+    wrap.id = "streaming-overlay";
+    Object.assign(wrap.style, {
+      position: "fixed",
+      inset: "0",
+      background: "rgba(2,6,23,0.58)",
+      backdropFilter: "blur(3px)",
+      zIndex: "100000", // boven ALLES
+      display: "none",
+      alignItems: "center",
+      justifyContent: "center"
+    });
 
-      // Vinkjes → filter toepassen (met guards)
-      try{
-        app.state.filterStreaming = app.state.filterStreaming || [];
-        const checkboxes = dropdownMenu ? dropdownMenu.querySelectorAll('input[type="checkbox"]') : [];
-        const selectAll  = document.getElementById('selectAllStreaming') || null;
-        const selectNone = document.getElementById('selectNoneStreaming') || null;
+    const panel = document.createElement("div");
+    Object.assign(panel.style, {
+      width: "min(520px,92vw)",
+      background: "#0b1020",
+      border: "1px solid rgba(148,163,184,.3)",
+      borderRadius: "14px",
+      boxShadow: "0 20px 60px rgba(0,0,0,.55)",
+      color: "#e5e7eb",
+      overflow: "hidden"
+    });
 
-        const updateSelectedStreams = () => {
-          try{
-            const selected = Array.from(checkboxes || [])
-              .filter(cb => cb && cb.checked && !['selectAllStreaming','selectNoneStreaming'].includes(cb.id))
-              .map(cb => cb.value);
-            app.state.filterStreaming = selected;
-            if (typeof app.render === 'function') app.render();
-          }catch(e){ warn('updateSelectedStreams error:', e); }
-        };
+    const header = document.createElement("div");
+    header.textContent = "Streaming filter";
+    Object.assign(header.style, {
+      padding: "10px 14px",
+      background: "#111827",
+      fontWeight: "700"
+    });
 
-        (checkboxes || []).forEach(cb => {
-          try{
-            cb.addEventListener('change', (e) => {
-              try{
-                if(selectAll && e.target === selectAll) {
-                  const isChecked = !!selectAll.checked;
-                  (checkboxes || []).forEach(ocb => ocb && (ocb.checked = isChecked));
-                  if(selectNone) selectNone.checked = false;
-                } else if (selectNone && e.target === selectNone) {
-                  const isChecked = !!selectNone.checked;
-                  (checkboxes || []).forEach(ocb => ocb && (ocb.checked = !isChecked));
-                  if(selectAll) selectAll.checked = false;
-                } else {
-                  if(selectAll)  selectAll.checked = false;
-                  if(selectNone) selectNone.checked = false;
-                }
-                updateSelectedStreams();
-              }catch(err){ warn('checkbox change handler error:', err); }
-            });
-          }catch(err){ warn('attach listener error:', err); }
-        });
+    const body = document.createElement("div");
+    Object.assign(body.style, { padding: "14px" });
 
-        // Filter in app.filtered injecteren (met guard)
-        if(typeof app.filtered === 'function' && !app.__streamPatched){
-          const orig = app.filtered.bind(app);
-          app.filtered = function(){
-            try{
-              let arr = [];
-              try{ arr = orig() || []; }catch(_){ arr = []; }
-              const fs = (app.state && app.state.filterStreaming) || [];
-              if(fs.length>0){
-                arr = arr.filter(it => {
-                  const s = norm(it && it.streamingOn);
-                  if(fs.includes('__UNKNOWN__') && !s) return true;
-                  return fs.includes(s);
-                });
-              }
-              return arr;
-            }catch(e){
-              warn('app.filtered wrapper error:', e);
-              try{ return orig() || []; }catch(_){ return []; }
-            }
-          };
-          app.__streamPatched = true;
-        }
-      }catch(e){
-        warn('Streaming selectie/filer init error:', e);
-      }
+    const list = document.createElement("div");
+    Object.assign(list.style, {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "10px",
+      marginBottom: "12px"
+    });
 
-      // IMDb overlay — idem als voorheen, met guards
-      try{
-        const iframe = document.getElementById('imdbFrame') || null;
-        const overlay= document.getElementById('imdbOverlay') || null;
-        const close  = document.getElementById('imdbClose') || null;
-        if(iframe && overlay && close){
-          async function build(imdbID){
-            try{
-              const r = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(imdbID)}`);
-              const j = await r.json();
-              if(j && j.Response!=='False'){
-                const poster = (j.Poster && j.Poster!=='N/A') ? j.Poster : '';
-                iframe.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-                <style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font:16px/1.5 -apple-system,Segoe UI,Inter,Roboto,Helvetica,Arial}
-                .w{max-width:920px;margin:0 auto;display:flex;gap:16px;align-items:flex-start}
-                img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
-                h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}</style></head><body>
-                <div class="w"><img src="${poster||'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20'}"><div>
-                <h1>${j.Title||'-'}</h1><div class="m">${(j.Year||'')} • ${(j.Runtime||'')} • ${(j.Genre||'')}</div>
-                <div><b>IMDb:</b> ${j.imdbRating||'N/B'}</div><p>${j.Plot||''}</p></div></div></body></html>`;
-                overlay.style.display='flex'; return;
-              }
-            }catch(e){}
-            try{
-              iframe.removeAttribute('srcdoc');
-              iframe.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
-              overlay.style.display='flex';
-            }catch(_){}
-          }
-          window.openImdbOverlay = imdbID => imdbID ? build(imdbID) : alert('Geen IMDb ID');
-          try{
-            close.addEventListener('click', ()=>{ 
-              try{ overlay.style.display='none'; }catch(_){}
-              try{ iframe.src='about:blank'; iframe.removeAttribute('srcdoc'); }catch(_){}
-            });
-            overlay.addEventListener('click', (e)=>{ try{ if(e.target===overlay){ close.click(); } }catch(_){ } });
-          }catch(_){}
-        } else {
-          // Geen overlay elementen? Dan doen we niets; geen crash.
-        }
-      }catch(e){
-        warn('IMDb overlay init error:', e);
-      }
+    STREAM_LIST.forEach((label) => {
+      const id = "s_" + label.replace(/\W+/g, "_");
+      const row = document.createElement("label");
+      row.htmlFor = id;
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "10px";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = id;
+      cb.value = label === "Onbekend" ? "__UNKNOWN__" : label;
+      row.appendChild(cb);
+      const span = document.createElement("span");
+      span.textContent = label;
+      row.appendChild(span);
+      list.appendChild(row);
+    });
 
-      log('geladen + safe guards actief');
-    }catch(e){
-      // Laat nooit de app crashen
-      warn('Top-level init error:', e);
+    const btns = document.createElement("div");
+    Object.assign(btns.style, { display: "flex", gap: "8px", justifyContent: "flex-end" });
+
+    const bAll = document.createElement("button");
+    bAll.textContent = "Alles";
+    bAll.className = "pill";
+    stylePill(bAll);
+
+    const bGeen = document.createElement("button");
+    bGeen.textContent = "Niets";
+    bGeen.className = "pill";
+    stylePill(bGeen);
+
+    const bApply = document.createElement("button");
+    bApply.textContent = "Toepassen";
+    bApply.className = "pill";
+    stylePill(bApply, "#22c55e", "#052e1a");
+
+    const bClose = document.createElement("button");
+    bClose.textContent = "Sluiten";
+    bClose.className = "pill";
+    stylePill(bClose, "#334155");
+
+    btns.append(bAll, bGeen, bClose, bApply);
+    body.append(list, btns);
+    panel.append(header, body);
+    wrap.append(panel);
+    document.body.appendChild(wrap);
+
+    // helpers
+    const getChecks = () => $$("#" + list.id + " input[type=checkbox]", list);
+    const checks = $$("#input[type=checkbox]", list) || $$("#input:not(.x)", list); // fallback
+    const allCbs = $$("#input[type=checkbox]", list).length ? $$("#input[type=checkbox]", list) : $$("#" + list.id + " input");
+
+    function setFromState() {
+      ensureAppState();
+      const set = new Set(app.state.filterStreaming);
+      $$("#" + list.id + " input[type=checkbox], input[type=checkbox]", list).forEach((cb) => {
+        cb.checked = set.has(cb.value);
+      });
     }
+
+    // initial
+    setFromState();
+
+    bAll.onclick = () => {
+      $$("#" + list.id + " input[type=checkbox], input[type=checkbox]", list).forEach((cb) => (cb.checked = true));
+    };
+    bGeen.onclick = () => {
+      $$("#" + list.id + " input[type=checkbox], input[type=checkbox]", list).forEach((cb) => (cb.checked = false));
+    };
+    bClose.onclick = () => (wrap.style.display = "none");
+    bApply.onclick = () => {
+      ensureAppState();
+      const selected = $$("#" + list.id + " input[type=checkbox], input[type=checkbox]", list)
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.value);
+      app.state.filterStreaming = selected; // lege array = geen filter
+      safe(() => app.render && app.render());
+      wrap.style.display = "none";
+    };
+
+    wrap.addEventListener("click", (e) => {
+      if (e.target === wrap) wrap.style.display = "none";
+    });
+
+    // open handler
+    anchorButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      setFromState();
+      wrap.style.display = "flex";
+    });
+  }
+
+  function stylePill(btn, bg = "#1f2937", fg = "#e5e7eb") {
+    Object.assign(btn.style, {
+      background: bg,
+      color: fg,
+      border: "0",
+      padding: "8px 12px",
+      borderRadius: "10px",
+      cursor: "pointer"
+    });
+  }
+
+  function mountStreamingTrigger() {
+    // Zoek de bestaande streaming-<select> (met optie "Alle diensten") en vervang die door een knop
+    const selects = $$("select");
+    let streamingSelect = selects.find((sel) =>
+      Array.from(sel.options || []).some((o) => /alle diensten/i.test(o.text || ""))
+    );
+
+    // Als niet gevonden: maak gewoon een knop rechtsboven in de toolbar
+    let anchor;
+    if (streamingSelect) {
+      // Verberg originele select
+      streamingSelect.style.display = "none";
+
+      anchor = document.createElement("button");
+      anchor.id = "btn-streaming-multi";
+      anchor.textContent = "Streaming ▾";
+      stylePill(anchor, "#0ea5e9");
+      streamingSelect.parentElement.insertBefore(anchor, streamingSelect);
+    } else {
+      // Fallback: rechts in de bovenbalk
+      const bar =
+        document.querySelector("header .flex.gap-2") ||
+        document.querySelector("header .mb-3 .flex.gap-2") ||
+        document.querySelector("#topbar-actions") ||
+        document.body;
+
+      anchor = document.createElement("button");
+      anchor.id = "btn-streaming-multi";
+      anchor.textContent = "Streaming ▾";
+      stylePill(anchor, "#0ea5e9");
+      bar.appendChild(anchor);
+    }
+
+    buildStreamingOverlay(anchor);
+
+    // Patch filtering éénmaal
+    if (!app.__streamFilterPatched && typeof app.filtered === "function") {
+      const orig = app.filtered.bind(app);
+      app.filtered = function () {
+        ensureAppState();
+        let arr = orig();
+        const sel = app.state.filterStreaming || [];
+        if (sel.length === 0) return arr;
+
+        return arr.filter((it) => {
+          const norm = normalizeStream(it.streamingOn);
+          if (sel.includes("__UNKNOWN__")) {
+            return norm ? sel.includes(norm) : true;
+          }
+          return sel.includes(norm);
+        });
+      };
+      app.__streamFilterPatched = true;
+    }
+  }
+
+  // ---------- IMDb-score bewerken (dubbelklik op score in kaart) ----------
+  function enableImdbInlineEdit() {
+    const root = document.body;
+
+    function attach(rootNode) {
+      // Zoek score-elementen op de kaarten – zo tolerant mogelijk:
+      // - spans/divs die "IMDb" bevatten
+      // - knoppen/labels met "IMDb Info" laten we met rust; we richten ons op score-tekst
+      const candidates = $$("div,span", rootNode).filter((el) => {
+        const t = (el.textContent || "").trim();
+        if (!/imdb/i.test(t)) return false;
+        // wil score bevatten of "N/B", "N/A"
+        return /imdb\s*[: ]/i.test(t) || /imdb/i.test(t);
+      });
+
+      candidates.forEach((node) => {
+        if (node.__imdbEditBound) return;
+        node.__imdbEditBound = true;
+
+        node.addEventListener("dblclick", async (ev) => {
+          ev.stopPropagation();
+          const card = node.closest("[data-item-id]") || node.closest(".card") || node.closest("article");
+          if (!card) return;
+          const id = card.getAttribute("data-item-id");
+          if (!id) return;
+
+          const currentItems = (await safe(() => window.dbGetAll && window.dbGetAll())) || app.state.items || [];
+          const item = currentItems.find((x) => x.id === id);
+          if (!item) return;
+
+          const cur = item.imdbRating || "";
+          const val = prompt("Nieuwe IMDb-score (bv. 7.8 of leeg voor onbekend):", cur);
+          if (val === null) return;
+
+          const clean = String(val).trim();
+          if (clean && !/^\d{1,2}(\.\d)?$/.test(clean)) {
+            alert("Ongeldig formaat. Gebruik bv. 7.8 of laat leeg.");
+            return;
+          }
+
+          item.imdbRating = clean || null;
+
+          await safe(() => window.dbPut && window.dbPut(item));
+          const all = (await safe(() => window.dbGetAll && window.dbGetAll())) || [];
+          app.state.items = all;
+          safe(() => app.render && app.render());
+          safe(() => window.syncPushDebounced && window.syncPushDebounced());
+        });
+      });
+    }
+
+    // initial + mutatie-observer om nieuwe kaarten te hooken
+    attach(document);
+    const mo = new MutationObserver((muts) => {
+      muts.forEach((m) => {
+        m.addedNodes && m.addedNodes.forEach((n) => n.nodeType === 1 && attach(n));
+      });
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // ---------- Init ----------
+  document.addEventListener("DOMContentLoaded", () => {
+    ensureAppState();
+    safe(mountStreamingTrigger);
+    safe(enableImdbInlineEdit);
   });
 })();
+</script>
