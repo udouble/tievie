@@ -20,20 +20,13 @@
     ensureState();
     app.state.filterStreaming = app.state.filterStreaming || '';
     const sel = document.getElementById('filterStreaming');
-    if(sel){ /* legacy select no-op: UI moved to multi-select */ }
-    
+    if(sel){ sel.addEventListener('change', ()=>{ app.state.filterStreaming = sel.value||''; app.render && app.render(); }); }
     if(typeof app.filtered === 'function' && !app.__streamPatched){
       const orig = app.filtered.bind(app);
       app.filtered = function(){
         let arr = orig();
-        const sel = (app.state && app.state.streamSet);
-        const fs  = (app.state && app.state.filterStreaming) || '';
-        if(sel && sel.size){
-          arr = arr.filter(it => {
-            const s = norm(it.streamingOn);
-            return (s && sel.has(s)) || (!s && sel.has('__UNKNOWN__'));
-          });
-        }else if(fs){
+        const fs = (app.state && app.state.filterStreaming) || '';
+        if(fs){
           arr = arr.filter(it => {
             const s = norm(it.streamingOn);
             if(fs === '__UNKNOWN__') return !s;
@@ -44,7 +37,6 @@
       };
       app.__streamPatched = true;
     }
-    
     const iframe = document.getElementById('imdbFrame');
     const overlay= document.getElementById('imdbOverlay');
     const close  = document.getElementById('imdbClose');
