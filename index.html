@@ -485,12 +485,10 @@ function bindUI(){
   checkboxes.forEach(cb => {
     cb.addEventListener('change', (e) => {
       if(e.target === selectAll) {
-        const isChecked = selectAll.checked;
-        checkboxes.forEach(ocb => ocb.checked = isChecked);
+        checkboxes.forEach(ocb => ocb.checked = selectAll.checked);
         selectNone.checked = false;
       } else if (e.target === selectNone) {
-        const isChecked = selectNone.checked;
-        checkboxes.forEach(ocb => ocb.checked = !isChecked);
+        checkboxes.forEach(ocb => ocb.checked = !selectNone.checked);
         selectAll.checked = false;
       } else {
         selectAll.checked = false;
@@ -554,7 +552,7 @@ async function autoSeedIfEmpty(){
 }
 
 let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
-async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.29()}})}catch(e){console.warn('sync push fail',e)}}
+async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
 async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
