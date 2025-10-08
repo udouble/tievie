@@ -70,6 +70,64 @@ function attachResetGesture(){
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+<style>
+  /* niets slopen: we stylen alleen de nieuwe inline X */
+  .delete-inline {
+    width: 28px; height: 28px; border-radius: 9999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(0,0,0,.15); background: rgba(0,0,0,.06);
+    font-size: 18px; line-height: 1; cursor: pointer;
+  }
+</style>
+<script>
+/* Verplaats de X naast de gele IMDb-badge, zonder verder iets te wijzigen */
+(function () {
+  function moveX(modal) {
+    if (!modal) return;
+
+    // Zoek de gele IMDb-badge (element met tekst die begint met "IMDb")
+    const badge = Array.from(modal.querySelectorAll("*")).find(
+      el => el.textContent && el.textContent.trim().startsWith("IMDb")
+    );
+    if (!badge) return;
+
+    // Bestaande X (de ‘sluit/verwijder’ knop linksboven/rechtsboven)
+    const originalX =
+      modal.querySelector('[aria-label*="luit"], [aria-label*="verwij"], .btn-close, .close, button[title*="sluit" i], button[title*="verwij" i]') ||
+      modal.querySelector("button"); // fallback
+
+    // Maak een inline X en laat die de originele X activeren
+    const inlineX = document.createElement("button");
+    inlineX.className = "delete-inline";
+    inlineX.type = "button";
+    inlineX.title = "Verwijderen";
+    inlineX.textContent = "×";
+    inlineX.addEventListener("click", () => originalX && originalX.click());
+
+    // Zet badge-rij op één lijn en plaats de X ernaast
+    const row = badge.parentElement;
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.gap = "8px";
+    row.insertBefore(inlineX, badge.nextSibling);
+
+    // Verberg de oorspronkelijke X zodat de poster visueel omhoog schuift
+    if (originalX) originalX.style.display = "none";
+  }
+
+  // Pak reeds geopende modals
+  document.querySelectorAll('[role="dialog"], .modal').forEach(moveX);
+
+  // En toekomstige modals (wanneer je iets opent)
+  const obs = new MutationObserver(muts => {
+    for (const m of muts) for (const n of m.addedNodes) {
+      if (n.nodeType === 1 && (n.getAttribute?.("role") === "dialog" || n.classList?.contains("modal")))
+        moveX(n);
+    }
+  });
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
 </style>
 </head>
 <body>
