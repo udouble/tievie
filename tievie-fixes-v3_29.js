@@ -116,10 +116,21 @@
       new MutationObserver(()=>{
         slist.querySelectorAll('.row').forEach(row=>{
           if(row.__hook) return; row.__hook = true;
-          row.addEventListener('click', (ev)=>{
-            ev.preventDefault(); ev.stopPropagation();
+          row.addEventListener('click', async (ev)=>{
+            ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
             (window.hideSuggest && window.hideSuggest());
-            open({ imdbID: row.dataset.imdbid, title: row.dataset.title, year: row.dataset.year, poster: row.dataset.poster });
+            const info = { imdbID: row.dataset.imdbid, title: row.dataset.title, year: row.dataset.year, poster: row.dataset.poster };
+            try{
+              const all = await (window.dbGetAll && window.dbGetAll()) || [];
+              const titleSet = new Set(all.map(x => (x.title||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim()));
+              const normTitle = (info.title||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+              const imdbSet = new Set(all.map(x => (x.imdbID||x.imdbId||'').toLowerCase().trim()).filter(Boolean));
+              if (titleSet.has(normTitle) || (info.imdbID && imdbSet.has(String(info.imdbID).toLowerCase().trim()))) {
+                if (typeof window.openDuplicateModal === 'function') { window.openDuplicateModal(info.title||''); } else { alert('Deze titel is al eerder toegevoegd.'); }
+                return;
+              }
+            }catch(e){}
+            open(info);
           });
         });
       }).observe(container, {childList:true, subtree:true});
@@ -128,6 +139,20 @@
         const tp = document.getElementById('addType').value;
         const st = document.getElementById('addStream').value;
         const now= Date.now();
+
+        // Final duplicate guard (title or IMDb)
+        try{
+          const all = await (window.dbGetAll && window.dbGetAll()) || [];
+          const titleSet = new Set(all.map(x => (x.title||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim()));
+          const imdbSet = new Set(all.map(x => (x.imdbID||x.imdbId||'').toLowerCase().trim()).filter(Boolean));
+          const normTitle = (pending.title||'').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+          const imdbKey = (pending.imdbID||'').toLowerCase().trim();
+          if (titleSet.has(normTitle) || (imdbKey && imdbSet.has(imdbKey))) {
+            if (typeof window.openDuplicateModal === 'function') { window.openDuplicateModal(pending.title||''); } else { alert('Deze titel is al eerder toegevoegd.'); }
+            return;
+          }
+        }catch(e){}
+
         const item = { id:'id-'+now+'-'+Math.random().toString(36).slice(2,7),
           title: pending.title, year: pending.year, imdbID: pending.imdbID,
           poster: pending.poster, type: tp, streamingOn: st, createdAt: now };
