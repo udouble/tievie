@@ -188,6 +188,31 @@ async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+// === Dedup helpers ===
+function normalizeTitle(t){
+  return (t||'').toString().toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function normalizeYear(y){
+  const m = String(y||'').match(/\d{4}/);
+  return m ? m[0] : '';
+}
+function sameTitleYear(a,b){
+  return normalizeTitle(a.title)===normalizeTitle(b.title) && normalizeYear(a.year)===normalizeYear(b.year);
+}
+function findExisting(all, inc){
+  const incId = (inc.imdbID||inc.imdbId||'').toLowerCase();
+  for(const it of all){
+    const id = (it.imdbID||it.imdbId||'').toLowerCase();
+    if(id && incId && id===incId) return it;
+  }
+  if(inc.title){
+    for(const it of all){
+      if(sameTitleYear(it, inc)) return it;
+    }
+  }
+  return null;
+}
+
 
 function normalizeStream(raw){
   const s=(raw||'').toString().trim().toLowerCase(); if(!s) return '';
@@ -367,16 +392,17 @@ function renderSuggest(arr){
   showSuggest();
   Array.from(suggestList.children).forEach(row=>{
     row.addEventListener('click', async ()=>{
-      hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      const typeSel=document.getElementById('add-type').value;
-      const streamSel=document.getElementById('add-stream').value;
-      const it={
-        id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-        title, year, imdbID, poster,
-        type:typeSel, streamingOn:streamSel, createdAt:Date.now()
-      };
-      await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+      if(ADDING_LOCK) return;
+      ADDING_LOCK = true;
+      try{
+        hideSuggest();
+        const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+        const typeSel=document.getElementById('add-type').value;
+        const streamSel=document.getElementById('add-stream').value;
+
+        const all = await dbGetAll();
+        const exists = findExisting(all, {title, year, imdbID});
+        ifdStreamUI(); syncPushDebounced();
       setStatus('Toegevoegd: '+title);
       document.getElementById('add-search').value='';
     });
