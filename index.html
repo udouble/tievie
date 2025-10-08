@@ -64,15 +64,7 @@ function attachResetGesture(){
   }
   input::placeholder{color:#64748b}
   select{padding-right:2rem !important}
-  .glass{background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(240,246,255,.90)) !important;}
-
-  /* Visual overrides for active category button (without touching JS) */
-  #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important;box-shadow:0 1px 0 rgba(0,0,0,.06)}
-  #filterControls .filter-btn:hover{filter:brightness(1.02)}
-  /* Lotto button tweak */
-  #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
-  /* Compact orange info strip under poster (legible) */
-  .info-strip{display:inline-block;background:rgba(3,7,18,.8);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+  .glass{background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(240,246,255,.90)) !important; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.14);}
 </style>
 </head>
 <body>
@@ -132,7 +124,7 @@ function attachResetGesture(){
           <option value="bekeken">Bekeken</option>
         </select>
         <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
-          <option value="">Onbekend</option>
+          <option value="">Niet toegekend</option>
           <option>Streamz</option>
           <option>Netflix</option>
           <option>Prime Video</option>
@@ -307,7 +299,7 @@ function categoryOptionsHTML(type){
 }
 function streamingOptionsHTML(sel){
   const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
-  return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Onbekend'}</option>`).join('');
+  return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
 function card(item, index){
