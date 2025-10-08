@@ -23,7 +23,6 @@ function attachResetGesture(){
         await Promise.all(regs.map(r=>r.unregister()));
       }
     }catch(e){ console.warn('reset error', e); }
-    // Hard reload with cache-busting
     const base = location.pathname.replace(/index\.html?$/,'') || '/';
     location.href = base + '?v=26c-' + Date.now();
   }
@@ -33,7 +32,6 @@ function attachResetGesture(){
     el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
   });
 }
-
 </script>
 <link rel="manifest" href="./manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -56,7 +54,6 @@ function attachResetGesture(){
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
   #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
   #suggest .row:hover{background:rgba(2,6,23,.06)}
-
   body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji';}
   input[type="text"], input[type="search"], input[type="date"], select, .our-score-input, .category-select, .streaming-service-select {
     background:#ffffff !important;
@@ -74,19 +71,12 @@ function attachResetGesture(){
   <header class="mb-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
-
-      <!-- Rechtsboven: Hulp-menu -->
       <div class="relative">
-        <!-- verborgen file input blijft bestaan -->
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
-
-        <!-- Toggle knop -->
         <button id="btn-help" aria-haspopup="true" aria-expanded="false"
                 class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">
           Hulp ▾
         </button>
-
-        <!-- Dropdown menu -->
         <div id="helpMenu"
              class="absolute right-0 mt-2 w-56 glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden hidden"
              style="z-index:100020">
@@ -113,9 +103,9 @@ function attachResetGesture(){
         <option value="title_desc">Titel Z → A</option>
       </select>
       <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
-      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">Waar te zien?
+      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
+        Waar te zien?
       </button>
-
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
 
@@ -206,7 +196,7 @@ async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{co
 
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
-// === Unieke sleutel en merging ===
+// === Anti-duplicate helpers ===
 function normalizeTitle(t){
   return (t||'').toString().toLowerCase()
     .replace(/&/g,'and')
@@ -227,28 +217,17 @@ function betterType(a,b){
   return (rb>ra)?b:a;
 }
 function mergeItems(base, inc){
-  // 1 item overhouden, velden aanvullen
   const out={...base};
-  // type: kies hoogste prioriteit
   if(inc.type && inc.type!==base.type) out.type = betterType(base.type, inc.type);
-  // createdAt: neem de meest recente
-  const ca=Math.max(base.createdAt||0, inc.createdAt||0, Date.now());
-  out.createdAt = ca;
-  // imdbID
+  out.createdAt = Math.max(base.createdAt||0, inc.createdAt||0, Date.now());
   if(!out.imdbID && (inc.imdbID||inc.imdbId)) out.imdbID = inc.imdbID||inc.imdbId;
-  // poster
   if((!out.poster || out.poster==='N/A') && (inc.poster && inc.poster!=='N/A')) out.poster=inc.poster;
-  // ratings & meta
   if(inc.imdbRating && !out.imdbRating) out.imdbRating=inc.imdbRating;
   if(inc.year && !out.year) out.year=inc.year;
   if(inc.runtime && !out.runtime) out.runtime=inc.runtime;
-  // ourScore: behoud bestaande als die er is, anders neem inc
   if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(inc.ourScore);
-  // streamingOn: bewaar bestaande, vul alleen aan als leeg
   if((!out.streamingOn || String(out.streamingOn).trim()==='') && inc.streamingOn) out.streamingOn=inc.streamingOn;
-  // dateSeen: bewaar bestaande, tenzij inc recenter is
   if(inc.dateSeen && (!out.dateSeen || inc.dateSeen>out.dateSeen)) out.dateSeen=inc.dateSeen;
-  // title: hou de langste non-empty (soms met subtitel)
   if((!out.title || out.title.length < (inc.title||'').length) && inc.title) out.title=inc.title;
   return out;
 }
@@ -277,6 +256,7 @@ app.render=function(){
     btn.classList.toggle('bg-sky-500',a);
     btn.classList.toggle('text-white',a);
     btn.classList.toggle('bg-white/30',!a);
+    btn.classList.toggle('hover:bg-white/40',!a);
   });
   document.getElementById('countBadge').textContent = items.length+' items';
   if(items.length===0){ empty.classList.remove('hidden'); return } empty.classList.add('hidden');
@@ -286,12 +266,10 @@ app.render=function(){
 app.filtered=function(){
   let a=app.state.items.slice();
   if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
-  const fs=app.state.filterStreaming;
   const sel=app.state.streamSet;
   if(sel && sel.size){
     a=a.filter(i=>{ const s=normalizeStream(i.streamingOn); return (s && sel.has(s)) || (!s && sel.has('__UNKNOWN__')); });
-  } else if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
-  else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
+  }
   const term=(app.state.searchTerm||'').toLowerCase();
   if(term){
     a=a.filter(i=>{
@@ -392,7 +370,6 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); 
   catSel.onchange=async(e)=>{
     item.type=e.target.value; 
-    // Sorteerfix: zet bovenaan bij default sort (recent -> oud)
     const sortSel=document.getElementById('sortBy');
     if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); }
     await dbPut(item); 
@@ -452,11 +429,9 @@ function renderSuggest(arr){
         const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
         const k=keyFor(inc);
         if(keyMap.has(k)){
-          // Bestond al: verplaats/merge en bovenaan bij recent-sort
           const ex=keyMap.get(k);
           const sortSel=document.getElementById('sortBy');
           if(sortSel && sortSel.value==='created_desc'){ ex.createdAt=Date.now(); }
-          // type & meta merge (type naar gekozen categorie, streaming ook)
           ex.type = betterType(ex.type, typeSel);
           if(!ex.streamingOn && streamSel) ex.streamingOn=streamSel;
           if(!ex.poster && inc.poster) ex.poster=inc.poster;
@@ -466,12 +441,7 @@ function renderSuggest(arr){
           document.getElementById('add-search').value='';
           return;
         }
-
-        // Nieuw item
-        const it={
-          id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-          ...inc
-        };
+        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
         await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
         setStatus('Toegevoegd: '+title);
         document.getElementById('add-search').value='';
@@ -503,24 +473,22 @@ function bindUI(){
   document.getElementById('btn-export').onclick=exportJson;
   document.getElementById('btn-posters').onclick=fetchMissingPosters;
   (function(){
-  const fc = document.getElementById('filterControls');
-  if(!fc) return;
-  fc.addEventListener('click', e=>{
-    const b = e.target.closest('.filter-btn');
-    if(!b) return;
-    // Zet visueel meteen actief
-    fc.querySelectorAll('.filter-btn').forEach(btn=>{
-      const active = (btn === b);
-      btn.classList.toggle('bg-sky-500', active);
-      btn.classList.toggle('text-white', active);
-      btn.classList.toggle('bg-white/30', !active);
-      btn.classList.toggle('hover:bg-white/40', !active);
+    const fc = document.getElementById('filterControls');
+    if(!fc) return;
+    fc.addEventListener('click', e=>{
+      const b = e.target.closest('.filter-btn');
+      if(!b) return;
+      fc.querySelectorAll('.filter-btn').forEach(btn=>{
+        const active = (btn === b);
+        btn.classList.toggle('bg-sky-500', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('bg-white/30', !active);
+        btn.classList.toggle('hover:bg-white/40', !active);
+      });
+      app.state.filter = b.dataset.filter;
+      app.render();
     });
-    // Update state en render
-    app.state.filter = b.dataset.filter;
-    app.render();
-  });
-})();
+  })();
   document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
 }
@@ -532,13 +500,12 @@ async function importJson(file){
   try{
     const text=await file.text();const data=JSON.parse(text);
     const arr=Array.isArray(data)?data:(data.items||[]);
-    // Bouw map met bestaande items
     const existing=await dbGetAll();
     const byKey=new Map(existing.map(x=>[keyFor(x), x]));
     const upserts=[];
     for(const raw of arr){
       const incoming={
-        id: raw.id || undefined, // id kan overschreven worden door bestaande
+        id: raw.id || undefined,
         title: raw.title || '',
         type: raw.type || 'film',
         createdAt: raw.createdAt || Date.now(),
@@ -553,15 +520,12 @@ async function importJson(file){
       };
       const k=keyFor(incoming);
       if(byKey.has(k)){
-        // merge in-place met bestaand item
         const merged=mergeItems(byKey.get(k), incoming);
         byKey.set(k, merged);
       }else{
-        // nieuw item; maak een id
         byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
       }
     }
-    // Schrijf alles terug (geen duplicaten)
     for(const [,val] of byKey) upserts.push(val);
     await dbBulkPut(upserts);
     app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
@@ -584,7 +548,7 @@ async function fetchMissingPosters(){
   setStatus('Posters afgerond. Geüpdatet: '+changed);
 }
 
-// ======= Auto-seed on first run (loads from ./data/*.json) =======
+// ======= Auto-seed on first run =======
 async function autoSeedIfEmpty(){
   const current = await dbGetAll();
   if(current && current.length>0) return;
@@ -601,7 +565,7 @@ async function autoSeedIfEmpty(){
   }
   if(merged.length){
     const now=Date.now();
-    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null||String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
     await dbBulkPut(prepped);
   }
 }
@@ -611,14 +575,10 @@ async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg
 async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
-// ===== Streaming multi-select (checkbox menu) =====
+// ===== Streaming multi-select (floating panel) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
-app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set(); // keep selection across reloads (session)
-
-function updateStreamBadge(){}else{
-    badge.textContent = `(${sel.size})`;
-  }
-}
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
 function buildStreamMenu(){
   const list = document.getElementById('streamList');
@@ -702,35 +662,11 @@ function bindStreamUI(){
   updateStreamBadge();
 }
 
-// === One-time reverse of 'bekeken' ordering ===
-async function reverseBekekenOnce(){
-  try{
-    const flagKey='mfs_rev_bekeken_v1';
-    if(localStorage.getItem(flagKey)) return;
-    const all = await dbGetAll();
-    const seen = all.filter(x=>x.type==='bekeken');
-    if(seen.length < 2){ localStorage.setItem(flagKey,'skip'); return; }
-    const sorted = seen.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    const times = sorted.map(x=>x.createdAt||0).sort((a,b)=>a-b);
-    const rev = times.slice().reverse();
-    for(let i=0;i<sorted.length;i++){
-      sorted[i].createdAt = rev[i] || sorted[i].createdAt || Date.now();
-      await dbPut(sorted[i]);
-    }
-    localStorage.setItem(flagKey,'done');
-    console.log('Bekeken-reverse toegepast op', seen.length, 'items');
-  }catch(e){
-    console.warn('reverseBekekenOnce error', e);
-  }
-}
-
 document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
     await syncPull();
     await autoSeedIfEmpty();
-    app.state.items=await dbGetAll();
-    await reverseBekekenOnce();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
     setStatus('v3.31 — PWA • '+app.state.items.length+' items');
@@ -739,38 +675,9 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
 });
 
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
-
-// === Cache touch (click or long-press on version badge) ===
-function attachResetGesture(){
-  const el = document.getElementById('status');
-  if(!el) return;
-  let timer=null;
-  async function doReset(){
-    if(!confirm('Cache wissen & herladen?')) return;
-    try{
-      if (window.caches && caches.keys) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k=>caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r=>r.unregister()));
-      }
-    }catch(e){ console.warn('reset error', e); }
-    const base = location.pathname.replace(/index\.html?$/,'') || '/';
-    location.href = base + '?v=26c-' + Date.now();
-  }
-  el.addEventListener('click', doReset);
-  el.addEventListener('touchstart', ()=>{ timer=setTimeout(doReset, 3000); }, {passive:true});
-  ['touchend','touchcancel','touchmove','pointerup','pointercancel','mouseup','mouseleave'].forEach(ev=>{
-    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
-  });
-}
-
 </script>
 <script src="./tievie-fixes-v3_29.js?v=3.29?v=3.27"></script>
 
-<!-- Streaming multi-select floating panel -->
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
   <div class="flex items-center justify-between mb-2">
     <strong class="text-slate-800">Streamingdiensten</strong>
@@ -779,22 +686,17 @@ function attachResetGesture(){
       <button id="streamNone" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Niets</button>
     </div>
   </div>
-  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900">
-    <!-- checkboxes injected by JS -->
-  </div>
+  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900"></div>
 </div>
 
 <script>
-// Dropdown logic voor Hulp-menu (iPad/Mac vriendelijk)
 (function(){
   const btn = document.getElementById('btn-help');
   const menu = document.getElementById('helpMenu');
   if(!btn || !menu) return;
-
   function open(){ menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); attach(); }
   function close(){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); detach(); }
   function toggle(e){ e && e.preventDefault && e.preventDefault(); (menu.classList.contains('hidden')?open():close()); }
-
   let onDocClick=null, onKey=null;
   function attach(){
     if(onDocClick) return;
