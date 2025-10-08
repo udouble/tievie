@@ -427,15 +427,21 @@ function renderSuggest(arr){
 
         const all=await dbGetAll();
         const keyMap=new Map(all.map(x=>[keyFor(x), x]));
+        const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
         const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
         const k=keyFor(inc);
-        if(keyMap.has(k)){
+        if(titleSet.has(normalizeTitle(title))){
           if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
           // Geen toevoeging, geen updates; input laten staan.
           return;
         }
-        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+        \1const __normT = normalizeTitle((it && it.title)||'');
+        try{
+          const __all = await dbGetAll();
+          const __hasDup = __all.some(x=>normalizeTitle(x.title||'')===__normT);
+          if(__hasDup){ if(typeof openDuplicateModal==='function'){ openDuplicateModal(it.title); } else { alert('Deze titel is al eerder toegevoegd.'); } return; }
+        }catch(__e){ /* ignore */ }
+\2 app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
         setStatus('Toegevoegd: '+title);
         document.getElementById('add-search').value='';
       } finally {
@@ -493,10 +499,9 @@ async function importJson(file){
   try{
     const text=await file.text();const data=JSON.parse(text);
     const arr=Array.isArray(data)?data:(data.items||[]);
-    const existing=await dbGetAll();
-    const byKey=new Map(existing.map(x=>[keyFor(x), x]));
-    const upserts=[];
-    for(const raw of arr){
+    \1
+    const titleSet=new Set(existing.map(x=>normalizeTitle(x.title||'')));
+    let __dupFound=false;
       const incoming={
         id: raw.id || undefined,
         title: raw.title || '',
@@ -511,13 +516,14 @@ async function importJson(file){
         dateSeen: raw.dateSeen || '',
         imdbID: raw.imdbID || raw.imdbId || ''
       };
-      const k=keyFor(incoming);
-      if(byKey.has(k)){
-        const merged=mergeItems(byKey.get(k), incoming);
-        byKey.set(k, merged);
-      }else{
-        byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
-      }
+    const k=keyFor(incoming);
+    if(titleSet.has(normalizeTitle(incoming.title||''))){ __dupFound=true; continue; }
+    if(byKey.has(k)){
+      const merged=mergeItems(byKey.get(k), incoming);
+      byKey.set(k, merged);
+    }else{
+      byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
+    }
     }
     for(const [,val] of byKey) upserts.push(val);
     await dbBulkPut(upserts);
