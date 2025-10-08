@@ -67,7 +67,6 @@ function attachResetGesture(){
   input::placeholder{color:#64748b}
   select{padding-right:2rem !important}
   .glass{background:rgba(255,255,255,.90) !important;}
-
 </style>
 </head>
 <body>
@@ -75,11 +74,29 @@ function attachResetGesture(){
   <header class="mb-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
-      <div class="flex gap-2 items-center">
+
+      <!-- Rechtsboven: Hulp-menu -->
+      <div class="relative">
+        <!-- verborgen file input blijft bestaan -->
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
-        <button id="btn-import" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">Importeer JSON</button>
-        <button id="btn-export" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">Exporteer alles</button>
-        <button id="btn-posters" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow text-sm pill">Posters ophalen</button>
+
+        <!-- Toggle knop -->
+        <button id="btn-help" aria-haspopup="true" aria-expanded="false"
+                class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">
+          Hulp ▾
+        </button>
+
+        <!-- Dropdown menu -->
+        <div id="helpMenu"
+             class="absolute right-0 mt-2 w-56 glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden hidden"
+             style="z-index:100020">
+          <div class="py-1 text-slate-800">
+            <button id="btn-import" class="w-full text-left px-3 py-2 hover:bg-white/60">Importeer JSON</button>
+            <button id="btn-export" class="w-full text-left px-3 py-2 hover:bg-white/60">Exporteer alles</button>
+            <button id="btn-posters" class="w-full text-left px-3 py-2 hover:bg-white/60">Posters ophalen</button>
+            <button id="btn-refresh-meta" class="w-full text-left px-3 py-2 hover:bg-white/60">IMDb-gegevens verversen</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -598,7 +615,6 @@ function attachResetGesture(){
         await Promise.all(regs.map(r=>r.unregister()));
       }
     }catch(e){ console.warn('reset error', e); }
-    // Hard reload with cache-busting
     const base = location.pathname.replace(/index\.html?$/,'') || '/';
     location.href = base + '?v=26c-' + Date.now();
   }
@@ -626,19 +642,22 @@ function attachResetGesture(){
   </div>
 </div>
 
-
 <script>
-// Lightweight dropdown for Hulpmenu (keeps existing IDs for actions)
+// Dropdown logic voor Hulp-menu (iPad/Mac vriendelijk)
 (function(){
-  function openMenu(){ const m=document.getElementById('toolsMenu'); if(!m) return; m.style.display='block'; document.getElementById('btn-tools').setAttribute('aria-expanded','true'); position(); attach(); }
-  function closeMenu(){ const m=document.getElementById('toolsMenu'); if(!m) return; m.style.display='none'; document.getElementById('btn-tools').setAttribute('aria-expanded','false'); detach(); }
-  function toggleMenu(e){ e&&e.preventDefault&&e.preventDefault(); const m=document.getElementById('toolsMenu'); if(!m) return; (m.style.display==='block')?closeMenu():openMenu(); }
-  function position(){ const m=document.getElementById('toolsMenu'); const b=document.getElementById('btn-tools'); if(!m||!b) return; const r=b.getBoundingClientRect(); const vw=document.documentElement.clientWidth; const left=Math.min(r.left + window.scrollX, window.scrollX + (vw - m.offsetWidth - 12)); m.style.left=left+'px'; }
+  const btn = document.getElementById('btn-help');
+  const menu = document.getElementById('helpMenu');
+  if(!btn || !menu) return;
+
+  function open(){ menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); attach(); }
+  function close(){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); detach(); }
+  function toggle(e){ e && e.preventDefault && e.preventDefault(); (menu.classList.contains('hidden')?open():close()); }
+
   let onDocClick=null, onKey=null;
   function attach(){
     if(onDocClick) return;
-    onDocClick = function(e){ const m=document.getElementById('toolsMenu'); const b=document.getElementById('btn-tools'); if(!m||!b) return; if(m.contains(e.target)||b.contains(e.target)) return; closeMenu(); };
-    onKey = function(e){ if(e.key==='Escape') closeMenu(); };
+    onDocClick = (e)=>{ if(menu.contains(e.target) || btn.contains(e.target)) return; close(); };
+    onKey = (e)=>{ if(e.key==='Escape') close(); };
     document.addEventListener('mousedown', onDocClick, {capture:true});
     document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
     document.addEventListener('keydown', onKey, {capture:true});
@@ -650,40 +669,7 @@ function attachResetGesture(){
     document.removeEventListener('keydown', onKey, {capture:true});
     onDocClick=null; onKey=null;
   }
-  document.addEventListener('DOMContentLoaded', function(){
-    const b=document.getElementById('btn-tools'); if(!b) return;
-    b.addEventListener('click', toggleMenu);
-  });
-})();
-</script>
-
-
-<script>
-// Dropdown logic for the Help menu (top-right). Non-intrusive, Mac/iPad/Safari friendly.
-(function(){
-  function openMenu(){ const m=document.getElementById('helpMenu'); if(!m) return; m.style.display='block'; const b=document.getElementById('btn-help'); if(b) b.setAttribute('aria-expanded','true'); attach(); }
-  function closeMenu(){ const m=document.getElementById('helpMenu'); if(!m) return; m.style.display='none'; const b=document.getElementById('btn-help'); if(b) b.setAttribute('aria-expanded','false'); detach(); }
-  function toggleMenu(e){ if(e&&e.preventDefault) e.preventDefault(); const m=document.getElementById('helpMenu'); if(!m) return; (m.style.display==='block')?closeMenu():openMenu(); }
-  let onDocClick=null,onKey=null;
-  function attach(){
-    if(onDocClick) return;
-    onDocClick = function(e){ const m=document.getElementById('helpMenu'); const b=document.getElementById('btn-help'); if(!m||!b) return; if(m.contains(e.target)||b.contains(e.target)) return; closeMenu(); };
-    onKey = function(e){ if(e.key==='Escape') closeMenu(); };
-    document.addEventListener('mousedown', onDocClick, {capture:true});
-    document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
-    document.addEventListener('keydown', onKey, {capture:true});
-  }
-  function detach(){
-    if(!onDocClick) return;
-    document.removeEventListener('mousedown', onDocClick, {capture:true});
-    document.removeEventListener('touchstart', onDocClick, {capture:true});
-    document.removeEventListener('keydown', onKey, {capture:true});
-    onDocClick=null; onKey=null;
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    const b=document.getElementById('btn-help'); if(!b) return;
-    b.addEventListener('click', toggleMenu, {passive:false});
-  });
+  btn.addEventListener('click', toggle, {passive:false});
 })();
 </script>
 
