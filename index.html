@@ -193,6 +193,7 @@ function attachResetGesture(){
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
 const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
 let IS_ONLINE=navigator.onLine;const netBadge=document.getElementById('netBadge');
+let ADDING_LOCK=false;
 function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline')}
 async function pingOnline(){try{const r=await fetch('./manifest.json?ping='+Date.now(),{cache:'no-store'});IS_ONLINE=r.ok}catch(e){IS_ONLINE=false}setNetBadge()}
 window.addEventListener('online',()=>{IS_ONLINE=true;setNetBadge()});window.addEventListener('offline',()=>{IS_ONLINE=false;setNetBadge()});setInterval(pingOnline,5000);pingOnline();
@@ -392,18 +393,33 @@ function renderSuggest(arr){
   showSuggest();
   Array.from(suggestList.children).forEach(row=>{
     row.addEventListener('click', async ()=>{
-      hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      const typeSel=document.getElementById('add-type').value;
-      const streamSel=document.getElementById('add-stream').value;
-      const it={
-        id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-        title, year, imdbID, poster,
-        type:typeSel, streamingOn:streamSel, createdAt:Date.now()
-      };
-      await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
-      setStatus('Toegevoegd: '+title);
-      document.getElementById('add-search').value='';
+      if(ADDING_LOCK) return;
+      ADDING_LOCK = true;
+      try{
+        hideSuggest();
+        const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+        const typeSel=document.getElementById('add-type').value;
+        const streamSel=document.getElementById('add-stream').value;
+
+        // Dedupe: skip if already exists (by imdbID or title+type)
+        const exists = (app.state.items||[]).find(x=>(x.imdbID && x.imdbID===imdbID) || (x.title===title && x.type===typeSel));
+        if(exists){
+          setStatus('Bestond al: '+title);
+          document.getElementById('add-search').value='';
+          return;
+        }
+
+        const it={
+          id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+          title, year, imdbID, poster,
+          type:typeSel, streamingOn:streamSel, createdAt:Date.now()
+        };
+        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+        setStatus('Toegevoegd: '+title);
+        document.getElementById('add-search').value='';
+      } finally {
+        ADDING_LOCK = false;
+      }
     });
   });
 }
@@ -476,7 +492,7 @@ async function autoSeedIfEmpty(){
       const j = await res.json();
       const arr = Array.isArray(j)?j:(j.items||[]);
       merged = merged.concat(arr);
-    }catch(e){}
+    }catch(e){} 
   }
   if(merged.length){
     const now=Date.now();
