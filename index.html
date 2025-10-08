@@ -342,7 +342,15 @@ function card(item, index){
     </div>`;
   div.querySelector('[data-action="delete"]').onclick=async()=>{await dbDel(item.id); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();};
   div.querySelector('.our-score-input').onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();};
-  const catSel=div.querySelector('.category-select'); catSel.onchange=async(e)=>{item.type=e.target.value; await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced();};
+  const catSel=div.querySelector('.category-select'); 
+  catSel.onchange=async(e)=>{
+    item.type=e.target.value; 
+    // Sorteerfix: zet bovenaan bij default sort (recent -> oud)
+    const sortSel=document.getElementById('sortBy');
+    if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); }
+    await dbPut(item); 
+    app.render(); bindStreamUI(); syncPushDebounced();
+  };
   const stSel=div.querySelector('.streaming-service-select'); stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();};
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
   div.querySelector('.btn-imdb').onclick=()=>openImdbOverlay(item.imdbID);
@@ -481,7 +489,6 @@ let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTime
 async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
 async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
-
 
 // ===== Streaming multi-select (checkbox menu) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
