@@ -4,8 +4,9 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>Tievie v3.31 — dobbelsteen overlay + PWA</title>
-<script src="https://cdn.tailwindcss.com">
+<title>Tievie v3.31 — PWA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
 // === Cache touch (click or long-press on version badge) ===
 function attachResetGesture(){
   const el = document.getElementById('status');
@@ -23,7 +24,6 @@ function attachResetGesture(){
         await Promise.all(regs.map(r=>r.unregister()));
       }
     }catch(e){ console.warn('reset error', e); }
-    // Hard reload with cache-busting
     const base = location.pathname.replace(/index\.html?$/,'') || '/';
     location.href = base + '?v=26c-' + Date.now();
   }
@@ -33,7 +33,6 @@ function attachResetGesture(){
     el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
   });
 }
-
 </script>
 <link rel="manifest" href="./manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -56,7 +55,6 @@ function attachResetGesture(){
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
   #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
   #suggest .row:hover{background:rgba(2,6,23,.06)}
-
   body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji';}
   input[type="text"], input[type="search"], input[type="date"], select, .our-score-input, .category-select, .streaming-service-select {
     background:#ffffff !important;
@@ -67,7 +65,6 @@ function attachResetGesture(){
   input::placeholder{color:#64748b}
   select{padding-right:2rem !important}
   .glass{background:rgba(255,255,255,.90) !important;}
-
 </style>
 </head>
 <body>
@@ -75,11 +72,22 @@ function attachResetGesture(){
   <header class="mb-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
-      <div class="flex gap-2 items-center">
+      <div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
-        <button id="btn-import" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">Importeer JSON</button>
-        <button id="btn-export" class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">Exporteer alles</button>
-        <button id="btn-posters" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow text-sm pill">Posters ophalen</button>
+        <button id="btn-help" aria-haspopup="true" aria-expanded="false"
+                class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">
+          Hulp ▾
+        </button>
+        <div id="helpMenu"
+             class="absolute right-0 mt-2 w-56 glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden hidden"
+             style="z-index:100020">
+          <div class="py-1 text-slate-800">
+            <button id="btn-import" class="w-full text-left px-3 py-2 hover:bg-white/60">Importeer JSON</button>
+            <button id="btn-export" class="w-full text-left px-3 py-2 hover:bg-white/60">Exporteer alles</button>
+            <button id="btn-posters" class="w-full text-left px-3 py-2 hover:bg-white/60">Posters ophalen</button>
+            <button id="btn-refresh-meta" class="w-full text-left px-3 py-2 hover:bg-white/60">IMDb-gegevens verversen</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -97,9 +105,8 @@ function attachResetGesture(){
       </select>
       <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
       <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        Diensten <span id="streamCount" class="ml-1 opacity-70">(alle)</span>
+        Waar te zien?
       </button>
-
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
 
@@ -170,12 +177,13 @@ function attachResetGesture(){
   </div>
 </div>
 
-<div id="status">v3.31 — dobbelsteen overlay (Safari/iPad)</div>
+<div id="status">v3.31 — PWA</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
 const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
 let IS_ONLINE=navigator.onLine;const netBadge=document.getElementById('netBadge');
+let ADDING_LOCK=false;
 function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline')}
 async function pingOnline(){try{const r=await fetch('./manifest.json?ping='+Date.now(),{cache:'no-store'});IS_ONLINE=r.ok}catch(e){IS_ONLINE=false}setNetBadge()}
 window.addEventListener('online',()=>{IS_ONLINE=true;setNetBadge()});window.addEventListener('offline',()=>{IS_ONLINE=false;setNetBadge()});setInterval(pingOnline,5000);pingOnline();
@@ -188,31 +196,42 @@ async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
-// === Dedup helpers ===
-function normalizeTitle(t){
-  return (t||'').toString().toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
-}
-function normalizeYear(y){
-  const m = String(y||'').match(/\d{4}/);
-  return m ? m[0] : '';
-}
-function sameTitleYear(a,b){
-  return normalizeTitle(a.title)===normalizeTitle(b.title) && normalizeYear(a.year)===normalizeYear(b.year);
-}
-function findExisting(all, inc){
-  const incId = (inc.imdbID||inc.imdbId||'').toLowerCase();
-  for(const it of all){
-    const id = (it.imdbID||it.imdbId||'').toLowerCase();
-    if(id && incId && id===incId) return it;
-  }
-  if(inc.title){
-    for(const it of all){
-      if(sameTitleYear(it, inc)) return it;
-    }
-  }
-  return null;
-}
 
+// === Anti-duplicate helpers ===
+function normalizeTitle(t){
+  return (t||'').toString().toLowerCase()
+    .replace(/&/g,'and')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function keyFor(it){
+  const imdb=(it.imdbID||it.imdbId||'').trim();
+  if(imdb) return 'imdb:'+imdb.toLowerCase();
+  const t=normalizeTitle(it.title);
+  const y=(it.year||'').toString().trim();
+  return 'ty:'+t+'|'+y;
+}
+const TYPE_RANK={ 'bekeken':3, 'aan-het-kijken':2, 'herman-film':1, 'herman-serie':1, 'film':1, 'serie':1 };
+function betterType(a,b){
+  const ra=TYPE_RANK[a]||0, rb=TYPE_RANK[b]||0;
+  return (rb>ra)?b:a;
+}
+function mergeItems(base, inc){
+  const out={...base};
+  if(inc.type && inc.type!==base.type) out.type = betterType(base.type, inc.type);
+  out.createdAt = Math.max(base.createdAt||0, inc.createdAt||0, Date.now());
+  if(!out.imdbID && (inc.imdbID||inc.imdbId)) out.imdbID = inc.imdbID||inc.imdbId;
+  if((!out.poster || out.poster==='N/A') && (inc.poster && inc.poster!=='N/A')) out.poster=inc.poster;
+  if(inc.imdbRating && !out.imdbRating) out.imdbRating=inc.imdbRating;
+  if(inc.year && !out.year) out.year=inc.year;
+  if(inc.runtime && !out.runtime) out.runtime=inc.runtime;
+  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(inc.ourScore);
+  if((!out.streamingOn || String(out.streamingOn).trim()==='') && inc.streamingOn) out.streamingOn=inc.streamingOn;
+  if(inc.dateSeen && (!out.dateSeen || inc.dateSeen>out.dateSeen)) out.dateSeen=inc.dateSeen;
+  if((!out.title || out.title.length < (inc.title||'').length) && inc.title) out.title=inc.title;
+  return out;
+}
 
 function normalizeStream(raw){
   const s=(raw||'').toString().trim().toLowerCase(); if(!s) return '';
@@ -238,6 +257,7 @@ app.render=function(){
     btn.classList.toggle('bg-sky-500',a);
     btn.classList.toggle('text-white',a);
     btn.classList.toggle('bg-white/30',!a);
+    btn.classList.toggle('hover:bg-white/40',!a);
   });
   document.getElementById('countBadge').textContent = items.length+' items';
   if(items.length===0){ empty.classList.remove('hidden'); return } empty.classList.add('hidden');
@@ -247,12 +267,10 @@ app.render=function(){
 app.filtered=function(){
   let a=app.state.items.slice();
   if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
-  const fs=app.state.filterStreaming;
   const sel=app.state.streamSet;
   if(sel && sel.size){
     a=a.filter(i=>{ const s=normalizeStream(i.streamingOn); return (s && sel.has(s)) || (!s && sel.has('__UNKNOWN__')); });
-  } else if(fs==='__UNKNOWN__'){ a=a.filter(i=>!normalizeStream(i.streamingOn)); }
-  else if(fs){ a=a.filter(i=>normalizeStream(i.streamingOn)===fs); }
+  }
   const term=(app.state.searchTerm||'').toLowerCase();
   if(term){
     a=a.filter(i=>{
@@ -350,7 +368,14 @@ function card(item, index){
     </div>`;
   div.querySelector('[data-action="delete"]').onclick=async()=>{await dbDel(item.id); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();};
   div.querySelector('.our-score-input').onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();};
-  const catSel=div.querySelector('.category-select'); catSel.onchange=async(e)=>{item.type=e.target.value; await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced();};
+  const catSel=div.querySelector('.category-select'); 
+  catSel.onchange=async(e)=>{
+    item.type=e.target.value; 
+    const sortSel=document.getElementById('sortBy');
+    if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); }
+    await dbPut(item); 
+    app.render(); bindStreamUI(); syncPushDebounced();
+  };
   const stSel=div.querySelector('.streaming-service-select'); stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();};
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
   div.querySelector('.btn-imdb').onclick=()=>openImdbOverlay(item.imdbID);
@@ -400,11 +425,30 @@ function renderSuggest(arr){
         const typeSel=document.getElementById('add-type').value;
         const streamSel=document.getElementById('add-stream').value;
 
-        const all = await dbGetAll();
-        const exists = findExisting(all, {title, year, imdbID});
-        ifdStreamUI(); syncPushDebounced();
-      setStatus('Toegevoegd: '+title);
-      document.getElementById('add-search').value='';
+        const all=await dbGetAll();
+        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
+        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
+        const k=keyFor(inc);
+        if(keyMap.has(k)){
+          const ex=keyMap.get(k);
+          const sortSel=document.getElementById('sortBy');
+          if(sortSel && sortSel.value==='created_desc'){ ex.createdAt=Date.now(); }
+          ex.type = betterType(ex.type, typeSel);
+          if(!ex.streamingOn && streamSel) ex.streamingOn=streamSel;
+          if(!ex.poster && inc.poster) ex.poster=inc.poster;
+          await dbPut(ex);
+          app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+          setStatus('Bestond al — bijgewerkt/verplaatst: '+ex.title);
+          document.getElementById('add-search').value='';
+          return;
+        }
+        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+        setStatus('Toegevoegd: '+title);
+        document.getElementById('add-search').value='';
+      } finally {
+        ADDING_LOCK = false;
+      }
     });
   });
 }
@@ -416,28 +460,6 @@ function showSuggest(){
   suggestBox.querySelector('.card').style.width=Math.max(320, r.width)+'px';
 }
 function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
-
-// Duplicaat-popup helpers
-function showDuplicateModal(msg){
-  try{
-    const overlay = document.getElementById('dupModal');
-    const txt = document.getElementById('dupText');
-    if(txt && msg) txt.textContent = msg;
-    if(overlay){ overlay.style.display = 'block'; }
-  }catch(e){ console.warn('dup modal error', e); alert(msg||'Deze titel is al eerder toegevoegd.'); }
-}
-function closeDuplicateModal(){
-  const overlay = document.getElementById('dupModal');
-  if(overlay){ overlay.style.display = 'none'; }
-}
-document.addEventListener('click', function(e){
-  const overlay = document.getElementById('dupModal');
-  if(!overlay || overlay.style.display==='none') return;
-  const panel = overlay.querySelector('[role="dialog"]');
-  const closeBtn = document.getElementById('dupClose');
-  if(e.target===overlay || (closeBtn && closeBtn===e.target)){ closeDuplicateModal(); }
-}, {capture:true});
-
 
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
@@ -451,22 +473,63 @@ function bindUI(){
   f.onchange=()=>{const file=f.files&&f.files[0];if(file)importJson(file)};
   document.getElementById('btn-export').onclick=exportJson;
   document.getElementById('btn-posters').onclick=fetchMissingPosters;
-  document.getElementById('filterControls').addEventListener('click',e=>{const b=e.target.closest('.filter-btn');if(!b)return;app.state.filter=b.dataset.filter;app.render()});
+  (function(){
+    const fc = document.getElementById('filterControls');
+    if(!fc) return;
+    fc.addEventListener('click', e=>{
+      const b = e.target.closest('.filter-btn');
+      if(!b) return;
+      fc.querySelectorAll('.filter-btn').forEach(btn=>{
+        const active = (btn === b);
+        btn.classList.toggle('bg-sky-500', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('bg-white/30', !active);
+        btn.classList.toggle('hover:bg-white/40', !active);
+      });
+      app.state.filter = b.dataset.filter;
+      app.render();
+    });
+  })();
   document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
 }
 
 async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
+
 async function importJson(file){
   setStatus('Import JSON gestart…');
   try{
-    const text=await file.text();const data=JSON.parse(text);const arr=Array.isArray(data)?data:(data.items||[]);
-    const existing=await dbGetAll();const out=[];const now=Date.now();
-    arr.forEach(raw=>{
-      const ex=existing.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));
-      out.push({id:ex?.id||raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||ex?.title||'Onbekend',type:raw.type||ex?.type||'film',createdAt:ex?.createdAt||raw.createdAt||now,imdbRating:raw.imdbRating||ex?.imdbRating||'',year:raw.year||ex?.year||'',runtime:raw.runtime||ex?.runtime||'',poster:(raw.poster&&raw.poster!=='N/A')?raw.poster:(ex?.poster||''),streamingOn:raw.streamingOn||ex?.streamingOn||'',ourScore:(raw.ourScore==null||String(raw.ourScore).toLowerCase()==='nan')?(ex?.ourScore||''):String(raw.ourScore),dateSeen:raw.dateSeen||ex?.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||ex?.imdbID||''});
-    });
-    await dbBulkPut(out); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar.'); syncPush();
+    const text=await file.text();const data=JSON.parse(text);
+    const arr=Array.isArray(data)?data:(data.items||[]);
+    const existing=await dbGetAll();
+    const byKey=new Map(existing.map(x=>[keyFor(x), x]));
+    const upserts=[];
+    for(const raw of arr){
+      const incoming={
+        id: raw.id || undefined,
+        title: raw.title || '',
+        type: raw.type || 'film',
+        createdAt: raw.createdAt || Date.now(),
+        imdbRating: raw.imdbRating || '',
+        year: raw.year || '',
+        runtime: raw.runtime || '',
+        poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
+        streamingOn: raw.streamingOn || '',
+        ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? '' : String(raw.ourScore),
+        dateSeen: raw.dateSeen || '',
+        imdbID: raw.imdbID || raw.imdbId || ''
+      };
+      const k=keyFor(incoming);
+      if(byKey.has(k)){
+        const merged=mergeItems(byKey.get(k), incoming);
+        byKey.set(k, merged);
+      }else{
+        byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
+      }
+    }
+    for(const [,val] of byKey) upserts.push(val);
+    await dbBulkPut(upserts);
+    app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
   }catch(e){console.error(e); setStatus('Import JSON error');}
 }
 
@@ -486,12 +549,12 @@ async function fetchMissingPosters(){
   setStatus('Posters afgerond. Geüpdatet: '+changed);
 }
 
-// ======= Auto-seed on first run (loads from ./data/*.json) =======
+// ======= Auto-seed on first run =======
 async function autoSeedIfEmpty(){
   const current = await dbGetAll();
   if(current && current.length>0) return;
   const files = ['films.json','series.json','herman-film.json','herman-serie.json','aanhetkijken.json','bekeken.json'];
-  let total=0, merged=[];
+  let merged=[];
   for(const f of files){
     try{
       const res = await fetch('./data/'+f+'?ts='+Date.now(), {cache:'no-store'});
@@ -499,36 +562,24 @@ async function autoSeedIfEmpty(){
       const j = await res.json();
       const arr = Array.isArray(j)?j:(j.items||[]);
       merged = merged.concat(arr);
-    }catch(e){}
+    }catch(e){} 
   }
   if(merged.length){
     const now=Date.now();
-    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null||String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
     await dbBulkPut(prepped);
   }
 }
 
 let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
 async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
-async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
+async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
-
-// ===== Streaming multi-select (checkbox menu) =====
+// ===== Streaming multi-select (floating panel) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
-app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set(); // keep selection across reloads (session)
-
-function updateStreamBadge(){
-  const btn = document.getElementById('streamBtn');
-  const badge = document.getElementById('streamCount');
-  const sel = app.state.streamSet;
-  if(!badge) return;
-  if(!sel || sel.size===0 || sel.size===STREAM_SERVICES.length){
-    badge.textContent = '(alle)';
-  }else{
-    badge.textContent = `(${sel.size})`;
-  }
-}
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
 function buildStreamMenu(){
   const list = document.getElementById('streamList');
@@ -544,7 +595,6 @@ function buildStreamMenu(){
     cb.checked = app.state.streamSet.has(s);
     cb.addEventListener('change', ()=>{
       if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
-      // Live apply: render immediately (will sort using current sortBy)
       app.render(); bindStreamUI();
       updateStreamBadge();
     });
@@ -569,7 +619,6 @@ function openStreamMenu(){
   buildStreamMenu();
   menu.style.display = 'block';
   positionStreamMenu();
-  // Close on outside click or ESC
   const onDocClick = (e)=>{
     const btn = document.getElementById('streamBtn');
     if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
@@ -614,7 +663,6 @@ function bindStreamUI(){
   updateStreamBadge();
 }
 
-
 document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
@@ -622,45 +670,15 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
-    setStatus('v3.31 — dobbelsteen overlay + multi-select • '+app.state.items.length+' items');
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
     await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
-
-// === Cache touch (click or long-press on version badge) ===
-function attachResetGesture(){
-  const el = document.getElementById('status');
-  if(!el) return;
-  let timer=null;
-  async function doReset(){
-    if(!confirm('Cache wissen & herladen?')) return;
-    try{
-      if (window.caches && caches.keys) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k=>caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r=>r.unregister()));
-      }
-    }catch(e){ console.warn('reset error', e); }
-    // Hard reload with cache-busting
-    const base = location.pathname.replace(/index\.html?$/,'') || '/';
-    location.href = base + '?v=26c-' + Date.now();
-  }
-  el.addEventListener('click', doReset);
-  el.addEventListener('touchstart', ()=>{ timer=setTimeout(doReset, 3000); }, {passive:true});
-  ['touchend','touchcancel','touchmove','pointerup','pointercancel','mouseup','mouseleave'].forEach(ev=>{
-    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
-  });
-}
-
 </script>
 <script src="./tievie-fixes-v3_29.js?v=3.29?v=3.27"></script>
 
-<!-- Streaming multi-select floating panel -->
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
   <div class="flex items-center justify-between mb-2">
     <strong class="text-slate-800">Streamingdiensten</strong>
@@ -669,24 +687,22 @@ function attachResetGesture(){
       <button id="streamNone" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Niets</button>
     </div>
   </div>
-  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900">
-    <!-- checkboxes injected by JS -->
-  </div>
+  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900"></div>
 </div>
 
-
 <script>
-// Lightweight dropdown for Hulpmenu (keeps existing IDs for actions)
 (function(){
-  function openMenu(){ const m=document.getElementById('toolsMenu'); if(!m) return; m.style.display='block'; document.getElementById('btn-tools').setAttribute('aria-expanded','true'); position(); attach(); }
-  function closeMenu(){ const m=document.getElementById('toolsMenu'); if(!m) return; m.style.display='none'; document.getElementById('btn-tools').setAttribute('aria-expanded','false'); detach(); }
-  function toggleMenu(e){ e&&e.preventDefault&&e.preventDefault(); const m=document.getElementById('toolsMenu'); if(!m) return; (m.style.display==='block')?closeMenu():openMenu(); }
-  function position(){ const m=document.getElementById('toolsMenu'); const b=document.getElementById('btn-tools'); if(!m||!b) return; const r=b.getBoundingClientRect(); const vw=document.documentElement.clientWidth; const left=Math.min(r.left + window.scrollX, window.scrollX + (vw - m.offsetWidth - 12)); m.style.left=left+'px'; }
+  const btn = document.getElementById('btn-help');
+  const menu = document.getElementById('helpMenu');
+  if(!btn || !menu) return;
+  function open(){ menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); attach(); }
+  function close(){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); detach(); }
+  function toggle(e){ e && e.preventDefault && e.preventDefault(); (menu.classList.contains('hidden')?open():close()); }
   let onDocClick=null, onKey=null;
   function attach(){
     if(onDocClick) return;
-    onDocClick = function(e){ const m=document.getElementById('toolsMenu'); const b=document.getElementById('btn-tools'); if(!m||!b) return; if(m.contains(e.target)||b.contains(e.target)) return; closeMenu(); };
-    onKey = function(e){ if(e.key==='Escape') closeMenu(); };
+    onDocClick = (e)=>{ if(menu.contains(e.target) || btn.contains(e.target)) return; close(); };
+    onKey = (e)=>{ if(e.key==='Escape') close(); };
     document.addEventListener('mousedown', onDocClick, {capture:true});
     document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
     document.addEventListener('keydown', onKey, {capture:true});
@@ -698,40 +714,7 @@ function attachResetGesture(){
     document.removeEventListener('keydown', onKey, {capture:true});
     onDocClick=null; onKey=null;
   }
-  document.addEventListener('DOMContentLoaded', function(){
-    const b=document.getElementById('btn-tools'); if(!b) return;
-    b.addEventListener('click', toggleMenu);
-  });
-})();
-</script>
-
-
-<script>
-// Dropdown logic for the Help menu (top-right). Non-intrusive, Mac/iPad/Safari friendly.
-(function(){
-  function openMenu(){ const m=document.getElementById('helpMenu'); if(!m) return; m.style.display='block'; const b=document.getElementById('btn-help'); if(b) b.setAttribute('aria-expanded','true'); attach(); }
-  function closeMenu(){ const m=document.getElementById('helpMenu'); if(!m) return; m.style.display='none'; const b=document.getElementById('btn-help'); if(b) b.setAttribute('aria-expanded','false'); detach(); }
-  function toggleMenu(e){ if(e&&e.preventDefault) e.preventDefault(); const m=document.getElementById('helpMenu'); if(!m) return; (m.style.display==='block')?closeMenu():openMenu(); }
-  let onDocClick=null,onKey=null;
-  function attach(){
-    if(onDocClick) return;
-    onDocClick = function(e){ const m=document.getElementById('helpMenu'); const b=document.getElementById('btn-help'); if(!m||!b) return; if(m.contains(e.target)||b.contains(e.target)) return; closeMenu(); };
-    onKey = function(e){ if(e.key==='Escape') closeMenu(); };
-    document.addEventListener('mousedown', onDocClick, {capture:true});
-    document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
-    document.addEventListener('keydown', onKey, {capture:true});
-  }
-  function detach(){
-    if(!onDocClick) return;
-    document.removeEventListener('mousedown', onDocClick, {capture:true});
-    document.removeEventListener('touchstart', onDocClick, {capture:true});
-    document.removeEventListener('keydown', onKey, {capture:true});
-    onDocClick=null; onKey=null;
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    const b=document.getElementById('btn-help'); if(!b) return;
-    b.addEventListener('click', toggleMenu, {passive:false});
-  });
+  btn.addEventListener('click', toggle, {passive:false});
 })();
 </script>
 
