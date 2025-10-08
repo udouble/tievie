@@ -590,12 +590,37 @@ function bindStreamUI(){
   updateStreamBadge();
 }
 
+// === One-time reverse of 'bekeken' ordering ===
+async function reverseBekekenOnce(){
+  try{
+    const flagKey='mfs_rev_bekeken_v1';
+    if(localStorage.getItem(flagKey)) return;
+    const all = await dbGetAll();
+    const seen = all.filter(x=>x.type==='bekeken');
+    if(seen.length < 2){ localStorage.setItem(flagKey,'skip'); return; }
+    // Sort by createdAt ascending, capture the time values, then reassign reversed times 1:1
+    const sorted = seen.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    const times = sorted.map(x=>x.createdAt||0).sort((a,b)=>a-b);
+    const rev = times.slice().reverse();
+    for(let i=0;i<sorted.length;i++){
+      sorted[i].createdAt = rev[i] || sorted[i].createdAt || Date.now();
+      await dbPut(sorted[i]);
+    }
+    localStorage.setItem(flagKey,'done');
+    console.log('Bekeken-reverse toegepast op', seen.length, 'items');
+  }catch(e){
+    console.warn('reverseBekekenOnce error', e);
+  }
+}
 
 document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
     await syncPull();
     await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    // Run one-time reverse migration
+    await reverseBekekenOnce();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
     setStatus('v3.31 — dobbelsteen overlay + multi-select • '+app.state.items.length+' items');
