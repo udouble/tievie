@@ -113,7 +113,7 @@ function attachResetGesture(){
         <option value="title_desc">Titel Z → A</option>
       </select>
       <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
-      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">Waar te zien? <span id="streamCount" class="ml-1 opacity-70">(alle)</span>
+      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">Waar te zien?
       </button>
 
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
@@ -615,14 +615,7 @@ navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set(); // keep selection across reloads (session)
 
-function updateStreamBadge(){
-  const btn = document.getElementById('streamBtn');
-  const badge = document.getElementById('streamCount');
-  const sel = app.state.streamSet;
-  if(!badge) return;
-  if(!sel || sel.size===0 || sel.size===STREAM_SERVICES.length){
-    badge.textContent = '(alle)';
-  }else{
+function updateStreamBadge(){}else{
     badge.textContent = `(${sel.size})`;
   }
 }
