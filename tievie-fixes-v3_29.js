@@ -140,46 +140,56 @@
         close();
       };
     }
-    const bar = document.querySelector('header .mb-3 .flex.gap-2') || document.querySelector('header .flex.gap-2');
-    if(bar && !document.getElementById('btn-refresh-meta')){
-      const btn = document.createElement('button');
-      btn.id = 'btn-refresh-meta';
-      btn.className = 'px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white shadow text-sm pill';
-      btn.textContent = 'IMDb-gegevens verversen';
-      btn.addEventListener('click', async ()=>{
-        if(!navigator.onLine){ alert('Online nodig voor verversen.'); return; }
-        const items = await (window.dbGetAll && window.dbGetAll()) || [];
-        let changed = 0;
-        for(const it of items){
-          try{
-            let j=null;
-            if(it.imdbID){
-              j = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(it.imdbID)}`).then(r=>r.json());
-            }else if(it.title){
-              const url = `https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(it.title)}${it.year?('&y='+it.year):''}`;
-              j = await fetch(url).then(r=>r.json());
-            }
-            if(j && j.Response!=='False'){
-              const r1 = (j.imdbRating||''); const r2 = (j.Year||''); const r3 = (j.Runtime||'');
-              if((r1 && r1!==it.imdbRating) || (r2 && r2!==it.year) || (r3 && r3!==it.runtime)){
-                it.imdbRating = r1 || it.imdbRating;
-                it.year       = r2 || it.year;
-                it.runtime    = r3 || it.runtime;
-                await (window.dbPut && window.dbPut(it));
-                changed++;
-              }
-            }
-          }catch(e){}
+    
+const bar = document.querySelector('header .mb-3 .flex.gap-2') || document.querySelector('header .flex.gap-2');
+(function ensureRefreshButton(){
+  let btn = document.getElementById('btn-refresh-meta');
+  async function handler(){
+    if(!navigator.onLine){ alert('Online nodig voor verversen.'); return; }
+    const items = await (window.dbGetAll && window.dbGetAll()) || [];
+    let changed = 0;
+    for(const it of items){
+      try{
+        let j=null;
+        if(it.imdbID){
+          j = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(it.imdbID)}`).then(r=>r.json());
+        }else if(it.title){
+          const url = `https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(it.title)}${it.year?('&y='+it.year):''}`;
+          j = await fetch(url).then(r=>r.json());
         }
-        if(changed){
-          const all = await (window.dbGetAll && window.dbGetAll());
-          if(window.app){ app.state.items = all || []; app.render && app.render(); }
-          (window.syncPushDebounced && window.syncPushDebounced());
+        if(j && j.Response!=='False'){
+          const r1 = (j.imdbRating||''); const r2 = (j.Year||''); const r3 = (j.Runtime||'');
+          if((r1 && r1!==it.imdbRating) || (r2 && r2!==it.year) || (r3 && r3!==it.runtime)){
+            it.imdbRating = r1 || it.imdbRating;
+            it.year       = r2 || it.year;
+            it.runtime    = r3 || it.runtime;
+            await (window.dbPut && window.dbPut(it));
+            changed++;
+          }
         }
-        alert('Verversen klaar. Bijgewerkt: '+changed);
-      });
-      bar.appendChild(btn);
+      }catch(e){}
     }
+    if(changed){
+      const all = await (window.dbGetAll && window.dbGetAll());
+      if(window.app){ app.state.items = all || []; app.render && app.render(); }
+      (window.syncPushDebounced && window.syncPushDebounced());
+    }
+    alert('Verversen klaar. Bijgewerkt: '+changed);
+  }
+  if(btn){
+    // If button exists (e.g., in dropdown), just bind handler.
+    if(!btn.__bind){ btn.addEventListener('click', handler); btn.__bind = true; }
+  }else if(bar){
+    // Fallback: create legacy button on the toolbar (kept for safety)
+    btn = document.createElement('button');
+    btn.id = 'btn-refresh-meta';
+    btn.className = 'px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white shadow text-sm pill';
+    btn.textContent = 'IMDb-gegevens verversen';
+    btn.addEventListener('click', handler);
+    bar.appendChild(btn);
+  }
+})();
+
   });
 })();
 

@@ -141,6 +141,7 @@ function attachResetGesture(){
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="aan-het-kijken">Aan het kijken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="bekeken">Bekeken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="all">Alles</button>
+      <button id="btn-random" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</button>
       <div class="flex-1"></div>
       <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56 pill"/>
     </div>
@@ -624,6 +625,37 @@ function attachResetGesture(){
     <!-- checkboxes injected by JS -->
   </div>
 </div>
+
+
+<script>
+// Lightweight dropdown for Hulpmenu (keeps existing IDs for actions)
+(function(){
+  function openMenu(){ const m=document.getElementById('toolsMenu'); if(!m) return; m.style.display='block'; document.getElementById('btn-tools').setAttribute('aria-expanded','true'); position(); attach(); }
+  function closeMenu(){ const m=document.getElementById('toolsMenu'); if(!m) return; m.style.display='none'; document.getElementById('btn-tools').setAttribute('aria-expanded','false'); detach(); }
+  function toggleMenu(e){ e&&e.preventDefault&&e.preventDefault(); const m=document.getElementById('toolsMenu'); if(!m) return; (m.style.display==='block')?closeMenu():openMenu(); }
+  function position(){ const m=document.getElementById('toolsMenu'); const b=document.getElementById('btn-tools'); if(!m||!b) return; const r=b.getBoundingClientRect(); const vw=document.documentElement.clientWidth; const left=Math.min(r.left + window.scrollX, window.scrollX + (vw - m.offsetWidth - 12)); m.style.left=left+'px'; }
+  let onDocClick=null, onKey=null;
+  function attach(){
+    if(onDocClick) return;
+    onDocClick = function(e){ const m=document.getElementById('toolsMenu'); const b=document.getElementById('btn-tools'); if(!m||!b) return; if(m.contains(e.target)||b.contains(e.target)) return; closeMenu(); };
+    onKey = function(e){ if(e.key==='Escape') closeMenu(); };
+    document.addEventListener('mousedown', onDocClick, {capture:true});
+    document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+    document.addEventListener('keydown', onKey, {capture:true});
+  }
+  function detach(){
+    if(!onDocClick) return;
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+    onDocClick=null; onKey=null;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    const b=document.getElementById('btn-tools'); if(!b) return;
+    b.addEventListener('click', toggleMenu);
+  });
+})();
+</script>
 
 </body>
 </html>
