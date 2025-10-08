@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>Tievie v3.31 — dobbelsteen overlay + PWA</title>
+<title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com">
 // === Cache touch (click or long-press on version badge) ===
 function attachResetGesture(){
@@ -187,7 +187,7 @@ function attachResetGesture(){
   </div>
 </div>
 
-<div id="status">v3.31 — dobbelsteen overlay (Safari/iPad)</div>
+<div id="status">v3.31 — PWA</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
@@ -206,6 +206,53 @@ async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+
+// === Unieke sleutel en merging ===
+function normalizeTitle(t){
+  return (t||'').toString().toLowerCase()
+    .replace(/&/g,'and')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function keyFor(it){
+  const imdb=(it.imdbID||it.imdbId||'').trim();
+  if(imdb) return 'imdb:'+imdb.toLowerCase();
+  const t=normalizeTitle(it.title);
+  const y=(it.year||'').toString().trim();
+  return 'ty:'+t+'|'+y;
+}
+const TYPE_RANK={ 'bekeken':3, 'aan-het-kijken':2, 'herman-film':1, 'herman-serie':1, 'film':1, 'serie':1 };
+function betterType(a,b){
+  const ra=TYPE_RANK[a]||0, rb=TYPE_RANK[b]||0;
+  return (rb>ra)?b:a;
+}
+function mergeItems(base, inc){
+  // 1 item overhouden, velden aanvullen
+  const out={...base};
+  // type: kies hoogste prioriteit
+  if(inc.type && inc.type!==base.type) out.type = betterType(base.type, inc.type);
+  // createdAt: neem de meest recente
+  const ca=Math.max(base.createdAt||0, inc.createdAt||0, Date.now());
+  out.createdAt = ca;
+  // imdbID
+  if(!out.imdbID && (inc.imdbID||inc.imdbId)) out.imdbID = inc.imdbID||inc.imdbId;
+  // poster
+  if((!out.poster || out.poster==='N/A') && (inc.poster && inc.poster!=='N/A')) out.poster=inc.poster;
+  // ratings & meta
+  if(inc.imdbRating && !out.imdbRating) out.imdbRating=inc.imdbRating;
+  if(inc.year && !out.year) out.year=inc.year;
+  if(inc.runtime && !out.runtime) out.runtime=inc.runtime;
+  // ourScore: behoud bestaande als die er is, anders neem inc
+  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(inc.ourScore);
+  // streamingOn: bewaar bestaande, vul alleen aan als leeg
+  if((!out.streamingOn || String(out.streamingOn).trim()==='') && inc.streamingOn) out.streamingOn=inc.streamingOn;
+  // dateSeen: bewaar bestaande, tenzij inc recenter is
+  if(inc.dateSeen && (!out.dateSeen || inc.dateSeen>out.dateSeen)) out.dateSeen=inc.dateSeen;
+  // title: hou de langste non-empty (soms met subtitel)
+  if((!out.title || out.title.length < (inc.title||'').length) && inc.title) out.title=inc.title;
+  return out;
+}
 
 function normalizeStream(raw){
   const s=(raw||'').toString().trim().toLowerCase(); if(!s) return '';
@@ -401,18 +448,30 @@ function renderSuggest(arr){
         const typeSel=document.getElementById('add-type').value;
         const streamSel=document.getElementById('add-stream').value;
 
-        // Dedupe: skip if already exists (by imdbID or title+type)
-        const exists = (app.state.items||[]).find(x=>(x.imdbID && x.imdbID===imdbID) || (x.title===title && x.type===typeSel));
-        if(exists){
-          setStatus('Bestond al: '+title);
+        const all=await dbGetAll();
+        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
+        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
+        const k=keyFor(inc);
+        if(keyMap.has(k)){
+          // Bestond al: verplaats/merge en bovenaan bij recent-sort
+          const ex=keyMap.get(k);
+          const sortSel=document.getElementById('sortBy');
+          if(sortSel && sortSel.value==='created_desc'){ ex.createdAt=Date.now(); }
+          // type & meta merge (type naar gekozen categorie, streaming ook)
+          ex.type = betterType(ex.type, typeSel);
+          if(!ex.streamingOn && streamSel) ex.streamingOn=streamSel;
+          if(!ex.poster && inc.poster) ex.poster=inc.poster;
+          await dbPut(ex);
+          app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+          setStatus('Bestond al — bijgewerkt/verplaatst: '+ex.title);
           document.getElementById('add-search').value='';
           return;
         }
 
+        // Nieuw item
         const it={
           id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-          title, year, imdbID, poster,
-          type:typeSel, streamingOn:streamSel, createdAt:Date.now()
+          ...inc
         };
         await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
         setStatus('Toegevoegd: '+title);
@@ -450,16 +509,45 @@ function bindUI(){
 }
 
 async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
+
 async function importJson(file){
   setStatus('Import JSON gestart…');
   try{
-    const text=await file.text();const data=JSON.parse(text);const arr=Array.isArray(data)?data:(data.items||[]);
-    const existing=await dbGetAll();const out=[];const now=Date.now();
-    arr.forEach(raw=>{
-      const ex=existing.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));
-      out.push({id:ex?.id||raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||ex?.title||'Onbekend',type:raw.type||ex?.type||'film',createdAt:ex?.createdAt||raw.createdAt||now,imdbRating:raw.imdbRating||ex?.imdbRating||'',year:raw.year||ex?.year||'',runtime:raw.runtime||ex?.runtime||'',poster:(raw.poster&&raw.poster!=='N/A')?raw.poster:(ex?.poster||''),streamingOn:raw.streamingOn||ex?.streamingOn||'',ourScore:(raw.ourScore==null||String(raw.ourScore).toLowerCase()==='nan')?(ex?.ourScore||''):String(raw.ourScore),dateSeen:raw.dateSeen||ex?.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||ex?.imdbID||''});
-    });
-    await dbBulkPut(out); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar.'); syncPush();
+    const text=await file.text();const data=JSON.parse(text);
+    const arr=Array.isArray(data)?data:(data.items||[]);
+    // Bouw map met bestaande items
+    const existing=await dbGetAll();
+    const byKey=new Map(existing.map(x=>[keyFor(x), x]));
+    const upserts=[];
+    for(const raw of arr){
+      const incoming={
+        id: raw.id || undefined, // id kan overschreven worden door bestaande
+        title: raw.title || '',
+        type: raw.type || 'film',
+        createdAt: raw.createdAt || Date.now(),
+        imdbRating: raw.imdbRating || '',
+        year: raw.year || '',
+        runtime: raw.runtime || '',
+        poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
+        streamingOn: raw.streamingOn || '',
+        ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? '' : String(raw.ourScore),
+        dateSeen: raw.dateSeen || '',
+        imdbID: raw.imdbID || raw.imdbId || ''
+      };
+      const k=keyFor(incoming);
+      if(byKey.has(k)){
+        // merge in-place met bestaand item
+        const merged=mergeItems(byKey.get(k), incoming);
+        byKey.set(k, merged);
+      }else{
+        // nieuw item; maak een id
+        byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
+      }
+    }
+    // Schrijf alles terug (geen duplicaten)
+    for(const [,val] of byKey) upserts.push(val);
+    await dbBulkPut(upserts);
+    app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
   }catch(e){console.error(e); setStatus('Import JSON error');}
 }
 
@@ -484,7 +572,7 @@ async function autoSeedIfEmpty(){
   const current = await dbGetAll();
   if(current && current.length>0) return;
   const files = ['films.json','series.json','herman-film.json','herman-serie.json','aanhetkijken.json','bekeken.json'];
-  let total=0, merged=[];
+  let merged=[];
   for(const f of files){
     try{
       const res = await fetch('./data/'+f+'?ts='+Date.now(), {cache:'no-store'});
@@ -503,7 +591,7 @@ async function autoSeedIfEmpty(){
 
 let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
 async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
-async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(x.title===raw.title&&x.type===raw.type));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
+async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (checkbox menu) =====
@@ -536,7 +624,6 @@ function buildStreamMenu(){
     cb.checked = app.state.streamSet.has(s);
     cb.addEventListener('change', ()=>{
       if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
-      // Live apply: render immediately (will sort using current sortBy)
       app.render(); bindStreamUI();
       updateStreamBadge();
     });
@@ -561,7 +648,6 @@ function openStreamMenu(){
   buildStreamMenu();
   menu.style.display = 'block';
   positionStreamMenu();
-  // Close on outside click or ESC
   const onDocClick = (e)=>{
     const btn = document.getElementById('streamBtn');
     if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
@@ -614,7 +700,6 @@ async function reverseBekekenOnce(){
     const all = await dbGetAll();
     const seen = all.filter(x=>x.type==='bekeken');
     if(seen.length < 2){ localStorage.setItem(flagKey,'skip'); return; }
-    // Sort by createdAt ascending, capture the time values, then reassign reversed times 1:1
     const sorted = seen.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
     const times = sorted.map(x=>x.createdAt||0).sort((a,b)=>a-b);
     const rev = times.slice().reverse();
@@ -635,11 +720,10 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
     await syncPull();
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
-    // Run one-time reverse migration
     await reverseBekekenOnce();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
-    setStatus('v3.31 — dobbelsteen overlay + multi-select • '+app.state.items.length+' items');
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
     await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
