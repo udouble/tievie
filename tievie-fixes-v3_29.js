@@ -1,4 +1,4 @@
-/* Tievie fixes (v3.27) — enkel gevraagde functionaliteit, verder niets. */
+/* Tievie fixes (v3.30) — enkel gevraagde functionaliteit, verder niets. */
 (function(){
   const OMDB_KEY = '8a70a767';
   const norm = s => {
@@ -22,7 +22,7 @@
     const sel = document.getElementById('filterStreaming');
     if(sel){ /* legacy select no-op: UI moved to multi-select */ }
   
-    // === IMDb overlay (unchanged UI) ===
+    // === IMDb overlay (ongewijzigd) ===
     if(!document.getElementById('imdbOverlay')){
       const overlay = document.createElement('div');
       overlay.id='imdbOverlay';
@@ -70,7 +70,7 @@
       };
     }
 
-    // === Zoekresultaat modal "Toevoegen" (met strikte anti-duplicaat) ===
+    // === Zoekresultaat modal "Toevoegen" (strikte anti-duplicaat; overlay verschijnt niet bij duplicaat) ===
     (function mountAddModal(){
       const container = document.getElementById('suggest-list') || document.body;
       const slist = document.getElementById('suggest-list') || document.createElement('div');
@@ -97,7 +97,22 @@
       }
       let pending=null;
 
-      const open = async (info) => { pending = info; document.getElementById('addTitle').textContent = info.title || '—'; modal.style.display='flex';
+      const predupCheck = async (info)=>{
+        try{
+          const all = await (window.dbGetAll && window.dbGetAll()) || [];
+          const normTitle = (t)=> (window.normalizeTitle?window.normalizeTitle(t):(t||'').toString().toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim());
+          const kFor = (it)=> (window.keyFor?window.keyFor(it):((it.imdbID&&('imdb:'+String(it.imdbID).toLowerCase())) || ('ty:'+normTitle(it.title)+'|'+String(it.year||'').trim())));
+          const keySet = new Set(all.map(x=> (window.keyFor?window.keyFor(x):kFor(x))));
+          const titleSet = new Set(all.map(x=> normTitle(x.title||'')));
+          const isDup = keySet.has(kFor(info)) || (info.title && titleSet.has(normTitle(info.title)));
+          return !!isDup;
+        }catch(e){ return false; }
+      };
+
+      const open = async (info) => {
+        pending = info;
+        document.getElementById('addTitle').textContent = info.title || '—';
+        modal.style.display='flex';
         try{
           const all = await (window.dbGetAll && window.dbGetAll()) || [];
           const normTitle = (t)=> (window.normalizeTitle?window.normalizeTitle(t):(t||'').toString().toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim());
@@ -128,19 +143,26 @@
       document.getElementById('addClose').onclick = close;
       modal.addEventListener('click', (e)=>{ if(e.target===modal) close(); });
 
-      // Haak in op de zoekresultaat-rows om het modal te openen (UI ongewijzigd)
+      // Haak in op de zoekresultaat-rows om het modal te openen.
       new MutationObserver(()=>{
         slist.querySelectorAll('.row').forEach(row=>{
           if(row.__hook) return; row.__hook = true;
-          row.addEventListener('click', (ev)=>{
+          row.addEventListener('click', async (ev)=>{
             ev.preventDefault(); ev.stopPropagation();
             (window.hideSuggest && window.hideSuggest());
-            open({ imdbID: row.dataset.imdbid, title: row.dataset.title, year: row.dataset.year, poster: row.dataset.poster });
+            const info = { imdbID: row.dataset.imdbid, title: row.dataset.title, year: row.dataset.year, poster: row.dataset.poster };
+            // NIEUW: pre-check op duplicaat — als duplicaat, toon melding en open overlay NIET.
+            const isDup = await predupCheck(info);
+            if(isDup){
+              alert('Deze titel staat al in de app.');
+              return;
+            }
+            open(info);
           });
         });
       }).observe(container, {childList:true, subtree:true});
 
-      // Strikte check vóór toevoegen (en knop is al disabled bij duplicaat)
+      // Strikte check vóór toevoegen (blijft als extra veiligheid)
       document.getElementById('addOk').onclick = async ()=>{
         // dubbele veiligheid: check nog eens
         try{
@@ -170,7 +192,7 @@
       };
     })();
 
-    // === Lotto / Willekeurige keuze (UI + gedrag behouden) ===
+    // === Lotto / Willekeurige keuze (ongewijzigd) ===
     (function(){
       const container = document.querySelector('header .mb-3 .flex.gap-2');
       if(!container || document.getElementById('btn-random')) return;
