@@ -737,25 +737,86 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 
 
 <script>
+/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
 (function(){
   function fixScoreRow(card){
-    if(!card || card.dataset.scoreGrid==='1') return;
+    if(!card) return;
     const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
-    if(!row) return;
+    if(!row || row.dataset.scoreGrid==='1') return;
     const label = row.querySelector('label');
     if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
     const input = row.querySelector('.our-score-input');
     const btn = row.querySelector('.btn-imdb');
     if(!input || !btn) return;
 
+    // Container gelijk maken aan de 2-koloms rij erboven
+    row.classList.remove('flex','items-center','gap-2');
     row.style.display = 'grid';
-    row.style.gridTemplateColumns = '1fr 1fr';
-    row.style.gap = '0.5rem';
+    row.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    row.style.gap = '0.5rem'; // gap-2
 
+    // Linkerkolom
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+    left.appendChild(label);
+    left.appendChild(input);
+    input.style.width = '100%'; // exact uitlijnen met 'Categorie'
+
+    // Rechterkolom
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.flexDirection = 'column';
+    const ghost = document.createElement('label');
+    ghost.className = 'block font-medium text-slate-600 mb-0.5';
+    ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
+    right.appendChild(btn);
+
+    // Vervang inhoud
+    while(row.firstChild) row.removeChild(row.firstChild);
+    row.appendChild(left);
+    row.appendChild(right);
+
+    row.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){ document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow); }
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
+(function(){
+  function toGrid(card){
+    if(!card) return;
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    const flexRow = container.querySelector('.flex.items-center');
+    if(!flexRow || flexRow.dataset.scoreGrid==='1') return;
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    // Bouw een grid zoals de rij erboven (2 kolommen, gelijke breedte, zelfde gap)
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    // Linkerkolom: bestaand label + input (we verplaatsen de echte nodes, geen clones)
     const left = document.createElement('div');
     left.appendChild(label);
     left.appendChild(input);
 
+    // Rechterkolom: ghost label voor verticale uitlijning + IMDB-knop op volle breedte
     const right = document.createElement('div');
     const ghost = document.createElement('label');
     ghost.textContent = '\u00A0';
@@ -765,16 +826,19 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     btn.style.width = '100%';
     right.appendChild(btn);
 
-    while(row.firstChild) row.removeChild(row.firstChild);
-    row.appendChild(left);
-    row.appendChild(right);
+    // Vervang de oude flex-rij door onze grid-rij
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
 
-    card.dataset.scoreGrid = '1';
+    // Markeer, zodat we het niet opnieuw doen
+    grid.dataset.scoreGrid = '1';
   }
 
   function sweep(){
-    document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow);
+    document.querySelectorAll('.glass[data-item-id]').forEach(toGrid);
   }
+
   const obs = new MutationObserver(sweep);
   obs.observe(document.body, { childList:true, subtree:true });
   sweep();
@@ -783,42 +847,3 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 
 </body>
 </html>
-
-<script>
-/* Verplaats ALLEEN de delete-X naast de IMDb-badge. */
-(function(){
-  function relocate(card){
-    if(!card || card.dataset.xRelocated==='1') return;
-    const imdbStrip = card.querySelector('.info-strip');
-    const delBtn = card.querySelector('[data-action="delete"]');
-    if(!imdbStrip || !delBtn) return;
-
-    const row = imdbStrip.parentElement;
-    row.style.display = 'flex';
-    row.style.alignItems = 'center';
-    row.style.justifyContent = 'space-between';
-
-    // verplaats echte knop
-    row.appendChild(delBtn);
-
-    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
-    if(topRow) topRow.style.display = 'none';
-
-    delBtn.style.flexShrink = '0';
-    delBtn.style.marginLeft = '8px';
-
-    const title = card.querySelector('h3,h2,h1');
-    if(title){ title.style.marginTop = '6px'; }
-
-    card.dataset.xRelocated = '1';
-  }
-
-  function sweep(){
-    document.querySelectorAll('.glass[data-item-id]').forEach(relocate);
-  }
-
-  const obs = new MutationObserver(sweep);
-  obs.observe(document.body, { childList:true, subtree:true });
-  sweep();
-})();
-</script>
