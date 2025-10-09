@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0ea5e9"/>
+<title>Tievie v3.31 — PWA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+// === Cache touch (click or long-press on version badge) ===
+function attachResetGesture(){
+  const el = document.getElementById('status');
+  if(!el) return;
+  let timer=null;
+  async function doReset(){
+    if(!confirm('Cache wissen & herladen?')) return;
+    try{
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k=>caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.unregister()));
+      }
+    }catch(e){ console.warn('reset error', e); }
+    const base = location.pathname.replace(/index\.html?$/,'') || '/';
+    location.href = base + '?v=26c-' + Date.now();
+  }
+  el.addEventListener('click', doReset);
+  el.addEventListener('touchstart', ()=>{ timer=setTimeout(doReset, 3000); }, {passive:true});
+  ['touchend','touchcancel','touchmove','pointerup','pointercancel','mouseup','mouseleave'].forEach(ev=>{
+    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
+  });
+}
+</script>
+<link rel="manifest" href="./manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  body{background:#0b1020;color:#e5e7eb}
+  .glass{background:rgba(255,255,255,.78);color:#0f172a;backdrop-filter:saturate(150%) blur(12px)}
+  .pill{border:1px solid rgba(15,23,42,.08)}
+  #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#03111a;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
+  .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
+  .online {background:#22c55e;color:#052e16}
+  .offline {background:#ef4444;color:#7f1d1d}
+  ::placeholder{font-style:italic;color:#64748b}
+  #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
+  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
+  #suggest{position:fixed;display:none;z-index:100001}
+  #suggest .card{max-height:420px;overflow:auto}
+  #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
+  #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
+  #suggest .row:hover{background:rgba(2,6,23,.06)}
+  body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji';}
+  input[type="text"], input[type="search"], input[type="date"], select, .our-score-input, .category-select, .streaming-service-select {
+    background:#ffffff !important;
+    color:#0f172a !important;
+    border:1px solid rgba(15,23,42,.12) !important;
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  }
+  input::placeholder{color:#64748b}
+  select{padding-right:2rem !important}
+  .glass{background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(240,246,255,.90)) !important; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.14);}
+
+/* Overrides: active category pill to orange, Lotto green, info-strip */
+#filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
+#filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
+.info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+</style>
+</head>
+<body>
+<div class="max-w-7xl mx-auto p-4 pb-28">
+  <header class="mb-4">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
+      <div class="relative">
+        <input id="file-import" type="file" accept="application/json" class="hidden"/>
+        <button id="btn-help" aria-haspopup="true" aria-expanded="false"
+                class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">
+          Hulp ▾
+        </button>
+        <div id="helpMenu"
+             class="absolute right-0 mt-2 w-56 glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden hidden"
+             style="z-index:100020">
+          <div class="py-1 text-slate-800">
+            <button id="btn-import" class="w-full text-left px-3 py-2 hover:bg-white/60">Importeer JSON</button>
+            <button id="btn-export" class="w-full text-left px-3 py-2 hover:bg-white/60">Exporteer alles</button>
+            <button id="btn-posters" class="w-full text-left px-3 py-2 hover:bg-white/60">Posters ophalen</button>
+            <button id="btn-refresh-meta" class="w-full text-left px-3 py-2 hover:bg-white/60">IMDb-gegevens verversen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+      <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
+      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
+        <option value="created_desc" selected>Nummer (recent → oud)</option>
+        <option value="created_asc">Nummer (oud → recent)</option>
+        <option value="imdb_desc">IMDb-score hoog → laag</option>
+        <option value="imdb_asc">IMDb-score laag → hoog</option>
+        <option value="score_desc">Onze score hoog → laag</option>
+        <option value="score_asc">Onze score laag → hoog</option>
+        <option value="title_asc">Titel A → Z</option>
+        <option value="title_desc">Titel Z → A</option>
+      </select>
+      <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
+      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
+        Waar te zien?
+      </button>
+      <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
+    </div>
+
+    <div class="glass rounded-xl p-3 shadow mb-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative grow min-w-[260px]">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+        </div>
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="film" selected>Film</option>
+          <option value="serie">Serie</option>
+          <option value="herman-film">H-Film</option>
+          <option value="herman-serie">H-Serie</option>
+          <option value="aan-het-kijken">Aan het kijken</option>
+          <option value="bekeken">Bekeken</option>
+        </select>
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="">Niet toegekend</option>
+          <option>Streamz</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
+        </select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="mb-3">
+    <div id="filterControls" class="flex flex-wrap items-center gap-2">
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-sky-500 text-white pill" data-filter="film">Films</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="serie">Series</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="herman-film">H-Films</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="herman-serie">H-Series</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="aan-het-kijken">Aan het kijken</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="bekeken">Bekeken</button>
+      <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="all">Alles</button>
+      <button id="btn-random" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</button>
+      <div class="flex-1"></div>
+      <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56 pill"/>
+    </div>
+  </section>
+
+  <main>
+    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    <p id="empty" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
+  </main>
+</div>
+
+<div id="imdbOverlay">
+  <div id="imdbPanel">
+    <div id="imdbBar">
+      <div class="flex items-center gap-2"><span class="text-sm opacity-80">IMDb</span></div>
+      <button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
+    </div>
+    <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+  </div>
+</div>
+
+<div id="suggest">
+  <div class="card glass rounded-xl shadow-2xl border border-slate-200 p-2">
+    <div id="suggest-list"></div>
+    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
+  </div>
+</div>
+
+<div id="status">v3.31 — PWA</div>
+
+<script>
+const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
+const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
+let IS_ONLINE=navigator.onLine;const netBadge=document.getElementById('netBadge');
+let ADDING_LOCK=false;
+function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline')}
+async function pingOnline(){try{const r=await fetch('./manifest.json?ping='+Date.now(),{cache:'no-store'});IS_ONLINE=r.ok}catch(e){IS_ONLINE=false}setNetBadge()}
+window.addEventListener('online',()=>{IS_ONLINE=true;setNetBadge()});window.addEventListener('offline',()=>{IS_ONLINE=false;setNetBadge()});setInterval(pingOnline,5000);pingOnline();
+
+function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
+async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
+async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
+async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
+async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
+
+const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+
+// === Anti-duplicate helpers ===
+function normalizeTitle(t){
+  return (t||'').toString().toLowerCase()
+    .replace(/&/g,'and')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function keyFor(it){
+  const imdb=(it.imdbID||it.imdbId||'').trim();
+  if(imdb) return 'imdb:'+imdb.toLowerCase();
+  const t=normalizeTitle(it.title);
+  const y=(it.year||'').toString().trim();
+  return 'ty:'+t+'|'+y;
+}
+const TYPE_RANK={ 'bekeken':3, 'aan-het-kijken':2, 'herman-film':1, 'herman-serie':1, 'film':1, 'serie':1 };
+function betterType(a,b){
+  const ra=TYPE_RANK[a]||0, rb=TYPE_RANK[b]||0;
+  return (rb>ra)?b:a;
+}
+function mergeItems(base, inc){
+  const out={...base};
+  if(inc.type && inc.type!==base.type) out.type = betterType(base.type, inc.type);
+  out.createdAt = Math.max(base.createdAt||0, inc.createdAt||0, Date.now());
+  if(!out.imdbID && (inc.imdbID||inc.imdbId)) out.imdbID = inc.imdbID||inc.imdbId;
+  if((!out.poster || out.poster==='N/A') && (inc.poster && inc.poster!=='N/A')) out.poster=inc.poster;
+  if(inc.imdbRating && !out.imdbRating) out.imdbRating=inc.imdbRating;
+  if(inc.year && !out.year) out.year=inc.year;
+  if(inc.runtime && !out.runtime) out.runtime=inc.runtime;
+  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(inc.ourScore);
+  if((!out.streamingOn || String(out.streamingOn).trim()==='') && inc.streamingOn) out.streamingOn=inc.streamingOn;
+  if(inc.dateSeen && (!out.dateSeen || inc.dateSeen>out.dateSeen)) out.dateSeen=inc.dateSeen;
+  if((!out.title || out.title.length < (inc.title||'').length) && inc.title) out.title=inc.title;
+  return out;
+}
+
+function normalizeStream(raw){
+  const s=(raw||'').toString().trim().toLowerCase(); if(!s) return '';
+  if(s.startsWith('appl')) return 'Apple TV+';
+  if(s.startsWith('netf')) return 'Netflix';
+  if(s.startsWith('vrt')) return 'VRT MAX';
+  if(s.startsWith('vtm')) return 'VTM Go';
+  if(s.startsWith('prim')) return 'Prime Video';
+  if(s.includes('play')) return 'Go Play';
+  if(s.startsWith('np')) return 'NPO';
+  if(s.startsWith('strea')) return 'Streamz';
+  if(s.startsWith('disn')) return 'Disney+';
+  return '';
+}
+function parseScore(s){ if(s==null) return NaN; let t=String(s).trim(); if(!t||t.toLowerCase()==='nan') return NaN; t=t.replace(',','.'); const v=parseFloat(t); return isNaN(v)?NaN:v }
+function parseImdb(v){ const f=parseFloat(String(v)); return isNaN(f)?NaN:f }
+
+app.render=function(){
+  const list=document.getElementById('list'); const empty=document.getElementById('empty');
+  let items=app.filtered(); list.innerHTML='';
+  document.querySelectorAll('#filterControls .filter-btn').forEach(btn=>{
+    const a=btn.dataset.filter===app.state.filter;
+    btn.classList.toggle('bg-sky-500',a);
+    btn.classList.toggle('text-white',a);
+    btn.classList.toggle('bg-white/30',!a);
+    btn.classList.toggle('hover:bg-white/40',!a);
+  });
+  document.getElementById('countBadge').textContent = items.length+' items';
+  if(items.length===0){ empty.classList.remove('hidden'); return } empty.classList.add('hidden');
+  items.forEach((it,idx)=> list.appendChild(card(it, idx+1)) );
+};
+
+app.filtered=function(){
+  let a=app.state.items.slice();
+  if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
+  const sel=app.state.streamSet;
+  if(sel && sel.size){
+    a=a.filter(i=>{ const s=normalizeStream(i.streamingOn); return (s && sel.has(s)) || (!s && sel.has('__UNKNOWN__')); });
+  }
+  const term=(app.state.searchTerm||'').toLowerCase();
+  if(term){
+    a=a.filter(i=>{
+      const t=(i.title||'').toLowerCase();
+      const y=(i.year||'').toString();
+      const s=(normalizeStream(i.streamingOn)||'').toLowerCase();
+      const id=(i.imdbID||'').toLowerCase();
+      return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
+    });
+  }
+  const by=app.state.sortBy;
+  if(by==='imdb_desc'){ a.sort((x,y)=>(parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
+  else if(by==='imdb_asc'){ a.sort((x,y)=>(parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
+  else if(by==='score_desc'){ a.sort((x,y)=>(parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
+  else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
+  else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
+  else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
+  else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
+  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
+  return a;
+};
+
+function categoryOptionsHTML(type){
+  const m={film:'Film',serie:'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken',bekeken:'Bekeken'};
+  return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
+}
+function streamingOptionsHTML(sel){
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
+}
+
+function card(item, index){
+  const div=document.createElement('div');
+  div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
+  div.dataset.itemId=item.id;
+  const posterSrc=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+
+  const dateSeenHTML = item.type==='bekeken' ? `
+    <div class="mt-2">
+      <label class="block text-xs font-medium text-slate-600 mb-0.5">Laatst gezien op</label>
+      <input type="date" data-id="${item.id}" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md">
+    </div>` : '';
+
+  div.innerHTML = `
+    <h3 class="px-3 font-bold text-base leading-tight mb-1">${item.title||'—'}</h3>
+    <div class="px-3 pb-1 flex items-center justify-end">
+      <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/60 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition">
+        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="px-3">
+      <div class="relative">
+        <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200/40">
+          <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
+        </div>
+        <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
+      </div>
+    </div>
+    <div class="px-3 pt-2 text-xs"><span class="info-strip">${ (item.imdbRating?('IMDB-score '+item.imdbRating):'IMDB-score N/B') }<br>${item.year||'N/B'} • ${item.runtime||'N/B'}</span></div>
+    <div class="p-3 pt-2 text-xs space-y-2">
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
+          <select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
+            ${categoryOptionsHTML(item.type)}
+          </select>
+        </div>
+        <div>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+          <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
+            ${streamingOptionsHTML(item.streamingOn)}
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-slate-700">Onze score:</label>
+        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+      </div>
+      ${dateSeenHTML}
+    </div>
+  `;
+
+  div.querySelector('[data-action="delete"]').onclick=async()=>{await dbDel(item.id); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();};
+  const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
+  const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ imdbBtn.onclick=()=>openImdbOverlay(item.imdbID); }
+  return div;
+}
+
+// search suggest
+const suggestBox=document.getElementById('suggest'); const suggestList=document.getElementById('suggest-list'); const suggestEmpty=document.getElementById('suggest-empty');
+let suggestOpen=false, suggestTimer=null;
+document.getElementById('add-search').addEventListener('input', (e)=>{
+  const q=e.target.value.trim(); clearTimeout(suggestTimer);
+  if(!q){ hideSuggest(); return; }
+  suggestTimer=setTimeout(()=>doSuggest(q), 280);
+});
+document.body.addEventListener('click', (e)=>{
+  if(suggestOpen && !suggestBox.contains(e.target) && e.target.id!=='add-search'){ hideSuggest(); }
+});
+async function doSuggest(q){
+  if(!IS_ONLINE){ setStatus('Online nodig voor zoeken.'); return; }
+  try{
+    const byT = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&s='+encodeURIComponent(q)+'&type=movie').then(r=>r.json());
+    const byS = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&s='+encodeURIComponent(q)+'&type=series').then(r=>r.json());
+    const results = [...(byT.Search||[]), ...(byS.Search||[])];
+    renderSuggest(results);
+  }catch(e){ renderSuggest([]); }
+}
+function renderSuggest(arr){
+  if(!arr || arr.length===0){
+    suggestList.innerHTML=''; suggestEmpty.classList.remove('hidden'); showSuggest(); return;
+  }
+  suggestEmpty.classList.add('hidden');
+  suggestList.innerHTML = arr.map(r=>`<div class="row cursor-pointer" data-imdbid="${r.imdbID}" data-title="${(r.Title||'').replace(/"/g,'&quot;')}" data-year="${r.Year||''}" data-type="${r.Type||''}" data-poster="${r.Poster&&r.Poster!=='N/A'?r.Poster:''}">
+    <img src="${r.Poster&&r.Poster!=='N/A'?r.Poster:'https://placehold.co/44x66/e2e8f0/94a3b8?text=—'}" alt="">
+    <div class="flex flex-col">
+      <span class="text-sm font-semibold">${r.Title||'—'}</span>
+      <span class="text-xs opacity-70">${(r.Type||'').toUpperCase()} • ${r.Year||''}</span>
+    </div>
+  </div>`).join('');
+  showSuggest();
+  Array.from(suggestList.children).forEach(row=>{
+    row.addEventListener('click', async ()=>{
+      if(ADDING_LOCK) return;
+      ADDING_LOCK = true;
+      try{
+        hideSuggest();
+        const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+        const typeSel=document.getElementById('add-type').value;
+        const streamSel=document.getElementById('add-stream').value;
+
+        const all=await dbGetAll();
+        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
+        const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
+        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
+        const k=keyFor(inc);
+        if(titleSet.has(normalizeTitle(title))){
+          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { /* melding onderdrukt: afgevangen door tievie-fixes */ }
+          // Geen toevoeging, geen updates; input laten staan.
+          return;
+        }
+        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+        setStatus('Toegevoegd: '+title);
+        document.getElementById('add-search').value='';
+      } finally {
+        ADDING_LOCK = false;
+      }
+    });
+  });
+}
+function showSuggest(){
+  suggestBox.style.display='block'; suggestOpen=true;
+  const inp=document.getElementById('add-search'); const r=inp.getBoundingClientRect();
+  suggestBox.style.left=(r.left+window.scrollX)+'px';
+  suggestBox.style.top=(r.bottom+window.scrollY+6)+'px';
+  suggestBox.querySelector('.card').style.width=Math.max(320, r.width)+'px';
+}
+function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
+
+// IMDb overlay
+const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
+function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
+imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
+
+function bindUI(){
+  const f=document.getElementById('file-import');
+  document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
+  f.onchange=()=>{const file=f.files&&f.files[0];if(file)importJson(file)};
+  document.getElementById('btn-export').onclick=exportJson;
+  document.getElementById('btn-posters').onclick=fetchMissingPosters;
+  (function(){
+    const fc = document.getElementById('filterControls');
+    if(!fc) return;
+    fc.addEventListener('click', e=>{
+      const b = e.target.closest('.filter-btn');
+      if(!b) return;
+      fc.querySelectorAll('.filter-btn').forEach(btn=>{
+        const active = (btn === b);
+        btn.classList.toggle('bg-sky-500', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('bg-white/30', !active);
+        btn.classList.toggle('hover:bg-white/40', !active);
+      });
+      app.state.filter = b.dataset.filter;
+      app.render();
+    });
+  })();
+  document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
+  document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
+}
+
+async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
+
+async function importJson(file){
+  setStatus('Import JSON gestart…');
+  try{
+    const text=await file.text();const data=JSON.parse(text);
+    const arr=Array.isArray(data)?data:(data.items||[]);
+    const existing=await dbGetAll();
+    const byKey=new Map(existing.map(x=>[keyFor(x), x]));
+    const upserts=[];
+    for(const raw of arr){
+      const incoming={
+        id: raw.id || undefined,
+        title: raw.title || '',
+        type: raw.type || 'film',
+        createdAt: raw.createdAt || Date.now(),
+        imdbRating: raw.imdbRating || '',
+        year: raw.year || '',
+        runtime: raw.runtime || '',
+        poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
+        streamingOn: raw.streamingOn || '',
+        ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? '' : String(raw.ourScore),
+        dateSeen: raw.dateSeen || '',
+        imdbID: raw.imdbID || raw.imdbId || ''
+      };
+      const k=keyFor(incoming);
+      if(byKey.has(k)){
+        const merged=mergeItems(byKey.get(k), incoming);
+        byKey.set(k, merged);
+      }else{
+        byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
+      }
+    }
+    for(const [,val] of byKey) upserts.push(val);
+    await dbBulkPut(upserts);
+    app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
+  }catch(e){console.error(e); setStatus('Import JSON error');}
+}
+
+async function fetchMissingPosters(){
+  if(!IS_ONLINE){alert('Posters ophalen werkt enkel online.');return;}
+  let items=await dbGetAll(); let changed=0;
+  for(const it of items){
+    if(!it.poster || it.poster==='N/A'){
+      let url=''; try{
+        if(it.imdbID){const r=await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(it.imdbID));const j=await r.json();url=j.Poster&&j.Poster!=='N/A'?j.Poster:'';}
+        if(!url && it.title){const r=await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&t='+encodeURIComponent(it.title)+(it.year?('&y='+it.year):''));const j=await r.json();url=j.Poster&&j.Poster!=='N/A'?j.Poster:'';}
+      }catch(e){}
+      if(url){ it.poster=url; await dbPut(it); changed++; }
+    }
+  }
+  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
+  setStatus('Posters afgerond. Geüpdatet: '+changed);
+}
+
+// ======= Auto-seed on first run =======
+async function autoSeedIfEmpty(){
+  const current = await dbGetAll();
+  if(current && current.length>0) return;
+  const files = ['films.json','series.json','herman-film.json','herman-serie.json','aanhetkijken.json','bekeken.json'];
+  let merged=[];
+  for(const f of files){
+    try{
+      const res = await fetch('./data/'+f+'?ts='+Date.now(), {cache:'no-store'});
+      if(!res.ok) continue;
+      const j = await res.json();
+      const arr = Array.isArray(j)?j:(j.items||[]);
+      merged = merged.concat(arr);
+    }catch(e){} 
+  }
+  if(merged.length){
+    const now=Date.now();
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
+    await dbBulkPut(prepped);
+  }
+}
+
+let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
+async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
+async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
+navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+
+// ===== Streaming multi-select (floating panel) =====
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
+
+function buildStreamMenu(){
+  const list = document.getElementById('streamList');
+  if(!list) return;
+  list.innerHTML = '';
+  STREAM_SERVICES.forEach(s=>{
+    const id = 'stream-cb-'+(s==='__UNKNOWN__'?'unknown':s.replace(/\W+/g,'').toLowerCase());
+    const label = s==='__UNKNOWN__' ? 'Onbekend' : s;
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" id="${id}" value="${s}" class="w-4 h-4"> <span>${label}</span>`;
+    const cb = row.querySelector('input');
+    cb.checked = app.state.streamSet.has(s);
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
+      app.render(); bindStreamUI();
+      updateStreamBadge();
+    });
+    list.appendChild(row);
+  });
+}
+
+function positionStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  const btn = document.getElementById('streamBtn');
+  if(!menu || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const top = r.bottom + 6 + window.scrollY;
+  const left = Math.min(r.left + window.scrollX, window.scrollX + (document.documentElement.clientWidth - menu.offsetWidth - 12));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function openStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  buildStreamMenu();
+  menu.style.display = 'block';
+  positionStreamMenu();
+  const onDocClick = (e)=>{
+    const btn = document.getElementById('streamBtn');
+    if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeStreamMenu();
+  };
+  const onKey = (e)=>{ if(e.key==='Escape'){ closeStreamMenu(); } };
+  document.addEventListener('mousedown', onDocClick, {capture:true});
+  document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+  document.addEventListener('keydown', onKey, {capture:true});
+  menu._cleanup = ()=>{
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+  };
+}
+
+function closeStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  menu.style.display = 'none';
+  if(typeof menu._cleanup==='function'){ try{ menu._cleanup(); }catch(e){} }
+}
+
+function bindStreamUI(){
+  const btn = document.getElementById('streamBtn');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const menu = document.getElementById('streamMenu');
+    if(menu && menu.style.display==='block'){ closeStreamMenu(); } else { openStreamMenu(); }
+  });
+  const allBtn = document.getElementById('streamAll');
+  const noneBtn = document.getElementById('streamNone');
+  if(allBtn) allBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set(STREAM_SERVICES);
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set();
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  updateStreamBadge();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
+  bindUI();
+  try{
+    await syncPull();
+    await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    await syncPush();
+  }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
+});
+
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+</script>
+<script src="./tievie-fixes-v3_29.js?v=3.29?v=3.27"></script>
+
+<div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
+  <div class="flex items-center justify-between mb-2">
+    <strong class="text-slate-800">Streamingdiensten</strong>
+    <div class="flex items-center gap-2">
+      <button id="streamAll" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Alles</button>
+      <button id="streamNone" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Niets</button>
+    </div>
+  </div>
+  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900"></div>
+</div>
+
+<script>
+(function(){
+  const btn = document.getElementById('btn-help');
+  const menu = document.getElementById('helpMenu');
+  if(!btn || !menu) return;
+  function open(){ menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); attach(); }
+  function close(){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); detach(); }
+  function toggle(e){ e && e.preventDefault && e.preventDefault(); (menu.classList.contains('hidden')?open():close()); }
+  let onDocClick=null, onKey=null;
+  function attach(){
+    if(onDocClick) return;
+    onDocClick = (e)=>{ if(menu.contains(e.target) || btn.contains(e.target)) return; close(); };
+    onKey = (e)=>{ if(e.key==='Escape') close(); };
+    document.addEventListener('mousedown', onDocClick, {capture:true});
+    document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+    document.addEventListener('keydown', onKey, {capture:true});
+  }
+  function detach(){
+    if(!onDocClick) return;
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+    onDocClick=null; onKey=null;
+  }
+  btn.addEventListener('click', toggle, {passive:false});
+})();
+</script>
+
+
+
+<!-- dubbele-titel overlay verwijderd -->
+
+
+
+<script>
+/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
+(function(){
+  function fixScoreRow(card){
+    if(!card) return;
+    const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
+    if(!row || row.dataset.scoreGrid==='1') return;
+    const label = row.querySelector('label');
+    if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
+    const input = row.querySelector('.our-score-input');
+    const btn = row.querySelector('.btn-imdb');
+    if(!input || !btn) return;
+
+    // Container gelijk maken aan de 2-koloms rij erboven
+    row.classList.remove('flex','items-center','gap-2');
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    row.style.gap = '0.5rem'; // gap-2
+
+    // Linkerkolom
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+    left.appendChild(label);
+    left.appendChild(input);
+    input.style.width = '100%'; // exact uitlijnen met 'Categorie'
+
+    // Rechterkolom
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.flexDirection = 'column';
+    const ghost = document.createElement('label');
+    ghost.className = 'block font-medium text-slate-600 mb-0.5';
+    ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
+    right.appendChild(btn);
+
+    // Vervang inhoud
+    while(row.firstChild) row.removeChild(row.firstChild);
+    row.appendChild(left);
+    row.appendChild(right);
+
+    row.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){ document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow); }
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
+(function(){
+  function toGrid(card){
+    if(!card) return;
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    const flexRow = container.querySelector('.flex.items-center');
+    if(!flexRow || flexRow.dataset.scoreGrid==='1') return;
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    // Bouw een grid zoals de rij erboven (2 kolommen, gelijke breedte, zelfde gap)
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    // Linkerkolom: bestaand label + input (we verplaatsen de echte nodes, geen clones)
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    // Rechterkolom: ghost label voor verticale uitlijning + IMDB-knop op volle breedte
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    // Vervang de oude flex-rij door onze grid-rij
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
+
+    // Markeer, zodat we het niet opnieuw doen
+    grid.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(toGrid);
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Alleen twee dingen, niets anders:
+   1) Delete-X naast de IMDb-badge (badge links, X rechts).
+   2) 'Onze score' + IMDB-knop in 2 gelijke kolommen (zoals rij erboven).
+   Werkt blijvend via MutationObserver. Geen andere layout-wijzigingen. */
+(function(){
+  function relocateX(card){
+    if(!card) return;
+    const imdbStrip = card.querySelector('.info-strip');
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if(!imdbStrip || !delBtn) return;
+
+    const row = imdbStrip.parentElement;
+    // Zet de rij op één lijn met ruimte ertussen (linker: badge, rechter: X)
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.justifyContent = 'space-between';
+
+    // Verplaats de ECHTE knop naar deze rij (niet klonen)
+    if(delBtn.parentElement !== row){
+      try{ row.appendChild(delBtn); }catch(e){}
+    }
+
+    // Verberg de originele bovenste delete-rij zodat poster omhoog komt
+    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
+    if(topRow) topRow.style.display = 'none';
+
+    // Zorg dat de knop niet uitrekt
+    delBtn.style.flexShrink = '0';
+    delBtn.style.marginLeft = '8px';
+  }
+
+  function alignScoreRow(card){
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    // Vind de flex-rij met "Onze score"
+    const flexRow = Array.from(container.children).find(el=>{
+      if(!el || !el.querySelector) return false;
+      const lbl = el.querySelector('label');
+      return !!(lbl && /Onze\s*score/i.test(lbl.textContent||''));
+    });
+    if(!flexRow) return;
+
+    // Als al omgezet naar grid, niets doen
+    if(flexRow.dataset.scoreGrid === '1') return;
+
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
+    grid.dataset.scoreGrid = '1';
+  }
+
+  function nudgeTitle(card){
+    const title = card.querySelector('h3,h2,h1');
+    if(title) title.style.marginTop = '6px';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(card=>{
+      relocateX(card);
+      alignScoreRow(card);
+      nudgeTitle(card);
+    });
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<style id="theme-blue-final">
+/* Alleen kleurcorrectie — verder niets aanpassen */
+body {
+  background: linear-gradient(180deg,
+    #0b2a5b 0%,
+    #0a2552 38%,
+    #092048 72%,
+    #081a3b 100%) !important;
+}
+.glass {
+  background: linear-gradient(180deg, #e7f6ff 0%, #def1ff 100%) !important;
+}
+</style>
+
+</body>
+</html>
