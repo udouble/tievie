@@ -79,6 +79,18 @@ function attachResetGesture(){
     gap: 1.25rem !important;
   }
 }
+
+/* ====== Nieuw: 5 kaarten per rij (witruimte maximaal benut) ====== */
+@media (min-width: 1280px) {
+  #cardsGrid, .cards-grid, .grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+  main .max-w-7xl {
+    max-width: 100% !important;
+  }
+}
 </style>
 </head>
 <body>
