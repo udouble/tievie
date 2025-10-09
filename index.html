@@ -70,27 +70,6 @@ function attachResetGesture(){
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
-
-/* ====== Nieuw: 5 kaarten per rij (zonder iets te verwijderen of te verplaatsen) ====== */
-@media (min-width: 1280px) {
-  #cardsGrid {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 1.25rem !important;
-  }
-}
-
-/* ====== Nieuw: 5 kaarten per rij (witruimte maximaal benut) ====== */
-@media (min-width: 1280px) {
-  #cardsGrid, .cards-grid, .grid-cols-4 {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 1.25rem !important;
-  }
-  main .max-w-7xl {
-    max-width: 100% !important;
-  }
-}
 </style>
 </head>
 <body>
@@ -181,7 +160,7 @@ function attachResetGesture(){
   </section>
 
   <main>
-    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
     <p id="empty" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
   </main>
 </div>
