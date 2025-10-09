@@ -419,7 +419,7 @@ function renderSuggest(arr){
         const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
         const k=keyFor(inc);
         if(titleSet.has(normalizeTitle(title))){
-          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { /* melding onderdrukt: afgevangen door tievie-fixes */ }
           // Geen toevoeging, geen updates; input laten staan.
           return;
         }
