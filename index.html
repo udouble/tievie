@@ -739,25 +739,40 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 </html>
 
 <script>
-// Hard-fix: badge links, delete-X helemaal rechts — zonder iets anders te wijzigen
+/* Verplaats ALLEEN de delete-X naast de IMDb-badge. */
 (function(){
-  function fixAlign(){
-    document.querySelectorAll('.glass[data-item-id]').forEach(card=>{
-      const imdb = card.querySelector('.info-strip');
-      if(!imdb) return;
-      const row = imdb.parentElement;
-      const maybeX = imdb.nextElementSibling;
-      if(maybeX && (maybeX.matches('button') || maybeX.getAttribute('data-action')==='delete')){
-        row.style.display = 'flex';
-        row.style.alignItems = 'center';
-        row.style.justifyContent = 'space-between';
-        maybeX.style.marginLeft = '0';
-        maybeX.style.flexShrink = '0';
-      }
-    });
+  function relocate(card){
+    if(!card || card.dataset.xRelocated==='1') return;
+    const imdbStrip = card.querySelector('.info-strip');
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if(!imdbStrip || !delBtn) return;
+
+    const row = imdbStrip.parentElement;
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.justifyContent = 'space-between';
+
+    // verplaats echte knop
+    row.appendChild(delBtn);
+
+    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
+    if(topRow) topRow.style.display = 'none';
+
+    delBtn.style.flexShrink = '0';
+    delBtn.style.marginLeft = '8px';
+
+    const title = card.querySelector('h3,h2,h1');
+    if(title){ title.style.marginTop = '6px'; }
+
+    card.dataset.xRelocated = '1';
   }
-  const obs = new MutationObserver(fixAlign);
-  obs.observe(document.body, { childList: true, subtree: true });
-  fixAlign();
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(relocate);
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
 })();
 </script>
