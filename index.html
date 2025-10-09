@@ -699,14 +699,29 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
-<!-- Centrale popup voor dubbele titel -->
 
+<!-- Centrale popup voor dubbele titel -->
+<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
+  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+      <strong>Dubbele titel</strong>
+      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
+      <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten met ✕. Er wordt niets toegevoegd.</p>
+    </div>
+  </div>
 </div>
 <script>
   (function(){
-    
-    
-
+    window.openDuplicateModal = function(title){
+      var m = document.getElementById('dupModal');
+      if(!m){ alert('Deze titel is al eerder toegevoegd.'); return; }
+      var msg = m.querySelector('#dupMsg');
+      if(msg){ msg.textContent = 'Deze titel is al eerder toegevoegd.'; }
+      m.style.display = 'flex';
+    };
     var closeBtn = null;
     function close(){ var m=document.getElementById('dupModal'); if(m) m.style.display='none'; }
     document.addEventListener('DOMContentLoaded', function(){
@@ -719,6 +734,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     });
   })();
 </script>
+
 
 <script>
 /* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
@@ -774,6 +790,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
+
 <script>
 /* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
 (function(){
@@ -827,6 +844,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   sweep();
 })();
 </script>
+
 
 <script>
 /* Alleen twee dingen, niets anders:
@@ -921,6 +939,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   sweep();
 })();
 </script>
+
 
 <style id="theme-blue-final">
 /* Alleen kleurcorrectie — verder niets aanpassen */
