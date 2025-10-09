@@ -346,7 +346,7 @@ function card(item, index){
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
           </select>
@@ -354,8 +354,8 @@ function card(item, index){
       </div>
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
-        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog niet">
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">★</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -706,7 +706,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 
 
 <script>
-/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
+/* Score + ★ exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
 (function(){
   function fixScoreRow(card){
     if(!card) return;
@@ -741,7 +741,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
     right.appendChild(ghost);
     btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
     right.appendChild(btn);
 
     // Vervang inhoud
@@ -785,7 +785,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     left.appendChild(label);
     left.appendChild(input);
 
-    // Rechterkolom: ghost label voor verticale uitlijning + IMDB-knop op volle breedte
+    // Rechterkolom: ghost label voor verticale uitlijning + ★-knop op volle breedte
     const right = document.createElement('div');
     const ghost = document.createElement('label');
     ghost.textContent = '\u00A0';
@@ -818,7 +818,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 <script>
 /* Alleen twee dingen, niets anders:
    1) Delete-X naast de IMDb-badge (badge links, X rechts).
-   2) 'Onze score' + IMDB-knop in 2 gelijke kolommen (zoals rij erboven).
+   2) 'Onze score' + ★-knop in 2 gelijke kolommen (zoals rij erboven).
    Werkt blijvend via MutationObserver. Geen andere layout-wijzigingen. */
 (function(){
   function relocateX(card){
