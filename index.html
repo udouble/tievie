@@ -70,6 +70,15 @@ function attachResetGesture(){
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+
+/* ====== Nieuw: 5 kaarten per rij (zonder iets te verwijderen of te verplaatsen) ====== */
+@media (min-width: 1280px) {
+  #cardsGrid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+}
 </style>
 </head>
 <body>
