@@ -30,7 +30,7 @@ function attachResetGesture(){
   el.addEventListener('click', doReset);
   el.addEventListener('touchstart', ()=>{ timer=setTimeout(doReset, 3000); }, {passive:true});
   ['touchend','touchcancel','touchmove','pointerup','pointercancel','mouseup','mouseleave'].forEach(ev=>{
-    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true}, { once: true });
+    el.addEventListener(ev, ()=>{ if(timer){ clearTimeout(timer); timer=null; } }, {passive:true});
   });
 }
 </script>
@@ -404,7 +404,7 @@ function renderSuggest(arr){
   </div>`).join('');
   showSuggest();
   Array.from(suggestList.children).forEach(row=>{
-    row.addEventListener('click', async () => { row.style.pointerEvents='none';
+    row.addEventListener('click', async ()=>{
       if(ADDING_LOCK) return;
       ADDING_LOCK = true;
       try{
@@ -418,10 +418,6 @@ function renderSuggest(arr){
         const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
         const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
         const k=keyFor(inc);
-        if (keyMap.has(k)) {
-          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
-          return;
-        }
         if(titleSet.has(normalizeTitle(title))){
           if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
           // Geen toevoeging, geen updates; input laten staan.
@@ -434,7 +430,7 @@ function renderSuggest(arr){
       } finally {
         ADDING_LOCK = false;
       }
-    }, { once: true });
+    });
   });
 }
 function showSuggest(){
@@ -737,6 +733,211 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
       }
     });
   })();
+</script>
+
+
+<script>
+/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
+(function(){
+  function fixScoreRow(card){
+    if(!card) return;
+    const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
+    if(!row || row.dataset.scoreGrid==='1') return;
+    const label = row.querySelector('label');
+    if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
+    const input = row.querySelector('.our-score-input');
+    const btn = row.querySelector('.btn-imdb');
+    if(!input || !btn) return;
+
+    // Container gelijk maken aan de 2-koloms rij erboven
+    row.classList.remove('flex','items-center','gap-2');
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    row.style.gap = '0.5rem'; // gap-2
+
+    // Linkerkolom
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+    left.appendChild(label);
+    left.appendChild(input);
+    input.style.width = '100%'; // exact uitlijnen met 'Categorie'
+
+    // Rechterkolom
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.flexDirection = 'column';
+    const ghost = document.createElement('label');
+    ghost.className = 'block font-medium text-slate-600 mb-0.5';
+    ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
+    right.appendChild(btn);
+
+    // Vervang inhoud
+    while(row.firstChild) row.removeChild(row.firstChild);
+    row.appendChild(left);
+    row.appendChild(right);
+
+    row.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){ document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow); }
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
+(function(){
+  function toGrid(card){
+    if(!card) return;
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    const flexRow = container.querySelector('.flex.items-center');
+    if(!flexRow || flexRow.dataset.scoreGrid==='1') return;
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    // Bouw een grid zoals de rij erboven (2 kolommen, gelijke breedte, zelfde gap)
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    // Linkerkolom: bestaand label + input (we verplaatsen de echte nodes, geen clones)
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    // Rechterkolom: ghost label voor verticale uitlijning + IMDB-knop op volle breedte
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    // Vervang de oude flex-rij door onze grid-rij
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
+
+    // Markeer, zodat we het niet opnieuw doen
+    grid.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(toGrid);
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Alleen twee dingen, niets anders:
+   1) Delete-X naast de IMDb-badge (badge links, X rechts).
+   2) 'Onze score' + IMDB-knop in 2 gelijke kolommen (zoals rij erboven).
+   Werkt blijvend via MutationObserver. Geen andere layout-wijzigingen. */
+(function(){
+  function relocateX(card){
+    if(!card) return;
+    const imdbStrip = card.querySelector('.info-strip');
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if(!imdbStrip || !delBtn) return;
+
+    const row = imdbStrip.parentElement;
+    // Zet de rij op één lijn met ruimte ertussen (linker: badge, rechter: X)
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.justifyContent = 'space-between';
+
+    // Verplaats de ECHTE knop naar deze rij (niet klonen)
+    if(delBtn.parentElement !== row){
+      try{ row.appendChild(delBtn); }catch(e){}
+    }
+
+    // Verberg de originele bovenste delete-rij zodat poster omhoog komt
+    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
+    if(topRow) topRow.style.display = 'none';
+
+    // Zorg dat de knop niet uitrekt
+    delBtn.style.flexShrink = '0';
+    delBtn.style.marginLeft = '8px';
+  }
+
+  function alignScoreRow(card){
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    // Vind de flex-rij met "Onze score"
+    const flexRow = Array.from(container.children).find(el=>{
+      if(!el || !el.querySelector) return false;
+      const lbl = el.querySelector('label');
+      return !!(lbl && /Onze\s*score/i.test(lbl.textContent||''));
+    });
+    if(!flexRow) return;
+
+    // Als al omgezet naar grid, niets doen
+    if(flexRow.dataset.scoreGrid === '1') return;
+
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
+    grid.dataset.scoreGrid = '1';
+  }
+
+  function nudgeTitle(card){
+    const title = card.querySelector('h3,h2,h1');
+    if(title) title.style.marginTop = '6px';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(card=>{
+      relocateX(card);
+      alignScoreRow(card);
+      nudgeTitle(card);
+    });
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
 </script>
 
 </body>
