@@ -845,5 +845,100 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
+
+<script>
+/* Alleen twee dingen, niets anders:
+   1) Delete-X naast de IMDb-badge (badge links, X rechts).
+   2) 'Onze score' + IMDB-knop in 2 gelijke kolommen (zoals rij erboven).
+   Werkt blijvend via MutationObserver. Geen andere layout-wijzigingen. */
+(function(){
+  function relocateX(card){
+    if(!card) return;
+    const imdbStrip = card.querySelector('.info-strip');
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if(!imdbStrip || !delBtn) return;
+
+    const row = imdbStrip.parentElement;
+    // Zet de rij op één lijn met ruimte ertussen (linker: badge, rechter: X)
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.justifyContent = 'space-between';
+
+    // Verplaats de ECHTE knop naar deze rij (niet klonen)
+    if(delBtn.parentElement !== row){
+      try{ row.appendChild(delBtn); }catch(e){}
+    }
+
+    // Verberg de originele bovenste delete-rij zodat poster omhoog komt
+    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
+    if(topRow) topRow.style.display = 'none';
+
+    // Zorg dat de knop niet uitrekt
+    delBtn.style.flexShrink = '0';
+    delBtn.style.marginLeft = '8px';
+  }
+
+  function alignScoreRow(card){
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    // Vind de flex-rij met "Onze score"
+    const flexRow = Array.from(container.children).find(el=>{
+      if(!el || !el.querySelector) return false;
+      const lbl = el.querySelector('label');
+      return !!(lbl && /Onze\s*score/i.test(lbl.textContent||''));
+    });
+    if(!flexRow) return;
+
+    // Als al omgezet naar grid, niets doen
+    if(flexRow.dataset.scoreGrid === '1') return;
+
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
+    grid.dataset.scoreGrid = '1';
+  }
+
+  function nudgeTitle(card){
+    const title = card.querySelector('h3,h2,h1');
+    if(title) title.style.marginTop = '6px';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(card=>{
+      relocateX(card);
+      alignScoreRow(card);
+      nudgeTitle(card);
+    });
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
 </body>
 </html>
