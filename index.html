@@ -924,5 +924,31 @@ body {
 }
 </style>
 
+<script id="patch-info-strip-2line">
+(function(){
+  function patchInfoStrips(){
+    var els = document.querySelectorAll('.info-strip');
+    els.forEach(function(el){
+      var t = (el.textContent || '').trim();
+      var m = t.match(/IMDb\s*([0-9.]+)\s*•\s*(\d{4})\s*•\s*(\d+)\s*min/i);
+      if(m){
+        el.innerHTML = 'IMDB-score ' + m[1] + '<br>' + m[2] + ' • ' + m[3] + ' min';
+      }
+    });
+  }
+  // Patch after each render without touching app behavior
+  if (window.app && typeof app.render === 'function') {
+    var orig = app.render;
+    app.render = function(){
+      var r = orig.apply(this, arguments);
+      try { patchInfoStrips(); } catch(e){ /* no-op */ }
+      return r;
+    };
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    try { patchInfoStrips(); } catch(e){ /* no-op */ }
+  });
+})();
+</script>
 </body>
 </html>
