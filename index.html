@@ -940,5 +940,19 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
+
+<style id="theme-blue-override">
+/* Alleen kleurupdate: app-achtergrond naar blauw dégradé,
+   kaarten blijven ongewijzigd */
+body {
+  background: linear-gradient(180deg,
+    #e7f6ff 0%,
+    #bfe6ff 22%,
+    #7cc4ff 48%,
+    #3b82f6 70%,
+    #1e3a8a 100% ) !important;
+}
+</style>
+
 </body>
 </html>
