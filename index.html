@@ -954,5 +954,25 @@ body {
 }
 </style>
 
+
+<style id="theme-blue-override-2">
+/* Alleen kleuren:
+   - App-achtergrond = donker blauw dégradé
+   - Kaarten (.glass) = lichtblauw (zachte dégradé)
+   Overige layout blijft onaangeroerd. */
+body {
+  background: linear-gradient(180deg,
+    #0b2a5b 0%,
+    #0a2552 38%,
+    #092048 72%,
+    #081a3b 100%) !important;
+}
+.glass {
+  background: linear-gradient(180deg,
+    #e7f6ff 0%,
+    #def1ff 100%) !important;
+}
+</style>
+
 </body>
 </html>
