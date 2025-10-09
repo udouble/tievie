@@ -735,6 +735,52 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   })();
 </script>
 
+
+<script>
+(function(){
+  function fixScoreRow(card){
+    if(!card || card.dataset.scoreGrid==='1') return;
+    const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
+    if(!row) return;
+    const label = row.querySelector('label');
+    if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
+    const input = row.querySelector('.our-score-input');
+    const btn = row.querySelector('.btn-imdb');
+    if(!input || !btn) return;
+
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = '1fr 1fr';
+    row.style.gap = '0.5rem';
+
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    while(row.firstChild) row.removeChild(row.firstChild);
+    row.appendChild(left);
+    row.appendChild(right);
+
+    card.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow);
+  }
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
 </body>
 </html>
 
