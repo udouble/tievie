@@ -160,7 +160,7 @@ function attachResetGesture(){
   </section>
 
   <main>
-    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
     <p id="empty" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
   </main>
 </div>
@@ -346,7 +346,7 @@ function card(item, index){
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
           </select>
@@ -354,8 +354,8 @@ function card(item, index){
       </div>
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
-        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog niet">
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB-info</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -741,7 +741,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
     right.appendChild(ghost);
     btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
     right.appendChild(btn);
 
     // Vervang inhoud
