@@ -735,62 +735,29 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   })();
 </script>
 
-
-<script>
-(function () {
-  function moveX() {
-    document.querySelectorAll('.glass[data-item-id]').forEach(card => {
-      const imdbStrip = card.querySelector('.info-strip');
-      const delBtn = card.querySelector('[data-action="delete"]');
-      if (!imdbStrip || !delBtn || imdbStrip.dataset.xLinked) return;
-      imdbStrip.dataset.xLinked = '1';
-      const inlineX = delBtn.cloneNode(true);
-      inlineX.style.width = '24px';
-      inlineX.style.height = '24px';
-      inlineX.style.marginLeft = '6px';
-      inlineX.style.flexShrink = '0';
-      inlineX.addEventListener('click', () => delBtn.click());
-      imdbStrip.parentElement.style.display = 'flex';
-      imdbStrip.parentElement.style.alignItems = 'center';
-      imdbStrip.parentElement.style.gap = '6px';
-      imdbStrip.insertAdjacentElement('afterend', inlineX);
-      delBtn.style.display = 'none';
-    });
-  }
-  const obs = new MutationObserver(moveX);
-  obs.observe(document.body, { childList: true, subtree: true });
-  moveX();
-})();
-</script>
-
-
-<style>
-/* kleine ruimte boven titel en X rechts uitlijnen */
-.glass[data-item-id] h2,
-.glass[data-item-id] h3,
-.glass[data-item-id] h1 {
-  margin-top: 6px !important;
-}
-.delete-inline {
-  margin-left: auto !important;
-}
-</style>
-
-
-<style>
-/* IMDb-rij: badge links, X rechts */
-.info-strip {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-}
-/* kleine ruimte boven titel */
-.glass[data-item-id] h1,
-.glass[data-item-id] h2,
-.glass[data-item-id] h3 {
-  margin-top: 6px !important;
-}
-</style>
-
 </body>
 </html>
+
+<script>
+// Hard-fix: badge links, delete-X helemaal rechts — zonder iets anders te wijzigen
+(function(){
+  function fixAlign(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(card=>{
+      const imdb = card.querySelector('.info-strip');
+      if(!imdb) return;
+      const row = imdb.parentElement;
+      const maybeX = imdb.nextElementSibling;
+      if(maybeX && (maybeX.matches('button') || maybeX.getAttribute('data-action')==='delete')){
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        maybeX.style.marginLeft = '0';
+        maybeX.style.flexShrink = '0';
+      }
+    });
+  }
+  const obs = new MutationObserver(fixAlign);
+  obs.observe(document.body, { childList: true, subtree: true });
+  fixAlign();
+})();
+</script>
