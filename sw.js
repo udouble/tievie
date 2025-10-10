@@ -20,15 +20,9 @@ self.addEventListener('message',async ev=>{
 
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
-  if(event.request.method!=='GET')return;
-  // iOS/iPad PWA: laat cross-origin afbeeldingen ongemoeid
-  try{
-    const url = new URL(event.request.url);
-    if(event.request.destination === 'image' && url.origin !== location.origin){
-      return; // geen SW-intercept voor posters/remote images
-    }
-  }catch(_){}
+  try{ if(event.request.destination==='image' && url.origin!==location.origin){ return; } }catch(_){}
 
+  if(event.request.method!=='GET')return;
   if(url.pathname.endsWith('__mfs_sync__.json')){
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
