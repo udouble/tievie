@@ -69,7 +69,7 @@ function attachResetGesture(){
 /* Overrides: active category pill to orange, Lotto green, info-strip */
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
-.info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+.info-strip{display:inline-block;background: rgba(15,23,42,.82);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
 </style>
 </head>
 <body>
@@ -160,7 +160,7 @@ function attachResetGesture(){
   </section>
 
   <main>
-    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+    <div id="list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
     <p id="empty" class="hidden text-center text-slate-200 py-10">Je lijst is leeg.</p>
   </main>
 </div>
@@ -247,7 +247,6 @@ function normalizeStream(raw){
   if(s.startsWith('prim')) return 'Prime Video';
   if(s.includes('play')) return 'Go Play';
   if(s.startsWith('np')) return 'NPO';
-  if(s.startsWith('strem')) return 'Stremio';
   if(s.startsWith('strea')) return 'Streamz';
   if(s.startsWith('disn')) return 'Disney+';
   return '';
@@ -304,7 +303,7 @@ function categoryOptionsHTML(type){
   return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
 }
 function streamingOptionsHTML(sel){
-  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
@@ -332,12 +331,12 @@ function card(item, index){
     <div class="px-3">
       <div class="relative">
         <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200/40">
-          <img src="${posterSrc}" alt="Poster van ${item.title}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
+          <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
         </div>
         <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
       </div>
     </div>
-    <div class="px-3 pt-2 text-xs"><span class="info-strip">${ (item.imdbRating?('IMDB-score '+item.imdbRating):'IMDB-score N/B') }<br>${item.year||'N/B'} • ${item.runtime||'N/B'}</span></div>
+    <div class="px-3 pt-2 text-xs"><span class="info-strip">${ (item.imdbRating?('IMDb '+item.imdbRating):'IMDb N/B') } • ${item.year||'N/B'} • ${item.runtime||'N/B'}</span></div>
     <div class="p-3 pt-2 text-xs space-y-2">
       <div class="grid grid-cols-2 gap-2">
         <div>
@@ -347,7 +346,7 @@ function card(item, index){
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
           </select>
@@ -355,8 +354,8 @@ function card(item, index){
       </div>
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
-        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog niet">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB-info</button>
+        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -445,106 +444,7 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
-function openImdbOverlay(id){
-  if(!id){ alert('Geen IMDb ID'); return; }
-  imdbOverlay.style.display='flex';
-  // Toon eerst een nette 'laden'-pagina
-  const loadingHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <style>
-    body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
-    .ph{width:210px;height:310px;border-radius:12px;background:#111827;border:1px solid rgba(148,163,184,.25)}
-    h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
-  </style></head><body>
-  <div class="w"><div class="ph"></div><div>
-  <h1>IMDb-gegevens laden…</h1>
-  <p class="m">Even geduld.</p>
-  </div></div></body></html>`;
-  imdbFrame.removeAttribute('src');
-  imdbFrame.setAttribute('srcdoc', loadingHtml);
-
-  // Haal maximale info via OMDb (IMDb data)
-  const url = 'https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id)+'&plot=full';
-  fetch(url).then(r=>r.json()).then(data=>{
-    if(!data || data.Response==='False'){
-      const errHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1"/>
-      <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui}
-      a{color:#60a5fa;text-decoration:none}</style></head><body>
-      <div style="padding:16px">
-        <h1 style="margin:0 0 .5rem 0;font-size:22px">Kon IMDb-gegevens niet laden</h1>
-        <p style="opacity:.85">Probeer later opnieuw.</p>
-        <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${encodeURIComponent(id)}/">Open in IMDb ›</a></p>
-      </div></body></html>`;
-      imdbFrame.setAttribute('srcdoc', errHtml);
-      return;
-    }
-    const title = data.Title || '—';
-    const year  = data.Year ? `(${data.Year})` : '';
-    const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : '';
-    const plot = data.Plot && data.Plot!=='N/A' ? data.Plot : '—';
-    const facts = [
-      ['IMDb', (data.imdbRating && data.imdbRating!=='N/A') ? (data.imdbRating + ' / 10 · ' + (data.imdbVotes||'').replace(/\B(?=(\d{3})+(?!\d))/g, '.')) : '—'],
-      ['Genre', data.Genre || '—'],
-      ['Duur', data.Runtime || '—'],
-      ['Released', data.Released || '—'],
-      ['Regie', data.Director || '—'],
-      ['Schrijvers', data.Writer || '—'],
-      ['Cast', data.Actors || '—'],
-      ['Awards', data.Awards || '—'],
-      ['Metascore', data.Metascore && data.Metascore!=='N/A' ? data.Metascore : '—'],
-      ['Box Office', data.BoxOffice || '—'],
-      ['Taal', data.Language || '—'],
-      ['Land', data.Country || '—'],
-      ['Type', data.Type || '—'],
-      ['Seizoenen', data.totalSeasons || (data.Type==='series' ? '—' : '')]
-    ].filter(x=>x[1]!=='');
-
-    const rows = facts.map(([k,v])=>`<div class="r"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-
-    const ratings = Array.isArray(data.Ratings) ? data.Ratings.map(r=>`<li>${r.Source}: <strong>${r.Value}</strong></li>`).join('') : '';
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <style>
-      :root{color-scheme:dark}
-      body{margin:0;background:#0b1020;color:#e5e7eb;
-           font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-      .w{padding:16px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
-      img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
-      h1{margin:.2rem 0 .25rem 0;font-size:22px}
-      .meta{opacity:.85;margin:.2rem 0 .6rem 0}
-      .grid{display:grid;grid-template-columns:1fr;gap:.4rem}
-      .r{display:grid;grid-template-columns:120px 1fr;gap:.6rem;align-items:start}
-      .k{opacity:.8}
-      a{color:#60a5fa;text-decoration:none}
-      @media (min-width:700px){ .grid{grid-template-columns:1fr 1fr} }
-    </style></head><body>
-    <div class="w">
-      ${poster?`<img src="${poster}" alt="">`:''}
-      <div style="min-width:260px;flex:1">
-        <h1>${title} <span class="meta">${year}</span></h1>
-        <p class="meta" style="max-width:70ch">${plot}</p>
-        <div class="grid">${rows}</div>
-        ${ratings?`<div style="margin-top:.75rem"><strong>Andere ratings</strong><ul>${ratings}</ul></div>`:''}
-        <p style="margin-top:.75rem"><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${encodeURIComponent(id)}/">Bekijk op IMDb ›</a></p>
-      </div>
-    </div></body></html>`;
-    imdbFrame.setAttribute('srcdoc', html);
-  }).catch(err=>{
-    const errHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui}
-    a{color:#60a5fa;text-decoration:none}</style></head><body>
-    <div style="padding:16px">
-      <h1 style="margin:0 0 .5rem 0;font-size:22px">Netwerkfout</h1>
-      <p style="opacity:.85">Geen verbinding of OMDb niet bereikbaar.</p>
-      <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${encodeURIComponent(id)}/">Open in IMDb ›</a></p>
-    </div></body></html>`;
-    imdbFrame.setAttribute('srcdoc', errHtml);
-  });
-} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
 imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
 imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
 
@@ -658,7 +558,7 @@ async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Da
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
-const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
 function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
@@ -758,7 +658,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
 
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
 </script>
-<script src="./tievie.js"></script>
+<script src="./tievie-fixes-v3_29.js?v=3.29?v=3.27"></script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
   <div class="flex items-center justify-between mb-2">
@@ -841,7 +741,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
     right.appendChild(ghost);
     btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
     right.appendChild(btn);
 
     // Vervang inhoud
