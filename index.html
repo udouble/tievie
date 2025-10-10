@@ -445,98 +445,106 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
-async function openImdbOverlay(id){
+function openImdbOverlay(id){
   if(!id){ alert('Geen IMDb ID'); return; }
-  // Toon overlay + laadscherm binnen de iframe via srcdoc (geen directe navigatie naar imdb.com i.v.m. X-Frame-Options/CSP)
-  const loading = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+  imdbOverlay.style.display='flex';
+  // Toon eerst een nette 'laden'-pagina
+  const loadingHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <style>
-    :root{color-scheme:dark}
-    body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
     .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
-    .ph{width:210px;height:310px;border-radius:12px;border:1px solid rgba(148,163,184,.25);background:#111827}
-    h1{margin:.2rem 0 .25rem 0;font-size:22px}
-    .m{opacity:.85;margin:.2rem 0 .6rem 0}
+    .ph{width:210px;height:310px;border-radius:12px;background:#111827;border:1px solid rgba(148,163,184,.25)}
+    h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
   </style></head><body>
-  <div class="w">
-    <div class="ph"></div>
-    <div>
-      <h1>IMDb</h1>
-      <p class="m">Bezig met laden…</p>
-    </div>
-  </div>
-  </body></html>`;
-  imdbFrame.setAttribute('srcdoc', loading);
-  imdbOverlay.style.display='flex';
+  <div class="w"><div class="ph"></div><div>
+  <h1>IMDb-gegevens laden…</h1>
+  <p class="m">Even geduld.</p>
+  </div></div></body></html>`;
+  imdbFrame.removeAttribute('src');
+  imdbFrame.setAttribute('srcdoc', loadingHtml);
 
-  try{
-    // OMDb ophalen (apikey is elders in het bestand als const OMDB_KEY gedefinieerd)
-    const url = 'https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id)+'&plot=full&r=json';
-    const res = await fetch(url, {cache:'no-store', mode:'cors'});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json();
-    if(!data || data.Response==='False') throw new Error(data && data.Error ? data.Error : 'Geen data');
+  // Haal maximale info via OMDb (IMDb data)
+  const url = 'https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id)+'&plot=full';
+  fetch(url).then(r=>r.json()).then(data=>{
+    if(!data || data.Response==='False'){
+      const errHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui}
+      a{color:#60a5fa;text-decoration:none}</style></head><body>
+      <div style="padding:16px">
+        <h1 style="margin:0 0 .5rem 0;font-size:22px">Kon IMDb-gegevens niet laden</h1>
+        <p style="opacity:.85">Probeer later opnieuw.</p>
+        <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${encodeURIComponent(id)}/">Open in IMDb ›</a></p>
+      </div></body></html>`;
+      imdbFrame.setAttribute('srcdoc', errHtml);
+      return;
+    }
+    const title = data.Title || '—';
+    const year  = data.Year ? `(${data.Year})` : '';
+    const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : '';
+    const plot = data.Plot && data.Plot!=='N/A' ? data.Plot : '—';
+    const facts = [
+      ['IMDb', (data.imdbRating && data.imdbRating!=='N/A') ? (data.imdbRating + ' / 10 · ' + (data.imdbVotes||'').replace(/\B(?=(\d{3})+(?!\d))/g, '.')) : '—'],
+      ['Genre', data.Genre || '—'],
+      ['Duur', data.Runtime || '—'],
+      ['Released', data.Released || '—'],
+      ['Regie', data.Director || '—'],
+      ['Schrijvers', data.Writer || '—'],
+      ['Cast', data.Actors || '—'],
+      ['Awards', data.Awards || '—'],
+      ['Metascore', data.Metascore && data.Metascore!=='N/A' ? data.Metascore : '—'],
+      ['Box Office', data.BoxOffice || '—'],
+      ['Taal', data.Language || '—'],
+      ['Land', data.Country || '—'],
+      ['Type', data.Type || '—'],
+      ['Seizoenen', data.totalSeasons || (data.Type==='series' ? '—' : '')]
+    ].filter(x=>x[1]!=='');
 
-    const esc = s => String(s||'').replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-    const poster = (data.Poster && data.Poster!=='N/A') ? `<img src="${esc(data.Poster)}" alt="Poster" style="width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)">` : '';
-    const title = [data.Title, data.Year].filter(Boolean).join(' ');
-    const lines = [
-      (data.Rated && data.Runtime) ? `${data.Rated} · ${data.Runtime}` : (data.Runtime||data.Rated||''),
-      data.Genre || '',
-      data.Released ? `Release: ${data.Released}` : '',
-      (data.imdbRating && data.imdbVotes) ? `IMDb: ${data.imdbRating}/10 (${data.imdbVotes} stemmen)` : (data.imdbRating ? `IMDb: ${data.imdbRating}/10` : ''),
-      (data.Metascore && data.Metascore!=='N/A') ? `Metascore: ${data.Metascore}` : '',
-      (data.Director && data.Director!=='N/A') ? `Regie: ${data.Director}` : '',
-      (data.Actors && data.Actors!=='N/A') ? `Cast: ${data.Actors}` : ''
-    ].filter(Boolean).map(esc).map(s=>`<div>${s}</div>`).join('');
+    const rows = facts.map(([k,v])=>`<div class="r"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
-    const ratings = Array.isArray(data.Ratings) ? `<ul style="margin:.3rem 0 .6rem 1rem">${data.Ratings.map(r=>`<li>${esc(r.Source)}: ${esc(r.Value)}</li>`).join('')}</ul>` : '';
-    const imdbUrl = data.imdbID ? `https://www.imdb.com/title/${encodeURIComponent(data.imdbID)}/` : null;
+    const ratings = Array.isArray(data.Ratings) ? data.Ratings.map(r=>`<li>${r.Source}: <strong>${r.Value}</strong></li>`).join('') : '';
 
-    const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>${esc(data.Title||'IMDb')}</title>
     <style>
       :root{color-scheme:dark}
-      body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-      .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
+      body{margin:0;background:#0b1020;color:#e5e7eb;
+           font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+      .w{padding:16px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+      img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
       h1{margin:.2rem 0 .25rem 0;font-size:22px}
-      .m{opacity:.9;margin:.2rem 0 .6rem 0;white-space:pre-wrap}
+      .meta{opacity:.85;margin:.2rem 0 .6rem 0}
+      .grid{display:grid;grid-template-columns:1fr;gap:.4rem}
+      .r{display:grid;grid-template-columns:120px 1fr;gap:.6rem;align-items:start}
+      .k{opacity:.8}
       a{color:#60a5fa;text-decoration:none}
-      .sec{margin-top:12px}
+      @media (min-width:700px){ .grid{grid-template-columns:1fr 1fr} }
     </style></head><body>
     <div class="w">
-      ${poster}
-      <div>
-        <h1>${esc(title||'Onbekend')}</h1>
-        <div class="m">${lines}</div>
-        ${data.Plot && data.Plot!=='N/A' ? `<div class="sec"><strong>Plot</strong><div class="m">${esc(data.Plot)}</div></div>` : ''}
-        ${ratings ? `<div class="sec"><strong>Ratings</strong>${ratings}</div>` : ''}
-        ${imdbUrl ? `<p class="sec"><a href="${imdbUrl}" target="_blank" rel="noopener">↗ Open op IMDb</a></p>` : ''}
+      ${poster?`<img src="${poster}" alt="">`:''}
+      <div style="min-width:260px;flex:1">
+        <h1>${title} <span class="meta">${year}</span></h1>
+        <p class="meta" style="max-width:70ch">${plot}</p>
+        <div class="grid">${rows}</div>
+        ${ratings?`<div style="margin-top:.75rem"><strong>Andere ratings</strong><ul>${ratings}</ul></div>`:''}
+        <p style="margin-top:.75rem"><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${encodeURIComponent(id)}/">Bekijk op IMDb ›</a></p>
       </div>
-    </div>
-    </body></html>`;
-
-    imdbFrame.setAttribute('srcdoc', doc);
-  }catch(err){
-    const msg = (err && err.message) ? err.message : 'Laden mislukt';
-    const fallback = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <style>
-      :root{color-scheme:dark}
-      body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-      .w{padding:16px}
-      a{color:#60a5fa;text-decoration:none}
-    </style></head><body>
-    <div class="w">
-      <h1>Kon info niet laden</h1>
-      <p>${msg}</p>
-      <p><a href="https://www.imdb.com/title/${encodeURIComponent(id)}/" target="_blank" rel="noopener">↗ Open rechtstreeks op IMDb</a></p>
     </div></body></html>`;
-    imdbFrame.setAttribute('srcdoc', fallback);
-  }
-}
-imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+    imdbFrame.setAttribute('srcdoc', html);
+  }).catch(err=>{
+    const errHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui}
+    a{color:#60a5fa;text-decoration:none}</style></head><body>
+    <div style="padding:16px">
+      <h1 style="margin:0 0 .5rem 0;font-size:22px">Netwerkfout</h1>
+      <p style="opacity:.85">Geen verbinding of OMDb niet bereikbaar.</p>
+      <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${encodeURIComponent(id)}/">Open in IMDb ›</a></p>
+    </div></body></html>`;
+    imdbFrame.setAttribute('srcdoc', errHtml);
+  });
+} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
 imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
 imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
 
