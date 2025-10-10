@@ -21,12 +21,12 @@ self.addEventListener('message',async ev=>{
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
   if(event.request.method!=='GET')return;
-  // iPad PWA poster fix: laat cross-origin afbeeldingen door zonder SW-intercept
-  try {
-    if (event.request.destination === 'image' && url.origin !== location.origin) {
-      return; // val terug op standaard netwerkgedrag
+  // iOS/iPad PWA: laat cross-origin afbeeldingen ongemoeid (voorkomt lege posters/blocked requests)
+  try{
+    if(event.request.destination === 'image' && url.origin !== location.origin){
+      return; // geen respondWith => normale netwerkflow zonder SW-intercept
     }
-  } catch(_) {}
+  }catch(_){}
 
   if(url.pathname.endsWith('__mfs_sync__.json')){
     event.respondWith((async()=>{
