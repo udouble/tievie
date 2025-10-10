@@ -21,6 +21,13 @@ self.addEventListener('message',async ev=>{
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
   if(event.request.method!=='GET')return;
+  // iPad PWA poster fix: laat cross-origin afbeeldingen door zonder SW-intercept
+  try {
+    if (event.request.destination === 'image' && url.origin !== location.origin) {
+      return; // val terug op standaard netwerkgedrag
+    }
+  } catch(_) {}
+
   if(url.pathname.endsWith('__mfs_sync__.json')){
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
