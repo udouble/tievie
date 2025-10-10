@@ -924,5 +924,137 @@ body {
 }
 </style>
 
+
+<!-- === IMDb popup fix: render OMDb data into the iframe via srcdoc (no cross-site iframe) === -->
+<script>
+(function(){
+  // Keep everything else unchanged; override only the popup behavior.
+  window.openImdbOverlay = async function(id){
+    const overlay = document.getElementById('imdbOverlay');
+    const frame   = document.getElementById('imdbFrame');
+    const bar     = document.getElementById('imdbBar');
+    if(!id){ alert('Geen IMDb ID'); return; }
+    if(!overlay || !frame){ alert('Kan overlay niet openen.'); return; }
+
+    // Show overlay immediately with minimal skeleton
+    overlay.style.display = 'flex';
+    const imdbUrl = 'https://www.imdb.com/title/'+encodeURIComponent(id)+'/';
+    const loadingHTML = `
+      <!doctype html><html><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <style>
+        body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial;background:#0b1020;color:#e5e7eb}
+        .wrap{max-width:920px;margin:0 auto;padding:16px}
+        .card{background:#0f172a;border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:16px}
+        .row{display:flex;gap:16px;align-items:flex-start}
+        .poster{width:120px;height:180px;object-fit:cover;border-radius:8px;background:#111827}
+        h1{font-size:20px;margin:0 0 4px 0}
+        .sub{opacity:.8;font-size:13px;margin-bottom:10px}
+        .muted{opacity:.8}
+        .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;margin:8px 0 12px 0}
+        .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,.25);text-decoration:none;color:#e5e7eb}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        @media (max-width:720px){.row{flex-direction:column}.grid{grid-template-columns:1fr}}
+      </style></head>
+      <body><div class="wrap"><div class="card"><div class="row">
+        <div style="width:120px;height:180px" class="poster"></div>
+        <div><h1>Gegevens laden…</h1><div class="sub">ID: ${id}</div></div>
+      </div></div></div></body></html>`;
+    frame.removeAttribute('src');
+    frame.srcdoc = loadingHTML;
+
+    try{
+      const url = 'https://www.omdbapi.com/?apikey='+encodeURIComponent(OMDB_KEY)+'&i='+encodeURIComponent(id)+'&plot=full';
+      const res = await fetch(url, {cache:'no-store'});
+      const data = await res.json();
+
+      if(!data || data.Response==='False'){
+        frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial">
+          <div style="max-width:920px;margin:0 auto;padding:16px">
+            <div style="background:#0f172a;border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:16px">
+              <h1 style="margin:0 0 8px 0;font-size:20px">Geen gegevens gevonden</h1>
+              <div class="muted">OMDb antwoordde: ${(data && data.Error) ? data.Error : 'Onbekende fout'}.</div>
+              <p style="margin-top:12px"><a class="btn" href="${imdbUrl}" target="_blank" rel="noopener noreferrer">Open op IMDb</a></p>
+            </div>
+          </div>
+        </body></html>`;
+        return;
+      }
+
+      const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : '';
+      const rating = (data.imdbRating && data.imdbRating!=='N/A') ? data.imdbRating : '—';
+      const votes  = (data.imdbVotes && data.imdbVotes!=='N/A') ? data.imdbVotes : '';
+      const meta   = [data.Year, data.Rated, data.Runtime, data.Genre].filter(Boolean).filter(x=>x!=='N/A').join(' • ');
+
+      const html = `<!doctype html><html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>
+          body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial;background:#0b1020;color:#e5e7eb}
+          .wrap{max-width:920px;margin:0 auto;padding:16px}
+          .card{background:#0f172a;border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:16px}
+          .row{display:flex;gap:16px;align-items:flex-start}
+          .poster{width:120px;height:180px;object-fit:cover;border-radius:8px;background:#111827}
+          h1{font-size:20px;margin:0 0 4px 0}
+          .sub{opacity:.8;font-size:13px;margin-bottom:10px}
+          .muted{opacity:.8}
+          .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;margin:8px 0 12px 0}
+          .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,.25);text-decoration:none;color:#e5e7eb}
+          .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+          @media (max-width:720px){.row{flex-direction:column}.grid{grid-template-columns:1fr}}
+        </style></head>
+        <body>
+          <div class="wrap">
+            <div class="card">
+              <div class="row">
+                ${poster ? `<img class="poster" referrerpolicy="no-referrer" src="${poster}" alt="Poster">` : `<div class="poster"></div>`}
+                <div>
+                  <h1>${(data.Title||'—').replace(/</g,'&lt;')}</h1>
+                  <div class="sub">${meta||''}</div>
+                  <div class="meta"><div><strong>IMDb</strong> ${rating}${votes?` <span class="muted">(${votes})</span>`:''}</div></div>
+                  <p class="muted">${(data.Plot && data.Plot!=='N/A') ? (''+data.Plot).replace(/</g,'&lt;') : ''}</p>
+                  <p style="margin-top:12px">
+                    <a class="btn" href="${imdbUrl}" target="_blank" rel="noopener noreferrer">Open op IMDb</a>
+                  </p>
+                </div>
+              </div>
+              <div class="grid" style="margin-top:16px">
+                <div><div class="muted">Regie</div><div>${(data.Director && data.Director!=='N/A')?data.Director:'—'}</div></div>
+                <div><div class="muted">Schrijver</div><div>${(data.Writer && data.Writer!=='N/A')?data.Writer:'—'}</div></div>
+                <div><div class="muted">Cast</div><div>${(data.Actors && data.Actors!=='N/A')?data.Actors:'—'}</div></div>
+                <div><div class="muted">Taal / Land</div><div>${[data.Language,data.Country].filter(x=>x&&x!=='N/A').join(' • ')||'—'}</div></div>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>`;
+
+      frame.removeAttribute('src');
+      frame.srcdoc = html;
+    }catch(e){
+      frame.srcdoc = `<!doctype html><html><body style="margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial">
+        <div style="max-width:920px;margin:0 auto;padding:16px">
+          <div style="background:#0f172a;border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:16px">
+            <h1 style="margin:0 0 8px 0;font-size:20px">Kon IMDb-info niet laden</h1>
+            <div class="muted">Controleer je internetverbinding en probeer opnieuw.</div>
+            <p style="margin-top:12px"><a class="btn" href="${imdbUrl}" target="_blank" rel="noopener noreferrer">Open op IMDb</a></p>
+          </div>
+        </div>
+      </body></html>`;
+    }
+  };
+
+  // Close button keeps working as-is
+  const imdbClose = document.getElementById('imdbClose');
+  if(imdbClose){
+    imdbClose.addEventListener('click', ()=>{
+      const overlay = document.getElementById('imdbOverlay');
+      const frame   = document.getElementById('imdbFrame');
+      if(overlay) overlay.style.display = 'none';
+      if(frame){ frame.removeAttribute('srcdoc'); frame.src = 'about:blank'; }
+    }, {capture:true});
+  }
+})();
+</script>
+
 </body>
 </html>
