@@ -21,10 +21,11 @@ self.addEventListener('message',async ev=>{
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
   if(event.request.method!=='GET')return;
-  // iOS/iPad PWA: laat cross-origin afbeeldingen ongemoeid (voorkomt lege posters/blocked requests)
+  // iOS/iPad PWA: laat cross-origin afbeeldingen ongemoeid
   try{
+    const url = new URL(event.request.url);
     if(event.request.destination === 'image' && url.origin !== location.origin){
-      return; // geen respondWith => normale netwerkflow zonder SW-intercept
+      return; // geen SW-intercept voor posters/remote images
     }
   }catch(_){}
 
