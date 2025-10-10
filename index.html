@@ -247,6 +247,7 @@ function normalizeStream(raw){
   if(s.startsWith('prim')) return 'Prime Video';
   if(s.includes('play')) return 'Go Play';
   if(s.startsWith('np')) return 'NPO';
+  if(s.startsWith('strem')) return 'Stremio';
   if(s.startsWith('strea')) return 'Streamz';
   if(s.startsWith('disn')) return 'Disney+';
   return '';
@@ -303,7 +304,7 @@ function categoryOptionsHTML(type){
   return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
 }
 function streamingOptionsHTML(sel){
-  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
@@ -331,7 +332,7 @@ function card(item, index){
     <div class="px-3">
       <div class="relative">
         <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200/40">
-          <img src="${posterSrc}" alt="Poster van ${item.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
+          <img src="${posterSrc}" alt="Poster van ${item.title}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';">
         </div>
         <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
       </div>
@@ -444,7 +445,99 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
-function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+
+async function openImdbOverlay(id){
+  if(!id){ alert('Geen IMDb ID'); return; }
+  // Toon overlay + laadscherm binnen de iframe via srcdoc (geen directe navigatie naar imdb.com i.v.m. X-Frame-Options/CSP)
+  const loading = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{color-scheme:dark}
+    body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
+    .ph{width:210px;height:310px;border-radius:12px;border:1px solid rgba(148,163,184,.25);background:#111827}
+    h1{margin:.2rem 0 .25rem 0;font-size:22px}
+    .m{opacity:.85;margin:.2rem 0 .6rem 0}
+  </style></head><body>
+  <div class="w">
+    <div class="ph"></div>
+    <div>
+      <h1>IMDb</h1>
+      <p class="m">Bezig met laden…</p>
+    </div>
+  </div>
+  </body></html>`;
+  imdbFrame.setAttribute('srcdoc', loading);
+  imdbOverlay.style.display='flex';
+
+  try{
+    // OMDb ophalen (apikey is elders in het bestand als const OMDB_KEY gedefinieerd)
+    const url = 'https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id)+'&plot=full&r=json';
+    const res = await fetch(url, {cache:'no-store', mode:'cors'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(!data || data.Response==='False') throw new Error(data && data.Error ? data.Error : 'Geen data');
+
+    const esc = s => String(s||'').replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+    const poster = (data.Poster && data.Poster!=='N/A') ? `<img src="${esc(data.Poster)}" alt="Poster" style="width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)">` : '';
+    const title = [data.Title, data.Year].filter(Boolean).join(' ');
+    const lines = [
+      (data.Rated && data.Runtime) ? `${data.Rated} · ${data.Runtime}` : (data.Runtime||data.Rated||''),
+      data.Genre || '',
+      data.Released ? `Release: ${data.Released}` : '',
+      (data.imdbRating && data.imdbVotes) ? `IMDb: ${data.imdbRating}/10 (${data.imdbVotes} stemmen)` : (data.imdbRating ? `IMDb: ${data.imdbRating}/10` : ''),
+      (data.Metascore && data.Metascore!=='N/A') ? `Metascore: ${data.Metascore}` : '',
+      (data.Director && data.Director!=='N/A') ? `Regie: ${data.Director}` : '',
+      (data.Actors && data.Actors!=='N/A') ? `Cast: ${data.Actors}` : ''
+    ].filter(Boolean).map(esc).map(s=>`<div>${s}</div>`).join('');
+
+    const ratings = Array.isArray(data.Ratings) ? `<ul style="margin:.3rem 0 .6rem 1rem">${data.Ratings.map(r=>`<li>${esc(r.Source)}: ${esc(r.Value)}</li>`).join('')}</ul>` : '';
+    const imdbUrl = data.imdbID ? `https://www.imdb.com/title/${encodeURIComponent(data.imdbID)}/` : null;
+
+    const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>${esc(data.Title||'IMDb')}</title>
+    <style>
+      :root{color-scheme:dark}
+      body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+      .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
+      h1{margin:.2rem 0 .25rem 0;font-size:22px}
+      .m{opacity:.9;margin:.2rem 0 .6rem 0;white-space:pre-wrap}
+      a{color:#60a5fa;text-decoration:none}
+      .sec{margin-top:12px}
+    </style></head><body>
+    <div class="w">
+      ${poster}
+      <div>
+        <h1>${esc(title||'Onbekend')}</h1>
+        <div class="m">${lines}</div>
+        ${data.Plot && data.Plot!=='N/A' ? `<div class="sec"><strong>Plot</strong><div class="m">${esc(data.Plot)}</div></div>` : ''}
+        ${ratings ? `<div class="sec"><strong>Ratings</strong>${ratings}</div>` : ''}
+        ${imdbUrl ? `<p class="sec"><a href="${imdbUrl}" target="_blank" rel="noopener">↗ Open op IMDb</a></p>` : ''}
+      </div>
+    </div>
+    </body></html>`;
+
+    imdbFrame.setAttribute('srcdoc', doc);
+  }catch(err){
+    const msg = (err && err.message) ? err.message : 'Laden mislukt';
+    const fallback = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+      :root{color-scheme:dark}
+      body{margin:0;background:#0b1020;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+      .w{padding:16px}
+      a{color:#60a5fa;text-decoration:none}
+    </style></head><body>
+    <div class="w">
+      <h1>Kon info niet laden</h1>
+      <p>${msg}</p>
+      <p><a href="https://www.imdb.com/title/${encodeURIComponent(id)}/" target="_blank" rel="noopener">↗ Open rechtstreeks op IMDb</a></p>
+    </div></body></html>`;
+    imdbFrame.setAttribute('srcdoc', fallback);
+  }
+}
+imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
 imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
 imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
 
@@ -558,7 +651,7 @@ async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Da
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
-const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
 function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
@@ -658,7 +751,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
 
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
 </script>
-<script src="./tievie-fixes-v3_29.js?v=3.29?v=3.27"></script>
+<script src="./tievie.js"></script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
   <div class="flex items-center justify-between mb-2">
