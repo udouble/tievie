@@ -20,9 +20,16 @@ self.addEventListener('message',async ev=>{
 
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
-  try{ if(event.request.destination==='image' && url.origin!==location.origin){ return; } }catch(_){}
-
   if(event.request.method!=='GET')return;
+  // Bypass SW for OMDb/IMDb API to fix blank IMDb popup in PWA
+  try{
+    const url = new URL(event.request.url);
+    const host = url.hostname || '';
+    if(host.endsWith('omdbapi.com') || host.endsWith('imdb.com') || host.endsWith('imdbapi.com')){
+      return; // don't intercept; let the network handle it
+    }
+  }catch(_){}
+
   if(url.pathname.endsWith('__mfs_sync__.json')){
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
