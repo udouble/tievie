@@ -282,7 +282,9 @@ app.render=function(){
 
 app.filtered=function(){
   let a=app.state.items.slice();
-  if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
+  // Bij zoekterm: doorzoek volledige app, negeer categorie-filter
+  const __term__ = (app.state.searchTerm||'').trim();
+  if(!__term__ && app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
   const sel=app.state.streamSet;
   if(sel && sel.size){
     a=a.filter(i=>{ const s=normalizeStream(i.streamingOn); return (s && sel.has(s)) || (!s && sel.has('__UNKNOWN__')); });
