@@ -77,7 +77,7 @@ function attachResetGesture(){
 }
 
 /* IMDb-knop puur visueel */
-.btn-imdb{ pointer-events:none; }
+.btn-imdb{ pointer-events:auto; }
 
 </style>
 </head>
@@ -362,7 +362,7 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='none';}catch(e){} }
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='auto';}catch(e){} }
   return div;
 }
 
@@ -1113,6 +1113,20 @@ document.addEventListener('DOMContentLoaded', function(){
     inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
   });
 })();
+</script>
+
+
+<script>
+document.addEventListener('click', function(e){
+  var btn = e.target.closest && e.target.closest('.btn-imdb');
+  if(!btn) return;
+  e.preventDefault();
+  var imdbId = btn.getAttribute('data-imdbid') || '';
+  var poster = btn.getAttribute('data-poster') || '';
+  if(imdbId && typeof window.openImdbOverlay === 'function'){
+    window.openImdbOverlay(imdbId, poster);
+  }
+});
 </script>
 
 </body>
