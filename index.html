@@ -259,6 +259,7 @@ function normalizeStream(raw){
   if(s.includes('play')) return 'Go Play';
   if(s.startsWith('np')) return 'NPO';
   if(s.startsWith('strea')) return 'Streamz';
+  if(s.startsWith('strem')) return 'Stremio';
   if(s.startsWith('disn')) return 'Disney+';
   return '';
 }
@@ -314,7 +315,7 @@ function categoryOptionsHTML(type){
   return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
 }
 function streamingOptionsHTML(sel){
-  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
@@ -569,7 +570,7 @@ async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Da
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
-const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
 function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
