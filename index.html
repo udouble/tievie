@@ -314,7 +314,7 @@ function categoryOptionsHTML(type){
   return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
 }
 function streamingOptionsHTML(sel){
-  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
@@ -569,7 +569,7 @@ async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Da
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
-const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
 function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
@@ -1070,5 +1070,33 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
+<script>
+/* lotto */
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('btn-random');
+  if(!btn) return;
+  function setDisabled(){
+    try{
+      var f = (window.app && app.state && app.state.filter) ? app.state.filter : 'all';
+      var off = (f==='all' || f==='bekeken');
+      btn.toggleAttribute('disabled', off);
+    }catch(e){}
+  }
+  btn.addEventListener('click', function(){
+    try{
+      if(!window.app || !app.filtered) return;
+      if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
+      var list = app.filtered();
+      if(!list || !list.length) return;
+      var item = list[Math.floor(Math.random()*list.length)];
+      if(window.openRandomModal) openRandomModal(item);
+    }catch(e){}
+  });
+  var fc = document.getElementById('filterControls');
+  if(fc){ fc.addEventListener('click', function(e){ var b=e.target.closest('.filter-btn'); if(b){ setTimeout(setDisabled,0); } }); }
+  setDisabled();
+});
+</script>
 </body>
 </html>
