@@ -71,27 +71,6 @@ function attachResetGesture(){
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
 
-/* ====== Nieuw: 5 kaarten per rij (zonder iets te verwijderen of te verplaatsen) ====== */
-@media (min-width: 1280px) {
-  #cardsGrid {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 1.25rem !important;
-  }
-}
-
-/* ====== Nieuw: 5 kaarten per rij (witruimte maximaal benut) ====== */
-@media (min-width: 1280px) {
-  #cardsGrid, .cards-grid, .grid-cols-4 {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 1.25rem !important;
-  }
-  main .max-w-7xl {
-    max-width: 100% !important;
-  }
-}
-
 /* === Protocol: 5 kaarten per rij op brede schermen (≥1280px) === */
 @media (min-width: 1280px) {
   #list {
@@ -434,19 +413,34 @@ function renderSuggest(arr){
   </div>`).join('');
   showSuggest();
   Array.from(suggestList.children).forEach(row=>{
-    
     row.addEventListener('click', async ()=>{
       if(ADDING_LOCK) return;
-      hideSuggest && hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      try {
-        const all = await dbGetAll();
-        const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-        if(existing){ openDupInfo && openDupInfo(existing.type||'—'); return; }
-      } catch(e){ console.warn('duplicate precheck error', e); }
-      if(window.openAddModal){ openAddModal({imdbID, title, year, poster}); }
+      ADDING_LOCK = true;
+      try{
+        hideSuggest();
+        const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+        const typeSel=document.getElementById('add-type').value;
+        const streamSel=document.getElementById('add-stream').value;
+
+        const all=await dbGetAll();
+        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
+        const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
+        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
+        const k=keyFor(inc);
+        if(titleSet.has(normalizeTitle(title))){
+          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+          // Geen toevoeging, geen updates; input laten staan.
+          return;
+        }
+        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+        setStatus('Toegevoegd: '+title);
+        document.getElementById('add-search').value='';
+      } finally {
+        ADDING_LOCK = false;
+      }
     });
-});
+  });
 }
 function showSuggest(){
   suggestBox.style.display='block'; suggestOpen=true;
@@ -715,9 +709,40 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 </script>
 
 
-
-<!-- dubbele-titel overlay verwijderd -->
-
+<!-- Centrale popup voor dubbele titel -->
+<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
+  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+      <strong>Dubbele titel</strong>
+      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
+      <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten met ✕. Er wordt niets toegevoegd.</p>
+    </div>
+  </div>
+</div>
+<script>
+  (function(){
+    window.openDuplicateModal = function(title){
+      var m = document.getElementById('dupModal');
+      if(!m){ alert('Deze titel is al eerder toegevoegd.'); return; }
+      var msg = m.querySelector('#dupMsg');
+      if(msg){ msg.textContent = 'Deze titel is al eerder toegevoegd.'; }
+      m.style.display = 'flex';
+    };
+    var closeBtn = null;
+    function close(){ var m=document.getElementById('dupModal'); if(m) m.style.display='none'; }
+    document.addEventListener('DOMContentLoaded', function(){
+      closeBtn = document.getElementById('dupClose');
+      if(closeBtn) closeBtn.addEventListener('click', close);
+      var modal = document.getElementById('dupModal');
+      if(modal){
+        modal.addEventListener('click', function(e){ if(e.target === modal){ close(); } });
+      }
+    });
+  })();
+</script>
 
 
 <script>
@@ -940,41 +965,6 @@ body {
 </style>
 
 
-<div id="dupInfoOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100060">
-  <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(520px,96vw);">
-    <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
-      <strong class="text-sm">Info</strong>
-      <button id="dupInfoCloseX" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
-    </div>
-    <div class="p-4 text-slate-900" style="background:#f8fbff">
-      <p id="dupInfoMsg" class="mb-4">Deze titel staat al in de app, meer bepaald in deze categorie: —</p>
-      <div class="flex justify-end">
-        <button id="dupInfoClose" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Sluit</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
-(function(){
-  if(window.__DUP_INFO_WIRED__) return; window.__DUP_INFO_WIRED__=true;
-  window.openDupInfo = function(cat){
-    try{
-      var label = cat || '—';
-      const map = {'film':'Film','serie':'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken','bekeken':'Bekeken'};
-      if(map[label]) label = map[label];
-      var el = document.getElementById('dupInfoMsg');
-      if(el) el.textContent = 'Deze titel staat al in de app, meer bepaald in deze categorie: ' + label;
-    }catch(e){}
-    var ov = document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeDup(){ var ov=document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='none'; }
-  document.addEventListener('click', function(e){
-    if(e.target && (e.target.id==='dupInfoClose' || e.target.id==='dupInfoCloseX')){ e.preventDefault(); closeDup(); }
-  }, true);
-})();
-</script>
-
-
 <div id="addOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100050">
   <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(560px,96vw);">
     <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
@@ -1020,34 +1010,96 @@ body {
     </div>
   </div>
 </div>
+
+
+<div id="dupInfoOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100060">
+  <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(520px,96vw);">
+    <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
+      <strong class="text-sm">Info</strong>
+      <button id="dupInfoCloseX" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
+    </div>
+    <div class="p-4 text-slate-900" style="background:#f8fbff">
+      <p id="dupInfoMsg" class="mb-4">Deze titel staat al in de app, meer bepaald in deze categorie: —</p>
+      <div class="flex justify-end">
+        <button id="dupInfoClose" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Sluit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <script>
 (function(){
-  if(window.__ADD_MODAL_WIRED__) return; window.__ADD_MODAL_WIRED__=true;
+  if(window.__WIRED_ADD_FLOW__) return; window.__WIRED_ADD_FLOW__=true;
+
+  // Helpers to open/close popups
+  window.openDupInfo = function(cat){
+    try{
+      var label = cat || '—';
+      const map = {'film':'Film','serie':'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken','bekeken':'Bekeken'};
+      if(map[label]) label = map[label];
+      var el = document.getElementById('dupInfoMsg'); if(el) el.textContent = 'Deze titel staat al in de app, meer bepaald in deze categorie: ' + label;
+    }catch(e){}
+    var ov = document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='flex';
+  };
+  function closeDup(){ var ov=document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='none'; }
+
   let __pendingAdd = null;
   window.openAddModal = function(sel){
     __pendingAdd = sel || null;
     try{
-      document.getElementById('addChosenTitle').textContent = sel && sel.title ? sel.title : '—';
-      const t = document.getElementById('add-type')?.value || 'film';
-      const s = document.getElementById('add-stream')?.value || '';
-      const typeSel = document.getElementById('addCatSel'); if(typeSel) typeSel.value=t;
-      const streamSel = document.getElementById('addStreamSel'); if(streamSel) streamSel.value=s;
+      var titleBox = document.getElementById('addChosenTitle'); if(titleBox) titleBox.textContent = sel && sel.title ? sel.title : '—';
+      var t = document.getElementById('add-type')?.value || 'film';
+      var s = document.getElementById('add-stream')?.value || '';
+      var typeSel = document.getElementById('addCatSel'); if(typeSel) typeSel.value=t;
+      var streamSel = document.getElementById('addStreamSel'); if(streamSel) streamSel.value=s;
     }catch(e){}
-    const ov = document.getElementById('addOverlay'); if(ov) ov.style.display='flex';
+    var ov = document.getElementById('addOverlay'); if(ov) ov.style.display='flex';
   };
-  function closeAdd(){ const ov=document.getElementById('addOverlay'); if(ov) ov.style.display='none'; }
-  document.addEventListener('click', function(e){
-    if(e.target && (e.target.id==='addClose' || e.target.id==='addCancel')){ e.preventDefault(); closeAdd(); }
-    if(e.target && e.target.id==='addConfirm'){
+  function closeAdd(){ var ov=document.getElementById('addOverlay'); if(ov) ov.style.display='none'; }
+
+  // Global click handlers (capture) for buttons
+  document.addEventListener('click', async function(e){
+    var id = e.target && e.target.id;
+    if(id==='dupInfoClose' || id==='dupInfoCloseX'){ e.preventDefault(); closeDup(); return; }
+    if(id==='addClose' || id==='addCancel'){ e.preventDefault(); closeAdd(); return; }
+    if(id==='addConfirm'){
       e.preventDefault();
       if(!__pendingAdd){ closeAdd(); return; }
-      const typeSel = document.getElementById('addCatSel')?.value || 'film';
-      const streamSel = document.getElementById('addStreamSel')?.value || '';
-      if(window.handleAddConfirm){
-        window.handleAddConfirm({ ...__pendingAdd, typeOverride:typeSel, streamOverride:streamSel });
-      }
-      closeAdd();
+      try{
+        const all = await dbGetAll();
+        const { imdbID, title, year, poster } = __pendingAdd || {};
+        // Duplicate guard (just in case)
+        const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
+        if(existing){ closeAdd(); openDupInfo(existing.type||'—'); return; }
+        const typeSel = document.getElementById('addCatSel')?.value || 'film';
+        const streamSel = document.getElementById('addStreamSel')?.value || '';
+        const inc = { title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
+        const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+        await dbPut(it);
+        app.state.items = await dbGetAll();
+        app.render(); bindStreamUI(); syncPushDebounced();
+        setStatus && setStatus('Toegevoegd: '+title);
+        var search = document.getElementById('add-search'); if(search) search.value='';
+      } catch(err){ console.warn('add flow error', err); }
+      finally{ closeAdd(); }
+      return;
     }
+  }, true);
+
+  // Intercept clicks on suggest rows: check duplicate first; open add modal only if not existing
+  document.addEventListener('click', async function(e){
+    const row = e.target && e.target.closest ? e.target.closest('#suggest .row') : null;
+    if(!row) return;
+    e.preventDefault(); e.stopPropagation(); // voorkom dubbele handlers
+    try{
+      hideSuggest && hideSuggest();
+      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+      const all = await dbGetAll();
+      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
+      if(existing){ openDupInfo(existing.type||'—'); return; }
+      openAddModal({imdbID, title, year, poster});
+    }catch(err){ console.warn('suggest click flow error', err); }
   }, true);
 })();
 </script>
