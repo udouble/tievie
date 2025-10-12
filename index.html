@@ -164,7 +164,7 @@ function attachResetGesture(){
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="aan-het-kijken">Aan het kijken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="bekeken">Bekeken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="all">Alles</button>
-      <a id="btn-random" href="#" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</a>
+      <a id="btn-random" role="button" href="#" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</a>
       <div class="flex-1"></div>
       <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56 pill"/>
     </div>
@@ -1076,7 +1076,16 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 /* lotto */
 (function(){
-  function isBlocked(){ try{ var f=(window.app&&app.state&&app.state.filter)?app.state.filter:'all'; return (f==='all'||f==='bekeken'); }catch(e){ return true; } }
+  function isBlocked(){
+    try{
+      var f = (window.app && app.state && typeof app.state.filter==='string') ? app.state.filter : null;
+      if(!f){
+        var activeBtn = document.querySelector('#filterControls .filter-btn.bg-sky-500');
+        f = activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
+      }
+      return (f==='all' || f==='bekeken');
+    }catch(e){ return false; }
+  }catch(e){ return true; } }
   function pickAndShow(){
     try{
       if(!window.app||!app.filtered) return;
