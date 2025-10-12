@@ -367,7 +367,7 @@ function card(item, index){
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
         <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb data-poster="${posterSrc}" px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -378,7 +378,7 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='none';}catch(e){} }
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='auto'; imdbBtn.setAttribute('data-poster', posterSrc);}catch(e){} }
   return div;
 }
 
@@ -1097,6 +1097,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var fc = document.getElementById('filterControls');
   if(fc){ fc.addEventListener('click', function(e){ var b=e.target.closest('.filter-btn'); if(b){ setTimeout(setDisabled,0); } }); }
   setDisabled();
+  var topSearch=document.getElementById('search'); if(topSearch){ topSearch.addEventListener('input', function(){ setDisabled(); }); }
 });
 </script>
 </body>
