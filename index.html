@@ -260,7 +260,7 @@ function normalizeStream(raw){
   if(s.startsWith('np')) return 'NPO';
   if(s.startsWith('strem')) return 'Stremio';
   if(s.startsWith('strea')) return 'Streamz';
-  if(s.startsWith('disn')) return 'Disney+'';
+  if(s.startsWith('disn')) return 'Disney+';
   return '';
 }
 function parseScore(s){ if(s==null) return NaN; let t=String(s).trim(); if(!t||t.toLowerCase()==='nan') return NaN; t=t.replace(',','.'); const v=parseFloat(t); return isNaN(v)?NaN:v }
