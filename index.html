@@ -178,6 +178,7 @@ function attachResetGesture(){
   <div id="imdbPanel">
     <div id="imdbBar">
       <div class="flex items-center gap-2"><span class="text-sm opacity-80">IMDb</span></div>
+<div id="imdbContent" style="height:calc(100% - 42px);overflow:auto;background:#0b1020;color:#e5e7eb;padding:12px"></div>
       <button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
     </div>
     <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
@@ -187,9 +188,7 @@ function attachResetGesture(){
 <div id="suggest">
   <div class="card glass rounded-xl shadow-2xl border border-slate-200 p-2">
     <div id="suggest-list"></div>
-    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
-  </div>
-</div>
+    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div></div></div>
 
 <div id="status">v3.31 — PWA</div>
 
@@ -1188,6 +1187,86 @@ body {
 
   // Neutralize any legacy duplicate modal calls
   window.openDuplicateModal = function(title){ openDupInfo('—'); };
+})();
+</script>
+
+
+<script>
+(function(){
+  if(window.__IMDB_POPUP_WIRED__) return; window.__IMDB_POPUP_WIRED__=true;
+
+  function esc(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+  window.openImdbInfo = function(item){
+    try{
+      const ov = document.getElementById('imdbOverlay');
+      const content = document.getElementById('imdbContent');
+      if(!ov || !content){ return; }
+      const title = item?.title || '—';
+      const year = item?.year || '';
+      const type = item?.type || '';
+      const streaming = item?.streamingOn || '';
+      const imdbID = item?.imdbID || '';
+      const imdb = item?.imdbRating || item?.imdb || '';
+      const runtime = item?.runtime || item?.Runtime || '';
+      const genres = item?.genres || item?.Genres || item?.genre || '';
+      const plot = item?.plot || item?.Plot || '';
+      const poster = item?.poster || '';
+
+      const rows = [
+        ['Titel', title + (year? ' ('+year+')':'')],
+        ['Type', type],
+        ['Waar te zien', streaming||'—'],
+        ['IMDb-score', imdb||'—'],
+        ['Duur', runtime||'—'],
+        ['Genres', Array.isArray(genres)? genres.join(', ') : (genres||'—')],
+        ['Samenvatting', plot||'—']
+      ];
+
+      let linkHtml = '';
+      if(imdbID){ linkHtml = ''; }
+
+      let posterHtml = poster ? '<img src="'+esc(poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
+
+      let rowsHtml = rows.map(([k,v])=>'<div class="grid grid-cols-3 gap-2 py-1"><div class="text-slate-400">'+esc(k)+'</div><div class="col-span-2">'+esc(v)+'</div></div>').join('');
+
+      content.innerHTML = '<div class="flex gap-3 items-start">'+posterHtml+'<div class="grow">'+rowsHtml+'</div></div><div class="mt-3">'+linkHtml+'</div>';
+
+      ov.style.display='flex';
+    }catch(e){ console.warn('openImdbInfo error', e); }
+  };
+
+  // Delegate click from any IMDb-info button to openImdbInfo; we try common selectors.
+  document.addEventListener('click', function(e){
+    const btn = e.target && e.target.closest ? e.target.closest('[data-action="imdb-info"], .btn-imdb, button[data-imdbid], a[data-imdbid]') : null;
+    if(!btn) return;
+    e.preventDefault();
+    try{
+      let imdbID = btn.dataset.imdbid || btn.getAttribute('data-imdb-id') || '';
+      let item = null;
+      if(window.app && app.state && Array.isArray(app.state.items)){
+        if(imdbID){ item = app.state.items.find(x=> (x.imdbID||'')===imdbID ); }
+        if(!item){
+          // try to find by closest card data attributes
+          const card = btn.closest && btn.closest('[data-imdbid]');
+          const cid = card && card.getAttribute('data-imdbid');
+          if(cid){ item = app.state.items.find(x=> (x.imdbID||'')===cid ); }
+        }
+      }
+      if(!item && imdbID){ item = { imdbID: imdbID }; }
+      openImdbInfo(item||{});
+    }catch(err){ console.warn('IMDb button error', err); }
+  }, true);
+
+  // Close logic for IMDB overlay via existing close in bar or clicking backdrop
+  document.addEventListener('click', function(e){
+    const ov = document.getElementById('imdbOverlay');
+    if(!ov) return;
+    if(e.target && (e.target.id==='imdbOverlay' || e.target.id==='imdbClose' )){
+      e.preventDefault();
+      ov.style.display='none';
+    }
+  }, true);
 })();
 </script>
 
