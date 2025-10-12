@@ -148,7 +148,7 @@ function attachResetGesture(){
           <option>NPO</option>
           <option>Disney+</option>
         
-        <option>Stremio</option></select>ss="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+        <option>Stremio</option></select><button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button></button>
       </div>
     </div>
   </header>
@@ -358,7 +358,8 @@ function card(item, index){
           <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
-          </select>
+          
+  <option>Stremio</option></select>
         </div>
       </div>
       <div class="flex items-center gap-2">
