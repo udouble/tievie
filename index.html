@@ -47,8 +47,9 @@ function attachResetGesture(){
   .offline {background:#ef4444;color:#7f1d1d}
   ::placeholder{font-style:italic;color:#64748b}
   #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
-  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background: #f8fafc;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background: #e5e7eb;color: #0f172a;height:100%;border:0;background:#0b1020}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
+  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
   #suggest{position:fixed;display:none;z-index:100001}
   #suggest .card{max-height:420px;overflow:auto}
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
@@ -80,10 +81,6 @@ function attachResetGesture(){
 .btn-imdb{ pointer-events:auto; }
 
 </style>
-
-<script>
-  if(typeof window.OMDB_KEY==='undefined' || !window.OMDB_KEY){ try{ window.OMDB_KEY = '8a70a767'; }catch(_){ } }
-</script>
 </head>
 <body>
 <div class="max-w-7xl mx-auto p-4 pb-28">
@@ -132,7 +129,6 @@ function attachResetGesture(){
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[260px]">
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-<input id="add-imdbid" type="text" placeholder="IMDb-ID of URL (tt…)" class="w-full mt-2 px-3 py-2 rounded-lg bg-white/90 shadow" />
         </div>
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="film" selected>Film</option>
@@ -325,23 +321,11 @@ function streamingOptionsHTML(sel){
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
-function posterSrcFor(item){
-  try{
-    var p = item && item.poster;
-    if(p && p !== 'N/A') return p;
-    var id = item && (item.imdbID||item.imdbId);
-    if(id && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
-      return 'https://img.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id);
-    }
-  }catch(e){}
-  return 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
-}
-
 function card(item, index){
   const div=document.createElement('div');
   div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
-  const posterSrc = posterSrcFor(item);
+  const posterSrc=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
@@ -385,7 +369,7 @@ function card(item, index){
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
         <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" type="button" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -396,27 +380,8 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); 
-  if(imdbBtn){ 
-    try{
-      imdbBtn.style.pointerEvents='auto'; 
-      imdbBtn.setAttribute('data-poster', posterSrc);
-      imdbBtn.addEventListener('click', function(e){
-        e.preventDefault(); e.stopPropagation();
-        var imdbId = imdbBtn.getAttribute('data-imdbid')||'';
-        var poster = imdbBtn.getAttribute('data-poster')||'';
-        if(imdbId && window.openImdbOverlay){ window.openImdbOverlay(imdbId, poster); }
-        else if(window.openImdbOverlay){
-          // fallback via OMDb by title (no UI wijzigingen)
-          var title = (item && item.title) ? item.title : '';
-          if(title && typeof fetch==='function' && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
-            fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&t='+encodeURIComponent(title), {cache:'no-store'})
-              .then(r=>r.json()).then(j=>{ var tt=(j&&j.imdbID)||''; if(tt){ window.openImdbOverlay(tt, poster); } });
-          }
-        }
-      }, {once: false});
-    }catch(e){} 
-  }return div;
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='auto'; imdbBtn.setAttribute('data-poster', posterSrc);}catch(e){} }
+  return div;
 }
 
 // search suggest
@@ -750,9 +715,9 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 <!-- Centrale popup voor dubbele titel -->
 <div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
   <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
       <strong>Dubbele titel</strong>
-      <button id="dupClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
@@ -1006,9 +971,9 @@ body {
 <!-- Popup: willekeurige titel -->
 <div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
   <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
       <strong>Willekeurige keuze</strong>
-      <button id="randClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+      <button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p style="margin:0 0 10px 0" id="randMsg">Deze titel hebben we voor je gekozen.</p>
@@ -1041,7 +1006,7 @@ body {
     if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
     var box = m.querySelector('#randCard');
     if(box){
-      var poster = posterSrcFor(item).replace('400x600','96x144').replace('Fout','—');
+      var poster = (item && item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
       var title = esc(item && item.title || '');
       var type = esc(item && item.type || '');
       var year = esc(item && item.year || '');
@@ -1055,7 +1020,7 @@ body {
           <div class="flex-1">
             <div class="flex items-center justify-between gap-3">
               <h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3>
-              <button data-imdbid="${imdbId}" type="button" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+              <button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
             </div>
             <div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase()+type.slice(1) : ''} • ${year||'—'} ${stream?('• '+stream):''}</div>
             <div class="mt-2 flex gap-3 text-sm">
@@ -1162,9 +1127,9 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Popup: toevoeging bevestigen -->
 <div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
   <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
       <strong>Toevoegen</strong>
-      <button id="addConfirmClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+      <button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p id="addConfirmMsg" style="margin:0 0 10px 0">Deze titel hebben we gevonden. Vul categorie en ‘Waar te zien’ in.</p>
@@ -1225,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const title = (item && item.title) || (item && item.Title) || '';
     const type = (item && item.type) || (item && item.Type) || '';
     const year = (item && item.year) || (item && item.Year) || '';
-    const poster = (function(){ var tmp = posterSrcFor({ poster:(item&&item.poster)|| (item&&item.Poster), imdbID:(item&&item.imdbID)||(item&&item.imdbId)||(item&&item.imdbid) }); return tmp.replace('400x600','96x144').replace('Fout','—'); })();
+    const poster = (item && item.poster) || (item && item.Poster && item.Poster!=='N/A' ? item.Poster : '') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
     t.textContent = title || '—';
     m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
     p.src = poster;
@@ -1258,19 +1223,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
         return;
       }
-      // Fetch OMDb details before saving, to ensure imdbRating and runtime are stored
-      let imdbRating='', runtime='';
-      if(imdbID && typeof fetch==='function' && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
-        try{
-          const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(imdbID)+'&plot=short', {cache:'no-store'});
-          const j = await r.json();
-          if(j && j.Response!=='False'){
-            if(j.imdbRating && j.imdbRating!=='N/A') imdbRating = j.imdbRating;
-            if(j.Runtime && j.Runtime!=='N/A') runtime = j.Runtime;
-          }
-        }catch(e){ /* ignore */ }
-      }
-      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now(), imdbRating: imdbRating||'', runtime: runtime||'' };
+      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now() };
       const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
       await dbPut(it); app.state.items = await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
       setStatus('Toegevoegd: '+title);
@@ -1332,41 +1285,56 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </div>
 
+<!-- Fallback injector: IMDb-ID detection for add/search (non-invasive) -->
 <script>
 (function(){
-  function extractImdbId(str){
-    if(!str) return '';
-    var s=String(str).trim();
-    var m=s.match(/tt\d{5,12}/i);
-    if(m) return m[0];
-    return '';
-  }
-  async function fetchById(tt){
+  function parseImdbId(input){
     try{
-      if(!tt) return null;
-      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
-      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
-      const j = await r.json();
-      if(j && j.Response!=='False') return j;
-    }catch(e){}
-    return null;
+      var s = String(input||'').trim();
+      var m = s.match(/(tt\d{7,})/i);
+      return m ? m[1] : '';
+    }catch(e){ return ''; }
   }
-  document.addEventListener('DOMContentLoaded', function(){
-    var inp = document.getElementById('add-imdbid');
-    if(!inp) return;
-    function tryOpen(){
-      var id = extractImdbId(inp.value);
-      if(!id) return;
-      fetchById(id).then(function(j){
-        if(j && typeof window.openAddConfirmModal==='function'){
-          openAddConfirmModal(j);
+  function wireAddFallback(){
+    var addBtn = document.getElementById('btn-add');
+    var search = document.getElementById('add-search');
+    if(!addBtn || !search || addBtn._imdbIdWrapped) return;
+
+    var original = addBtn.onclick || null;
+    addBtn.onclick = async function(ev){
+      try{
+        var q = (search.value||'').trim();
+        var id = parseImdbId(q);
+        if(id){
+          if(ev){ ev.preventDefault && ev.preventDefault(); ev.stopPropagation && ev.stopPropagation(); }
+          if(typeof OMDB_KEY === 'undefined' || !OMDB_KEY){ console.warn('OMDB_KEY ontbreekt'); return original ? original.call(this, ev) : undefined; }
+          var url = 'https://www.omdbapi.com/?apikey=' + OMDB_KEY + '&i=' + encodeURIComponent(id);
+          var r = await fetch(url).then(function(x){ return x.json(); });
+          if(r && r.Response !== 'False' && typeof window.openAddConfirmModal === 'function'){
+            window.openAddConfirmModal({ Title: r.Title, Year: r.Year, Poster: (r.Poster && r.Poster!=='N/A'? r.Poster : ''), imdbID: r.imdbID, Type: r.Type });
+            return;
+          }
+          // als niet gevonden: val terug op de bestaande flow
         }
-      });
-    }
-    inp.addEventListener('change', tryOpen);
-    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
-    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
-  });
+      }catch(e){ console.warn(e); }
+      // standaardgedrag behouden
+      if(original) return original.call(this, ev);
+    };
+    addBtn._imdbIdWrapped = true;
+
+    // Enter in het zoekveld triggert dezelfde klik (waardoor de wrapper geldt)
+    search.addEventListener('keydown', function(e){
+      if((e.key||'').toLowerCase()==='enter'){
+        e.preventDefault();
+        addBtn.click();
+      }
+    }, {capture:false});
+  }
+  if(document.readyState === 'complete' || document.readyState === 'interactive'){
+    try{ wireAddFallback(); }catch(e){ console.warn(e); }
+  }else{
+    document.addEventListener('DOMContentLoaded', function(){ try{ wireAddFallback(); }catch(e){ console.warn(e); } });
+  }
 })();
 </script>
 
@@ -1383,31 +1351,87 @@ document.addEventListener('DOMContentLoaded', function(){
     return null;
   }
 
-  
-window.openImdbOverlay = async function(imdbID, poster){
+  window.openImdbOverlay = async function(imdbID, poster){
     if(!imdbID){ alert('Geen IMDb ID'); return; }
     try{
+      const skel = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+      body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+      .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
+      img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
+      h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
+      </style></head><body>
+      <div class="w">
+        <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
+        <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
+      </div>
+<!-- Fallback injector: IMDb-ID detection for add/search (non-invasive) -->
+<script>
+(function(){
+  function parseImdbId(input){
+    try{
+      var s = String(input||'').trim();
+      var m = s.match(/(tt\d{7,})/i);
+      return m ? m[1] : '';
+    }catch(e){ return ''; }
+  }
+  function wireAddFallback(){
+    var addBtn = document.getElementById('btn-add');
+    var search = document.getElementById('add-search');
+    if(!addBtn || !search || addBtn._imdbIdWrapped) return;
+
+    var original = addBtn.onclick || null;
+    addBtn.onclick = async function(ev){
+      try{
+        var q = (search.value||'').trim();
+        var id = parseImdbId(q);
+        if(id){
+          if(ev){ ev.preventDefault && ev.preventDefault(); ev.stopPropagation && ev.stopPropagation(); }
+          if(typeof OMDB_KEY === 'undefined' || !OMDB_KEY){ console.warn('OMDB_KEY ontbreekt'); return original ? original.call(this, ev) : undefined; }
+          var url = 'https://www.omdbapi.com/?apikey=' + OMDB_KEY + '&i=' + encodeURIComponent(id);
+          var r = await fetch(url).then(function(x){ return x.json(); });
+          if(r && r.Response !== 'False' && typeof window.openAddConfirmModal === 'function'){
+            window.openAddConfirmModal({ Title: r.Title, Year: r.Year, Poster: (r.Poster && r.Poster!=='N/A'? r.Poster : ''), imdbID: r.imdbID, Type: r.Type });
+            return;
+          }
+          // als niet gevonden: val terug op de bestaande flow
+        }
+      }catch(e){ console.warn(e); }
+      // standaardgedrag behouden
+      if(original) return original.call(this, ev);
+    };
+    addBtn._imdbIdWrapped = true;
+
+    // Enter in het zoekveld triggert dezelfde klik (waardoor de wrapper geldt)
+    search.addEventListener('keydown', function(e){
+      if((e.key||'').toLowerCase()==='enter'){
+        e.preventDefault();
+        addBtn.click();
+      }
+    }, {capture:false});
+  }
+  if(document.readyState === 'complete' || document.readyState === 'interactive'){
+    try{ wireAddFallback(); }catch(e){ console.warn(e); }
+  }else{
+    document.addEventListener('DOMContentLoaded', function(){ try{ wireAddFallback(); }catch(e){ console.warn(e); } });
+  }
+})();
+</script>
+
+</body></html>`;
+      frame.setAttribute('srcdoc', skel);
+    }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
+    overlay.style.display='flex';
+
+    const data = await fetchOmdb(imdbID);
+    if(data){
+      try{ frame.setAttribute('srcdoc', htmlFor(data)); }
+      catch(_){ frame.removeAttribute('srcdoc'); frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/'; }
+    }else{
       frame.removeAttribute('srcdoc');
       frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
-      overlay.style.display='flex';
-      var key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-      if(key){
-        try{
-          const r = await fetch('https://www.omdbapi.com/?apikey='+key+'&i='+encodeURIComponent(imdbID)+'&plot=full', {cache:'no-store'});
-          const j = await r.json();
-          if(j && j.Response!=='False' && ('srcdoc' in frame)){
-            try{ frame.setAttribute('srcdoc', htmlFor(j)); }catch(_){}
-          }
-        }catch(_){}
-      }
-    }catch(_){
-      try{
-        frame.removeAttribute('srcdoc');
-        frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
-        overlay.style.display='flex';
-      }catch(__){}
     }
-  }
   };
 
   // Activeer knopjes
@@ -1417,68 +1441,63 @@ window.openImdbOverlay = async function(imdbID, poster){
       e.preventDefault();
       const imdbId = btn.getAttribute('data-imdbid') || '';
       const poster = btn.getAttribute('data-poster') || '';
-      if(imdbId){ 
-        window.openImdbOverlay(imdbId, poster); 
-      }else{
-        try{
-          // Fallback: derive IMDb ID from card title via OMDb '?t=' lookup
-          var card = btn.closest('.glass');
-          var titleEl = card && card.querySelector('h3');
-          var title = titleEl ? titleEl.textContent.trim() : '';
-          if(title && typeof fetch==='function' && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
-            fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&t='+encodeURIComponent(title), {cache:'no-store'})
-              .then(r=>r.json())
-              .then(j=>{
-                var tt = (j && j.imdbID) ? j.imdbID : '';
-                if(tt){ window.openImdbOverlay(tt, poster); }
-                else{ alert('Geen IMDb ID'); }
-              }).catch(()=>{ alert('Geen IMDb ID'); });
-          }else{
-            alert('Geen IMDb ID');
-          }
-        }catch(_){ alert('Geen IMDb ID'); }
-      }
+      if(imdbId){ window.openImdbOverlay(imdbId, poster); }
     }
   });
 })();
 </script>
 
 
+<!-- Fallback injector: IMDb-ID detection for add/search (non-invasive) -->
 <script>
 (function(){
-  function extractImdbId(str){
-    if(!str) return '';
-    var s=String(str).trim();
-    var m=s.match(/tt\d{5,12}/i);
-    if(m) return m[0];
-    return '';
-  }
-  async function fetchById(tt){
+  function parseImdbId(input){
     try{
-      if(!tt) return null;
-      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
-      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
-      const j = await r.json();
-      if(j && j.Response!=='False') return j;
-    }catch(e){}
-    return null;
+      var s = String(input||'').trim();
+      var m = s.match(/(tt\d{7,})/i);
+      return m ? m[1] : '';
+    }catch(e){ return ''; }
   }
-  document.addEventListener('DOMContentLoaded', function(){
-    var inp = document.getElementById('add-imdbid');
-    if(!inp) return;
-    function tryOpen(){
-      var id = extractImdbId(inp.value);
-      if(!id) return;
-      fetchById(id).then(function(j){
-        if(j && typeof window.openAddConfirmModal==='function'){
-          openAddConfirmModal(j);
+  function wireAddFallback(){
+    var addBtn = document.getElementById('btn-add');
+    var search = document.getElementById('add-search');
+    if(!addBtn || !search || addBtn._imdbIdWrapped) return;
+
+    var original = addBtn.onclick || null;
+    addBtn.onclick = async function(ev){
+      try{
+        var q = (search.value||'').trim();
+        var id = parseImdbId(q);
+        if(id){
+          if(ev){ ev.preventDefault && ev.preventDefault(); ev.stopPropagation && ev.stopPropagation(); }
+          if(typeof OMDB_KEY === 'undefined' || !OMDB_KEY){ console.warn('OMDB_KEY ontbreekt'); return original ? original.call(this, ev) : undefined; }
+          var url = 'https://www.omdbapi.com/?apikey=' + OMDB_KEY + '&i=' + encodeURIComponent(id);
+          var r = await fetch(url).then(function(x){ return x.json(); });
+          if(r && r.Response !== 'False' && typeof window.openAddConfirmModal === 'function'){
+            window.openAddConfirmModal({ Title: r.Title, Year: r.Year, Poster: (r.Poster && r.Poster!=='N/A'? r.Poster : ''), imdbID: r.imdbID, Type: r.Type });
+            return;
+          }
+          // als niet gevonden: val terug op de bestaande flow
         }
-      });
-    }
-    inp.addEventListener('change', tryOpen);
-    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
-    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
-  });
+      }catch(e){ console.warn(e); }
+      // standaardgedrag behouden
+      if(original) return original.call(this, ev);
+    };
+    addBtn._imdbIdWrapped = true;
+
+    // Enter in het zoekveld triggert dezelfde klik (waardoor de wrapper geldt)
+    search.addEventListener('keydown', function(e){
+      if((e.key||'').toLowerCase()==='enter'){
+        e.preventDefault();
+        addBtn.click();
+      }
+    }, {capture:false});
+  }
+  if(document.readyState === 'complete' || document.readyState === 'interactive'){
+    try{ wireAddFallback(); }catch(e){ console.warn(e); }
+  }else{
+    document.addEventListener('DOMContentLoaded', function(){ try{ wireAddFallback(); }catch(e){ console.warn(e); } });
+  }
 })();
 </script>
 
