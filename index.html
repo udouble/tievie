@@ -47,8 +47,9 @@ function attachResetGesture(){
   .offline {background:#ef4444;color:#7f1d1d}
   ::placeholder{font-style:italic;color:#64748b}
   #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
-  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background: #f8fafc;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background: #e5e7eb;color: #0f172a;height:100%;border:0;background:#0b1020}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
+  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
   #suggest{position:fixed;display:none;z-index:100001}
   #suggest .card{max-height:420px;overflow:auto}
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
@@ -128,7 +129,6 @@ function attachResetGesture(){
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[260px]">
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-<input id="add-imdbid" type="text" placeholder="IMDb-ID of URL (tt…)" class="w-full mt-2 px-3 py-2 rounded-lg bg-white/90 shadow" />
         </div>
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="film" selected>Film</option>
@@ -321,23 +321,11 @@ function streamingOptionsHTML(sel){
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
-function posterSrcFor(item){
-  try{
-    var p = item && item.poster;
-    if(p && p !== 'N/A') return p;
-    var id = item && (item.imdbID||item.imdbId);
-    if(id && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
-      return 'https://img.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id);
-    }
-  }catch(e){}
-  return 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
-}
-
 function card(item, index){
   const div=document.createElement('div');
   div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
-  const posterSrc = posterSrcFor(item);
+  const posterSrc=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
@@ -727,9 +715,9 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 <!-- Centrale popup voor dubbele titel -->
 <div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
   <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
       <strong>Dubbele titel</strong>
-      <button id="dupClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
@@ -983,9 +971,9 @@ body {
 <!-- Popup: willekeurige titel -->
 <div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
   <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
       <strong>Willekeurige keuze</strong>
-      <button id="randClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+      <button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p style="margin:0 0 10px 0" id="randMsg">Deze titel hebben we voor je gekozen.</p>
@@ -1018,7 +1006,7 @@ body {
     if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
     var box = m.querySelector('#randCard');
     if(box){
-      var poster = posterSrcFor(item).replace('400x600','96x144').replace('Fout','—');
+      var poster = (item && item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
       var title = esc(item && item.title || '');
       var type = esc(item && item.type || '');
       var year = esc(item && item.year || '');
@@ -1139,9 +1127,9 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- Popup: toevoeging bevestigen -->
 <div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
   <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
       <strong>Toevoegen</strong>
-      <button id="addConfirmClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+      <button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p id="addConfirmMsg" style="margin:0 0 10px 0">Deze titel hebben we gevonden. Vul categorie en ‘Waar te zien’ in.</p>
@@ -1202,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const title = (item && item.title) || (item && item.Title) || '';
     const type = (item && item.type) || (item && item.Type) || '';
     const year = (item && item.year) || (item && item.Year) || '';
-    const poster = (function(){ var tmp = posterSrcFor({ poster:(item&&item.poster)|| (item&&item.Poster), imdbID:(item&&item.imdbID)||(item&&item.imdbId)||(item&&item.imdbid) }); return tmp.replace('400x600','96x144').replace('Fout','—'); })();
+    const poster = (item && item.poster) || (item && item.Poster && item.Poster!=='N/A' ? item.Poster : '') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
     t.textContent = title || '—';
     m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
     p.src = poster;
@@ -1296,45 +1284,6 @@ document.addEventListener('DOMContentLoaded', function(){
     <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
   </div>
 </div>
-
-<script>
-(function(){
-  function extractImdbId(str){
-    if(!str) return '';
-    var s=String(str).trim();
-    var m=s.match(/tt\d{5,12}/i);
-    if(m) return m[0];
-    return '';
-  }
-  async function fetchById(tt){
-    try{
-      if(!tt) return null;
-      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
-      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
-      const j = await r.json();
-      if(j && j.Response!=='False') return j;
-    }catch(e){}
-    return null;
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    var inp = document.getElementById('add-imdbid');
-    if(!inp) return;
-    function tryOpen(){
-      var id = extractImdbId(inp.value);
-      if(!id) return;
-      fetchById(id).then(function(j){
-        if(j && typeof window.openAddConfirmModal==='function'){
-          openAddConfirmModal(j);
-        }
-      });
-    }
-    inp.addEventListener('change', tryOpen);
-    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
-    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
-  });
-})();
-</script>
-
 </body></html>`;
   }
 
@@ -1362,46 +1311,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="w">
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
-      </div>
-<script>
-(function(){
-  function extractImdbId(str){
-    if(!str) return '';
-    var s=String(str).trim();
-    var m=s.match(/tt\d{5,12}/i);
-    if(m) return m[0];
-    return '';
-  }
-  async function fetchById(tt){
-    try{
-      if(!tt) return null;
-      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
-      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
-      const j = await r.json();
-      if(j && j.Response!=='False') return j;
-    }catch(e){}
-    return null;
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    var inp = document.getElementById('add-imdbid');
-    if(!inp) return;
-    function tryOpen(){
-      var id = extractImdbId(inp.value);
-      if(!id) return;
-      fetchById(id).then(function(j){
-        if(j && typeof window.openAddConfirmModal==='function'){
-          openAddConfirmModal(j);
-        }
-      });
-    }
-    inp.addEventListener('change', tryOpen);
-    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
-    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
-  });
-})();
-</script>
-
-</body></html>`;
+      </div></body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
     overlay.style.display='flex';
@@ -1425,45 +1335,6 @@ document.addEventListener('DOMContentLoaded', function(){
       const poster = btn.getAttribute('data-poster') || '';
       if(imdbId){ window.openImdbOverlay(imdbId, poster); }
     }
-  });
-})();
-</script>
-
-
-<script>
-(function(){
-  function extractImdbId(str){
-    if(!str) return '';
-    var s=String(str).trim();
-    var m=s.match(/tt\d{5,12}/i);
-    if(m) return m[0];
-    return '';
-  }
-  async function fetchById(tt){
-    try{
-      if(!tt) return null;
-      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
-      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
-      const j = await r.json();
-      if(j && j.Response!=='False') return j;
-    }catch(e){}
-    return null;
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    var inp = document.getElementById('add-imdbid');
-    if(!inp) return;
-    function tryOpen(){
-      var id = extractImdbId(inp.value);
-      if(!id) return;
-      fetchById(id).then(function(j){
-        if(j && typeof window.openAddConfirmModal==='function'){
-          openAddConfirmModal(j);
-        }
-      });
-    }
-    inp.addEventListener('change', tryOpen);
-    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
-    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
   });
 })();
 </script>
