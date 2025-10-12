@@ -164,7 +164,7 @@ function attachResetGesture(){
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="aan-het-kijken">Aan het kijken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="bekeken">Bekeken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="all">Alles</button>
-      <a id="btn-random" role="button" href="#" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</a>
+      <button id="btn-random" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</button>
       <div class="flex-1"></div>
       <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56 pill"/>
     </div>
@@ -1071,54 +1071,128 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 
-
-
 <script>
 /* lotto */
-(function(){
-  function isBlocked(){
-    try{
-      var f = (window.app && app.state && typeof app.state.filter==='string') ? app.state.filter : null;
-      if(!f){
-        var activeBtn = document.querySelector('#filterControls .filter-btn.bg-sky-500');
-        f = activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
-      }
-      return (f==='all' || f==='bekeken');
-    }catch(e){ return false; }
-  }catch(e){ return true; } }
-  function pickAndShow(){
-    try{
-      if(!window.app||!app.filtered) return;
-      if(isBlocked()) return;
-      var list=app.filtered();
-      if(!Array.isArray(list)||!list.length) return;
-      var item=list[Math.floor(Math.random()*list.length)];
-      if(window.openRandomModal) openRandomModal(item);
-    }catch(e){}
-  }
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('btn-random');
+  if(!btn) return;
   function setDisabled(){
     try{
-      var btn=document.getElementById('btn-random');
-      if(btn) btn.toggleAttribute('aria-disabled', isBlocked());
+      var f = (window.app && app.state && app.state.filter) ? app.state.filter : 'all';
+      var off = (f==='all' || f==='bekeken');
+      btn.toggleAttribute('disabled', off);
     }catch(e){}
   }
-  document.addEventListener('DOMContentLoaded', function(){
-    var btn=document.getElementById('btn-random');
-    if(!btn) return;
-    btn.addEventListener('click', function(e){ e.preventDefault(); if(isBlocked()) return; pickAndShow(); }, true);
-    document.addEventListener('click', function(e){
-      var b=e.target&&e.target.closest&&e.target.closest('#btn-random');
-      if(!b) return; e.preventDefault(); if(isBlocked()) return; pickAndShow();
-    }, true);
-    var fc=document.getElementById('filterControls');
-    if(fc){
-      var mo=new MutationObserver(function(){ setDisabled(); });
-      mo.observe(fc,{attributes:true,childList:true,subtree:true});
-      fc.addEventListener('click', function(){ setTimeout(setDisabled, 60); });
-    }
-    setInterval(setDisabled, 300);
-    setDisabled();
+  btn.addEventListener('click', function(){
+    try{
+      if(!window.app || !app.filtered) return;
+      if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
+      var list = app.filtered();
+      if(!list || !list.length) return;
+      var item = list[Math.floor(Math.random()*list.length)];
+      if(window.openRandomModal) openRandomModal(item);
+    }catch(e){}
   });
+  var fc = document.getElementById('filterControls');
+  if(fc){ fc.addEventListener('click', function(e){ var b=e.target.closest('.filter-btn'); if(b){ setTimeout(setDisabled,0); } }); }
+  setDisabled();
+});
+</script>
+
+<script>
+// === Lotto knop -> willekeurige keuze + modal ===
+(function(){
+  function eligibleItems(){
+    try{
+      // Gebruik de huidige gefilterde lijst
+      var arr = (window.app && typeof app.filtered==='function') ? app.filtered().slice() : [];
+      // Als filter 'all' is, sluit 'bekeken' uit.
+      if(app && app.state && app.state.filter==='all'){
+        arr = arr.filter(function(it){ return it && it.type !== 'bekeken'; });
+      }
+      // Fallback: als lijst leeg is, gebruik alle items behalve 'bekeken'
+      if(!arr.length && app && app.state && Array.isArray(app.state.items)){
+        arr = app.state.items.filter(function(it){ return it && it.type !== 'bekeken'; });
+      }
+      return arr;
+    }catch(e){ return []; }
+  }
+
+  function pickRandom(){
+    var arr = eligibleItems();
+    if(!arr.length) return null;
+    var i = Math.floor(Math.random() * arr.length);
+    return arr[i];
+  }
+
+  function setRandomButtonState(){
+    var btn = document.getElementById('btn-random');
+    if(!btn || !window.app || !app.state) return;
+    var dis = (app.state.filter === 'all' || app.state.filter === 'bekeken');
+    btn.disabled = !!dis;
+    // visueel (zonder layout te wijzigen)
+    if(dis){
+      btn.classList.add('opacity-50','cursor-not-allowed');
+      btn.classList.remove('hover:bg-emerald-600');
+      btn.setAttribute('title','Niet actief voor Alles of Bekeken');
+    }else{
+      btn.classList.remove('opacity-50','cursor-not-allowed');
+      btn.classList.add('hover:bg-emerald-600');
+      btn.setAttribute('title','Kies willekeurig uit huidige lijst (na filters/zoekterm)');
+    }
+  }
+
+  function wire(){
+    var btn = document.getElementById('btn-random');
+    if(btn && !btn._wired){
+      btn.addEventListener('click', function(e){
+        if(btn.disabled) return;
+        var item = pickRandom();
+        if(item && typeof window.openRandomModal === 'function'){
+          window.openRandomModal(item);
+        }else if(item){
+          alert('Deze titel hebben we voor je gekozen: ' + (item.title || '—'));
+        }else{
+          alert('Geen geschikte titels gevonden.');
+        }
+      });
+      btn._wired = true;
+    }
+
+    // Verbind render hook om state bij te werken na elke render
+    if(window.app && typeof app.render === 'function' && !app._randPatched){
+      var orig = app.render;
+      app.render = function(){
+        var r = orig.apply(app, arguments);
+        try{ setRandomButtonState(); }catch(_){}
+        return r;
+      };
+      app._randPatched = true;
+    }
+
+    // Eerste state update
+    setRandomButtonState();
+
+    // Popup sluiten (randModal)
+    var modal = document.getElementById('randModal');
+    var closeBtn = document.getElementById('randClose');
+    function close(){ if(modal) modal.style.display='none'; }
+    if(closeBtn && !closeBtn._wired){
+      closeBtn.addEventListener('click', close);
+      closeBtn._wired = true;
+    }
+    if(modal && !modal._wired){
+      modal.addEventListener('click', function(e){ if(e.target === modal) close(); });
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
+      modal._wired = true;
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wire);
+  }else{
+    wire();
+  }
 })();
 </script>
 
