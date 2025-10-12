@@ -12,7 +12,6 @@
     if(s.includes('play'))   return 'Go Play';
     if(s.startsWith('np'))   return 'NPO';
     if(s.startsWith('strea'))return 'Streamz';
-    if(s.startsWith('strem')) return 'Stremio';
     if(s.startsWith('disn')) return 'Disney+';
     return '';
   };

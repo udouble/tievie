@@ -259,7 +259,6 @@ function normalizeStream(raw){
   if(s.includes('play')) return 'Go Play';
   if(s.startsWith('np')) return 'NPO';
   if(s.startsWith('strea')) return 'Streamz';
-  if(s.startsWith('strem')) return 'Stremio';
   if(s.startsWith('disn')) return 'Disney+';
   return '';
 }
@@ -315,7 +314,7 @@ function categoryOptionsHTML(type){
   return Object.keys(m).map(k=>`<option value="${k}" ${type===k?'selected':''}>${m[k]}</option>`).join('');
 }
 function streamingOptionsHTML(sel){
-  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
+  const opts=['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+'];
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
@@ -570,7 +569,7 @@ async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Da
 navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
-const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
 function updateStreamBadge(){ /* no-op: teller verwijderd */ }
 
@@ -966,6 +965,110 @@ body {
   background: linear-gradient(180deg, #e7f6ff 0%, #def1ff 100%) !important;
 }
 </style>
+
+
+<!-- Popup: willekeurige titel -->
+<div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+      <strong>Willekeurige keuze</strong>
+      <button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p style="margin:0 0 10px 0" id="randMsg">Deze titel hebben we voor je gekozen.</p>
+      <div id="randCard" class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
+        <!-- wordt dynamisch gevuld -->
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  function esc(s){ return (s||'').toString().replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+  function normalizeStream(raw){
+    const s=(raw||'').toString().trim().toLowerCase();
+    if(!s) return '';
+    if(s.startsWith('appl')) return 'Apple TV+';
+    if(s.startsWith('netf')) return 'Netflix';
+    if(s.startsWith('vrt')) return 'VRT MAX';
+    if(s.startsWith('vtm')) return 'VTM Go';
+    if(s.startsWith('prim')) return 'Prime Video';
+    if(s.includes('play')) return 'Go Play';
+    if(s.startsWith('np')) return 'NPO';
+    if(s.startsWith('strea')) return 'Streamz';
+    if(s.startsWith('strem')) return 'Stremio';
+    if(s.startsWith('disn')) return 'Disney+';
+    return '';
+  }
+  window.openRandomModal = function(item){
+    var m = document.getElementById('randModal');
+    if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
+    var box = m.querySelector('#randCard');
+    if(box){
+      var poster = (item && item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+      var title = esc(item && item.title || '');
+      var type = esc(item && item.type || '');
+      var year = esc(item && item.year || '');
+      var stream = normalizeStream(item && item.streamingOn);
+      var imdb = esc(item && item.imdbRating || '');
+      var our  = esc(item && item.ourScore || '');
+      var imdbId = esc(item && (item.imdbID||item.imdbId) || '');
+      box.innerHTML = `
+        <div class="flex gap-4 items-start">
+          <img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
+          <div class="flex-1">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3>
+              <button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+            </div>
+            <div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase()+type.slice(1) : ''} • ${year||'—'} ${stream?('• '+stream):''}</div>
+            <div class="mt-2 flex gap-3 text-sm">
+              <span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb||'—'}</span>
+              <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our||'—'}</span>
+            </div>
+          </div>
+        </div>`;
+      try{
+        var b = box.querySelector('.btn-imdb');
+        if(b){
+          b.addEventListener('click', function(e){
+            e.preventDefault(); e.stopPropagation();
+            if(window.openImdbOverlay){ window.openImdbOverlay(imdbId); }
+          });
+        }
+      }catch(e){}
+    }
+    m.style.display = 'flex';
+  };
+  function close(){ var m=document.getElementById('randModal'); if(m) m.style.display='none'; }
+  document.addEventListener('DOMContentLoaded', function(){
+    var closeBtn = document.getElementById('randClose');
+    if(closeBtn) closeBtn.addEventListener('click', close);
+    var modal = document.getElementById('randModal');
+    if(modal){ modal.addEventListener('click', function(e){ if(e.target === modal){ close(); } }); }
+  });
+})();
+</script>
+
+<script>
+// lotto
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('btn-random');
+  if(!btn) return;
+  btn.addEventListener('click', function(){
+    try{
+      if(!window.app || !app.filtered) return;
+      // Niet actief bij 'all' of 'bekeken'
+      if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
+      var list = app.filtered();
+      if(!list || !list.length) return;
+      var idx = Math.floor(Math.random()*list.length);
+      var item = list[idx];
+      if(window.openRandomModal) openRandomModal(item);
+    }catch(e){ /* silent */ }
+  });
+});
+</script>
 
 </body>
 </html>
