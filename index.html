@@ -392,8 +392,27 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='auto'; imdbBtn.setAttribute('data-poster', posterSrc);}catch(e){} }
-  return div;
+  const imdbBtn=div.querySelector('.btn-imdb'); 
+  if(imdbBtn){ 
+    try{
+      imdbBtn.style.pointerEvents='auto'; 
+      imdbBtn.setAttribute('data-poster', posterSrc);
+      imdbBtn.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var imdbId = imdbBtn.getAttribute('data-imdbid')||'';
+        var poster = imdbBtn.getAttribute('data-poster')||'';
+        if(imdbId && window.openImdbOverlay){ window.openImdbOverlay(imdbId, poster); }
+        else if(window.openImdbOverlay){
+          // fallback via OMDb by title (no UI wijzigingen)
+          var title = (item && item.title) ? item.title : '';
+          if(title && typeof fetch==='function' && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
+            fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&t='+encodeURIComponent(title), {cache:'no-store'})
+              .then(r=>r.json()).then(j=>{ var tt=(j&&j.imdbID)||''; if(tt){ window.openImdbOverlay(tt, poster); } });
+          }
+        }
+      }, {once: false});
+    }catch(e){} 
+  }return div;
 }
 
 // search suggest
