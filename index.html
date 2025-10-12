@@ -1071,32 +1071,60 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 
+
 <script>
 /* lotto */
 document.addEventListener('DOMContentLoaded', function(){
   var btn = document.getElementById('btn-random');
   if(!btn) return;
-  function setDisabled(){
+
+  function isBlocked(){
     try{
       var f = (window.app && app.state && app.state.filter) ? app.state.filter : 'all';
-      var off = (f==='all' || f==='bekeken');
-      btn.toggleAttribute('disabled', off);
+      return (f==='all' || f==='bekeken');
+    }catch(e){ return true; }
+  }
+
+  function setDisabled(){
+    try{
+      btn.toggleAttribute('disabled', isBlocked());
     }catch(e){}
   }
-  btn.addEventListener('click', function(){
+
+  function pickAndShow(){
     try{
       if(!window.app || !app.filtered) return;
-      if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
+      if(isBlocked()) return;
       var list = app.filtered();
-      if(!list || !list.length) return;
+      if(!Array.isArray(list) || !list.length) return;
       var item = list[Math.floor(Math.random()*list.length)];
       if(window.openRandomModal) openRandomModal(item);
     }catch(e){}
-  });
+  }
+
+  btn.addEventListener('click', function(e){
+    if(isBlocked()){ e.preventDefault(); return; }
+    pickAndShow();
+  }, true);
+
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest && e.target.closest('#btn-random');
+    if(!b) return;
+    if(isBlocked()){ e.preventDefault(); return; }
+    pickAndShow();
+  }, true);
+
   var fc = document.getElementById('filterControls');
-  if(fc){ fc.addEventListener('click', function(e){ var b=e.target.closest('.filter-btn'); if(b){ setTimeout(setDisabled,0); } }); }
+  if(fc){
+    var mo = new MutationObserver(function(){ setDisabled(); });
+    mo.observe(fc, { attributes:true, childList:true, subtree:true });
+    fc.addEventListener('click', function(){ setTimeout(setDisabled, 60); });
+  }
+
+  setInterval(setDisabled, 250);
   setDisabled();
 });
 </script>
+
 </body>
 </html>
