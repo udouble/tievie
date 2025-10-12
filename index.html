@@ -445,9 +445,103 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
 
+
+
 function openImdbOverlay(id){
   const ov = imdbOverlay, frame = imdbFrame;
   if(!ov || !frame){ return; }
+  if(!id){ ov.style.display='flex'; frame.srcdoc='<html><body style="margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui">Geen IMDb-ID beschikbaar.</body></html>'; return; }
+  ov.style.display='flex';
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+  // Skeleton UI while loading
+  frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}.s{opacity:.7}</style></head><body><div class="s">Gegevens laden…</div></body></html>';
+
+  // Try local item first (instant), then hydrate with OMDb
+  let item = null;
+  if(window.app && app.state && Array.isArray(app.state.items)){
+    item = app.state.items.find(x => (x.imdbID||'') === (id||'')) || null;
+  }
+  const d = item || {};
+  const basePoster = d.poster && d.poster!=='N/A' ? '<img src="'+esc(d.poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
+  const baseRows = [
+    ['Titel', (d.title||'—') + (d.year? ' ('+d.year+')':'')],
+    ['Type', d.type||'—'],
+    ['Waar te zien', d.streamingOn||'—'],
+    ['IMDb-score', (d.imdbRating||d.imdb||'—')],
+    ['Duur', (d.runtime||d.Runtime||'—')],
+    ['Genres', Array.isArray(d.genres)? d.genres.join(', ') : (d.genres||d.Genres||'—')],
+    ['Samenvatting', (d.plot||d.Plot||'—')]
+  ];
+  const baseRowsHtml = baseRows.map(([k,v])=>'<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(k)+'</div><div>'+esc(v)+'</div></div>').join('');
+  frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+basePoster+'<div style="flex:1">'+baseRowsHtml+'</div></div></body></html>';
+
+  // Hydrate with OMDb (if key present)
+  try{
+    const key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+    if(!key){ return; }
+    fetch('https://www.omdbapi.com/?apikey='+encodeURIComponent(key)+'&i='+encodeURIComponent(id)+'&plot=full')
+      .then(r=>r.json()).then(data=>{
+        if(!data || data.Response==='False'){ return; }
+        const t = data.Title||d.title||'—';
+        const year = data.Year||d.year||'';
+        const type = data.Type||d.type||'—';
+        const runtime = data.Runtime||d.runtime||'—';
+        const rating = data.imdbRating||d.imdbRating||d.imdb||'—';
+        const genre = data.Genre|| (Array.isArray(d.genres)? d.genres.join(', '): (d.genres||d.Genres||'—'));
+        const plot = data.Plot||d.plot||'—';
+        const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : d.poster;
+
+        const posterHtml = poster ? '<img src="'+esc(poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
+        const rows = [
+          ['Titel', t + (year? ' ('+year+')':'')],
+          ['Type', type],
+          ['Waar te zien', d.streamingOn||'—'],
+          ['IMDb-score', rating],
+          ['Duur', runtime],
+          ['Genres', genre],
+          ['Samenvatting', plot]
+        ];
+        const rowsHtml = rows.map(([k,v])=>'<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(k)+'</div><div>'+esc(v)+'</div></div>').join('');
+        const htmlOut = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+posterHtml+'<div style="flex:1">'+rowsHtml+'</div></div></body></html>';
+        const doc = frame.contentWindow ? frame.contentWindow.document : null;
+        if(doc){ doc.open(); doc.write(htmlOut); doc.close(); } else { frame.srcdoc = htmlOut; }
+      })
+      .catch(()=>{});
+  }catch(e){ /* stil houden volgens protocol */ }
+}
+
+  ov.style.display='flex';
+  try{
+    // Resolve item locally by IMDb ID
+    let item = null;
+    if(window.app && app.state && Array.isArray(app.state.items)){
+      item = app.state.items.find(x => (x.imdbID||'') === (id||''));
+    }
+    const d = item || {};
+    const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+    const poster = d.poster && d.poster!=='N/A' ? '<img src=\"'+esc(d.poster)+'\" alt=\"poster\" style=\"width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)\"/>' : '';
+    const rows = [
+      ['Titel', (d.title||'—') + (d.year? ' ('+d.year+')':'')],
+      ['Type', d.type||'—'],
+      ['Waar te zien', d.streamingOn||'—'],
+      ['IMDb-score', (d.imdbRating||d.imdb||'—')],
+      ['Duur', (d.runtime||d.Runtime||'—')],
+      ['Genres', Array.isArray(d.genres)? d.genres.join(', ') : (d.genres||d.Genres||'—')],
+      ['Samenvatting', (d.plot||d.Plot||'—')]
+    ];
+    const rowsHtml = rows.map(([k,v])=>'<div style=\"display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0\"><div style=\"color:#94a3b8\">'+esc(k)+'</div><div>'+esc(v)+'</div></div>').join('');
+    const body = '<div style=\"display:flex;gap:12px;align-items:flex-start\">'+poster+'<div style=\"flex:1\">'+rowsHtml+'</div></div>';
+    const htmlDoc = '<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">'
+      + '<style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style>'
+      + '</head><body>'+body+'</body></html>';
+    frame.srcdoc = htmlDoc;
+  }catch(e){
+    frame.srcdoc='<!doctype html><html><body style=\"margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui\">Geen gegevens beschikbaar.</body></html>';
+    console.warn('openImdbOverlay error', e);
+  }
+}
+
   if(!id){ alert('Geen IMDb ID'); return; }
   ov.style.display='flex';
   // Start with skeleton
