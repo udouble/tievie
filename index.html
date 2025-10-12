@@ -435,9 +435,7 @@ function renderSuggest(arr){
           return;
         }
         const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
-        setStatus('Toegevoegd: '+title);
-        document.getElementById('add-search').value='';
+        if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
       } finally {
         ADDING_LOCK = false;
       }
@@ -1122,5 +1120,120 @@ document.addEventListener('DOMContentLoaded', function(){
 
   setDisabled();
 });</script>
+
+<!-- Popup: toevoeging bevestigen -->
+<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
+  <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+      <strong>Toevoegen</strong>
+      <button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="addConfirmMsg" style="margin:0 0 10px 0">Deze titel hebben we gevonden. Vul categorie en ‘Waar te zien’ in.</p>
+      <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
+        <div class="flex gap-4 items-start">
+          <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
+          <div class="flex-1">
+            <h3 id="addConfirmTitle" class="text-lg font-semibold text-slate-900 m-0">—</h3>
+            <p id="addConfirmMeta" class="m-0 opacity-70 text-sm">—</p>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="block text-sm">
+                <span class="block mb-1 text-slate-600">Categorie</span>
+                <select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select>
+              </label>
+              <label class="block text-sm">
+                <span class="block mb-1 text-slate-600">Waar te zien</span>
+                <select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select>
+              </label>
+            </div>
+            <div class="mt-4">
+              <button id="addConfirmBtn" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Voeg toe</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  let pendingItem = null;
+  function cloneOptions(fromSel, toSel){
+    toSel.innerHTML = '';
+    Array.from(fromSel.options).forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt.value || opt.textContent;
+      o.textContent = opt.textContent;
+      if(opt.selected) o.selected = true;
+      toSel.appendChild(o);
+    });
+  }
+  window.openAddConfirmModal = function(item){
+    pendingItem = item || null;
+    const modal = document.getElementById('addConfirmModal');
+    const t = document.getElementById('addConfirmTitle');
+    const m = document.getElementById('addConfirmMeta');
+    const p = document.getElementById('addConfirmPoster');
+    const typeSel = document.getElementById('addConfirmType');
+    const streamSel = document.getElementById('addConfirmStream');
+    const baseType = document.getElementById('add-type');
+    const baseStream = document.getElementById('add-stream');
+    if(baseType && typeSel) cloneOptions(baseType, typeSel);
+    if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
+    // Set defaults to current base selects
+    if(baseType && typeSel) typeSel.value = baseType.value;
+    if(baseStream && streamSel) streamSel.value = baseStream.value || '';
+    // Fill info
+    const title = (item && item.title) || (item && item.Title) || '';
+    const type = (item && item.type) || (item && item.Type) || '';
+    const year = (item && item.year) || (item && item.Year) || '';
+    const poster = (item && item.poster) || (item && item.Poster && item.Poster!=='N/A' ? item.Poster : '') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+    t.textContent = title || '—';
+    m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
+    p.src = poster;
+    modal.style.display = 'flex';
+  };
+  function close(){
+    const modal = document.getElementById('addConfirmModal');
+    if(modal) modal.style.display = 'none';
+    pendingItem = null;
+  }
+  document.getElementById('addConfirmClose').addEventListener('click', close);
+  document.getElementById('addConfirmModal').addEventListener('click', function(e){ if(e.target===this) close(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+
+  document.getElementById('addConfirmBtn').addEventListener('click', async function(){
+    if(!pendingItem) return;
+    try{
+      const typeSel = document.getElementById('addConfirmType');
+      const streamSel = document.getElementById('addConfirmStream');
+      const title = pendingItem.title || pendingItem.Title || '';
+      const year = pendingItem.year || pendingItem.Year || '';
+      const imdbID = pendingItem.imdbID || pendingItem.imdbId || pendingItem.imdbid || '';
+      const poster = (pendingItem.poster) || (pendingItem.Poster && pendingItem.Poster!=='N/A' ? pendingItem.Poster : '');
+      const type = typeSel ? typeSel.value : 'film';
+      const streamingOn = streamSel ? streamSel.value : '';
+
+      const all = await dbGetAll();
+      const titleSet = new Set(all.map(x=>normalizeTitle(x.title||'')));
+      if(titleSet.has(normalizeTitle(title))){
+        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+        return;
+      }
+      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now() };
+      const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+      await dbPut(it); app.state.items = await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+      setStatus('Toegevoegd: '+title);
+      const baseType = document.getElementById('add-type');
+      const baseStream = document.getElementById('add-stream');
+      if(baseType && typeSel) baseType.value = typeSel.value;
+      if(baseStream && streamSel) baseStream.value = streamSel.value;
+      const inp = document.getElementById('add-search'); if(inp) inp.value='';
+      close();
+    }catch(e){ console.error(e); }
+  });
+})();
+</script>
+
 </body>
 </html>
