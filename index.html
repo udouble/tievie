@@ -70,18 +70,6 @@ function attachResetGesture(){
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
-
-/* === Protocol: 5 kaarten per rij (≥1280px) — niet visueel veranderen, enkel kolomtelling === */
-@media (min-width: 1280px) {
-  #list {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0,1fr)) !important;
-  }
-}
-
-
-/* IMDb knop visueel, niet klikbaar */
-.btn-imdb{ pointer-events:none; }
 </style>
 </head>
 <body>
@@ -151,7 +139,8 @@ function attachResetGesture(){
           <option>NPO</option>
           <option>Disney+</option>
         
-        <option>Stremio</option></select><button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button></button>
+        <option>Stremio</option></select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
       </div>
     </div>
   </header>
@@ -358,11 +347,10 @@ function card(item, index){
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
-          
-  <option>Stremio</option></select>
+          </select>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -379,7 +367,7 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ imdbBtn.setAttribute('aria-disabled','true'); try{imdbBtn.style.pointerEvents='none';}catch(e){} }
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ imdbBtn.onclick=()=>openImdbOverlay(item.imdbID); }
   return div;
 }
 
@@ -785,7 +773,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
     right.appendChild(ghost);
     btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
     right.appendChild(btn);
 
     // Vervang inhoud
@@ -967,193 +955,6 @@ body {
   background: linear-gradient(180deg, #e7f6ff 0%, #def1ff 100%) !important;
 }
 </style>
-
-
-<div id="addOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100050">
-  <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(560px,96vw);">
-    <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
-      <strong class="text-sm">Toevoegen</strong>
-      <button id="addClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
-    </div>
-    <div class="p-3 text-slate-900" style="background:#f8fbff">
-      <div class="mb-3">
-        <label class="block text-xs font-medium text-slate-600 mb-0.5">Gekozen titel</label>
-        <div id="addChosenTitle" class="px-3 py-2 rounded-lg bg-white/90 border border-slate-300/50">—</div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-0.5">Categorie</label>
-          <select id="addCatSel" class="w-full px-2 py-2 rounded-lg bg-white/90 border border-slate-300/50">
-            <option value="film">Film</option>
-            <option value="serie">Serie</option>
-            <option value="herman-film">H-Film</option>
-            <option value="herman-serie">H-Serie</option>
-            <option value="aan-het-kijken">Aan het kijken</option>
-            <option value="bekeken">Bekeken</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-0.5">Waar te zien</label>
-          <select id="addStreamSel" class="w-full px-2 py-2 rounded-lg bg-white/90 border border-slate-300/50">
-            <option value="">Niet toegekend</option>
-            <option>Streamz</option>
-            <option>Netflix</option>
-            <option>Prime Video</option>
-            <option>Apple TV+</option>
-            <option>VRT MAX</option>
-            <option>Go Play</option>
-            <option>NPO</option>
-            <option>Disney+</option>
-            <option>Stremio</option>
-          </select>
-        </div>
-      </div>
-      <div class="mt-3 flex items-center justify-end gap-2">
-        <button id="addCancel" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white text-slate-900 border border-slate-200">Annuleren</button>
-        <button id="addConfirm" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<div id="dupInfoOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100060">
-  <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(520px,96vw);">
-    <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
-      <strong class="text-sm">Info</strong>
-      <button id="dupInfoCloseX" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
-    </div>
-    <div class="p-4 text-slate-900" style="background:#f8fbff">
-      <p id="dupInfoMsg" class="mb-4">Deze titel staat al in de app, meer bepaald in deze categorie: —</p>
-      <div class="flex justify-end">
-        <button id="dupInfoClose" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Sluit</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<script>
-(function(){
-  if(window.__WIRED_ADD_DUP_FLOW__) return; window.__WIRED_ADD_DUP_FLOW__=true;
-
-  // Helpers
-  window.openDupInfo = function(cat){
-    try{
-      var label = cat || '—';
-      const map = {'film':'Film','serie':'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken','bekeken':'Bekeken'};
-      if(map[label]) label = map[label];
-      var el = document.getElementById('dupInfoMsg'); if(el) el.textContent = 'Deze titel staat al in de app, meer bepaald in deze categorie: ' + label;
-    }catch(e){}
-    var ov = document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeDup(){ var ov=document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='none'; }
-
-  let __pendingAdd = null;
-  window.openAddModal = function(sel){
-    __pendingAdd = sel || null;
-    try{
-      var titleBox = document.getElementById('addChosenTitle'); if(titleBox) titleBox.textContent = sel && sel.title ? sel.title : '—';
-      var t = document.getElementById('add-type')?.value || 'film';
-      var s = document.getElementById('add-stream')?.value || '';
-      var typeSel = document.getElementById('addCatSel'); if(typeSel) typeSel.value=t;
-      var streamSel = document.getElementById('addStreamSel'); if(streamSel) streamSel.value=s;
-    }catch(e){}
-    var ov = document.getElementById('addOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeAdd(){ var ov=document.getElementById('addOverlay'); if(ov) ov.style.display='none'; }
-
-  // Global click handlers
-  document.addEventListener('click', function(e){
-    var id = e.target && e.target.id;
-    if(id==='dupInfoClose' || id==='dupInfoCloseX'){ e.preventDefault(); closeDup(); return; }
-    if(id==='addClose' || id==='addCancel'){ e.preventDefault(); closeAdd(); return; }
-  }, true);
-
-  document.addEventListener('click', async function(e){
-    if(e.target && e.target.id==='addConfirm'){
-      e.preventDefault();
-      if(!__pendingAdd){ closeAdd(); return; }
-      try{
-        const all = await dbGetAll();
-        const { imdbID, title, year, poster } = __pendingAdd || {};
-        // Duplicate guard (safety)
-        const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-        if(existing){ closeAdd(); openDupInfo(existing.type||'—'); return; }
-        const typeSel = document.getElementById('addCatSel')?.value || 'film';
-        const streamSel = document.getElementById('addStreamSel')?.value || '';
-        const inc = { title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-        const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        await dbPut(it);
-        app.state.items = await dbGetAll();
-        app.render(); bindStreamUI(); syncPushDebounced();
-        setStatus && setStatus('Toegevoegd: '+title);
-        var search = document.getElementById('add-search'); if(search) search.value='';
-      } catch(err){ console.warn('add flow error', err); }
-      finally{ closeAdd(); }
-      return;
-    }
-  }, true);
-
-  // Intercept suggest row click
-  document.addEventListener('click', async function(e){
-    const row = e.target && e.target.closest ? e.target.closest('#suggest .row') : null;
-    if(!row) return;
-    e.preventDefault(); e.stopPropagation();
-    try{
-      hideSuggest && hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      const all = await dbGetAll();
-      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-      if(existing){ openDupInfo(existing.type||'—'); return; }
-      openAddModal({imdbID, title, year, poster});
-    }catch(err){ console.warn('suggest click flow error', err); }
-  }, true);
-})();
-</script>
-
-
-<script>
-(function(){
-  if(window.__IMDB_SAFE_WRAPPED__) return; window.__IMDB_SAFE_WRAPPED__ = true;
-  var original = window.openImdbOverlay;
-  window._openImdbOverlayOriginal = original;
-  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]); }); }
-  function fillFrameFromLocal(imdbID){
-    try{
-      var ov = document.getElementById('imdbOverlay');
-      var frame = document.getElementById('imdbFrame');
-      if(!ov || !frame) return;
-      ov.style.display = 'flex';
-      var item = null;
-      if(window.app && app.state && Array.isArray(app.state.items)){
-        item = app.state.items.find(function(x){ return (x.imdbID||'') === (imdbID||''); }) || null;
-      }
-      var d = item || {};
-      var poster = (d.poster && d.poster!=='N/A') ? '<img src="'+esc(d.poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
-      var rows = [
-        ['Titel', (d.title||'—') + (d.year? ' ('+d.year+')':'')],
-        ['Type', d.type||'—'],
-        ['Waar te zien', d.streamingOn||'—'],
-        ['IMDb-score', (d.imdbRating||d.imdb||'—')],
-        ['Duur', (d.runtime||d.Runtime||'—')],
-        ['Genres', Array.isArray(d.genres)? d.genres.join(', ') : (d.genres||d.Genres||'—')],
-        ['Samenvatting', (d.plot||d.Plot||'—')]
-      ];
-      var rowsHtml = rows.map(function(rv){
-        var k = rv[0], v = rv[1];
-        return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(k)+'</div><div>'+esc(v||'—')+'</div></div>';
-      }).join('');
-      var out = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+poster+'<div style="flex:1">'+rowsHtml+'</div></div></body></html>';
-      frame.srcdoc = out;
-    }catch(e){}
-  }
-  window.openImdbOverlay = function(id){
-    try{ if(typeof window._openImdbOverlayOriginal === 'function'){ window._openImdbOverlayOriginal(id); } }catch(e){}
-    try{ fillFrameFromLocal(id); }catch(e){}
-  };
-})();
-</script>
 
 </body>
 </html>
