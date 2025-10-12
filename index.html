@@ -1077,35 +1077,31 @@ document.addEventListener('DOMContentLoaded', function(){
   var btn = document.getElementById('btn-random');
   if(!btn) return;
 
+  function hasApp(){ try{ return (typeof app !== 'undefined') && app && app.state; }catch(_){ return false; } }
+
   function setDisabled(){
     try{
-      var f = (window.app && app.state && app.state.filter) ? app.state.filter : 'all';
+      var f = hasApp() && app.state.filter ? app.state.filter : 'all';
       var off = (f==='all' || f==='bekeken');
-      if(off){
-        btn.setAttribute('disabled','');
-      }else{
-        btn.removeAttribute('disabled');
-      }
+      if(off){ btn.setAttribute('disabled',''); } else { btn.removeAttribute('disabled'); }
     }catch(e){}
   }
 
-  // Click handler
   if(!btn._wired){
     btn.addEventListener('click', function(){
       try{
-        if(!window.app || !app.filtered) return;
-        if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
+        if(!hasApp() || typeof app.filtered !== 'function') return;
+        if(app.state.filter==='all' || app.state.filter==='bekeken') return;
         var list = app.filtered();
         if(!list || !list.length) return;
         var item = list[Math.floor(Math.random()*list.length)];
-        if(window.openRandomModal) openRandomModal(item);
+        if(typeof window.openRandomModal === 'function'){ openRandomModal(item); }
       }catch(e){}
     });
     btn._wired = true;
   }
 
-  // Keep in sync after each render
-  if(window.app && typeof app.render === 'function' && !app._lottoPatched){
+  if(hasApp() && typeof app.render === 'function' && !app._lottoPatched){
     var orig = app.render;
     app.render = function(){
       var r = orig.apply(app, arguments);
@@ -1115,7 +1111,6 @@ document.addEventListener('DOMContentLoaded', function(){
     app._lottoPatched = true;
   }
 
-  // Also update on filter pill clicks
   var fc = document.getElementById('filterControls');
   if(fc && !fc._lottoWired){
     fc.addEventListener('click', function(e){
@@ -1125,7 +1120,6 @@ document.addEventListener('DOMContentLoaded', function(){
     fc._lottoWired = true;
   }
 
-  // Initial
   setDisabled();
 });</script>
 </body>
