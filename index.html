@@ -381,7 +381,7 @@ function card(item, index){
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
         <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+        <button data-imdbid="${item.imdbID||''}" type="button" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -1032,7 +1032,7 @@ body {
           <div class="flex-1">
             <div class="flex items-center justify-between gap-3">
               <h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3>
-              <button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+              <button data-imdbid="${imdbId}" type="button" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
             </div>
             <div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase()+type.slice(1) : ''} • ${year||'—'} ${stream?('• '+stream):''}</div>
             <div class="mt-2 flex gap-3 text-sm">
@@ -1235,7 +1235,19 @@ document.addEventListener('DOMContentLoaded', function(){
         if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
         return;
       }
-      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now() };
+      // Fetch OMDb details before saving, to ensure imdbRating and runtime are stored
+      let imdbRating='', runtime='';
+      if(imdbID && typeof fetch==='function' && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
+        try{
+          const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(imdbID)+'&plot=short', {cache:'no-store'});
+          const j = await r.json();
+          if(j && j.Response!=='False'){
+            if(j.imdbRating && j.imdbRating!=='N/A') imdbRating = j.imdbRating;
+            if(j.Runtime && j.Runtime!=='N/A') runtime = j.Runtime;
+          }
+        }catch(e){ /* ignore */ }
+      }
+      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now(), imdbRating: imdbRating||'', runtime: runtime||'' };
       const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
       await dbPut(it); app.state.items = await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
       setStatus('Toegevoegd: '+title);
