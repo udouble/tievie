@@ -1284,60 +1284,6 @@ document.addEventListener('DOMContentLoaded', function(){
     <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
   </div>
 </div>
-
-<!-- Fallback injector: IMDb-ID detection for add/search (non-invasive) -->
-<script>
-(function(){
-  function parseImdbId(input){
-    try{
-      var s = String(input||'').trim();
-      var m = s.match(/(tt\d{7,})/i);
-      return m ? m[1] : '';
-    }catch(e){ return ''; }
-  }
-  function wireAddFallback(){
-    var addBtn = document.getElementById('btn-add');
-    var search = document.getElementById('add-search');
-    if(!addBtn || !search || addBtn._imdbIdWrapped) return;
-
-    var original = addBtn.onclick || null;
-    addBtn.onclick = async function(ev){
-      try{
-        var q = (search.value||'').trim();
-        var id = parseImdbId(q);
-        if(id){
-          if(ev){ ev.preventDefault && ev.preventDefault(); ev.stopPropagation && ev.stopPropagation(); }
-          if(typeof OMDB_KEY === 'undefined' || !OMDB_KEY){ console.warn('OMDB_KEY ontbreekt'); return original ? original.call(this, ev) : undefined; }
-          var url = 'https://www.omdbapi.com/?apikey=' + OMDB_KEY + '&i=' + encodeURIComponent(id);
-          var r = await fetch(url).then(function(x){ return x.json(); });
-          if(r && r.Response !== 'False' && typeof window.openAddConfirmModal === 'function'){
-            window.openAddConfirmModal({ Title: r.Title, Year: r.Year, Poster: (r.Poster && r.Poster!=='N/A'? r.Poster : ''), imdbID: r.imdbID, Type: r.Type });
-            return;
-          }
-          // als niet gevonden: val terug op de bestaande flow
-        }
-      }catch(e){ console.warn(e); }
-      // standaardgedrag behouden
-      if(original) return original.call(this, ev);
-    };
-    addBtn._imdbIdWrapped = true;
-
-    // Enter in het zoekveld triggert dezelfde klik (waardoor de wrapper geldt)
-    search.addEventListener('keydown', function(e){
-      if((e.key||'').toLowerCase()==='enter'){
-        e.preventDefault();
-        addBtn.click();
-      }
-    }, {capture:false});
-  }
-  if(document.readyState === 'complete' || document.readyState === 'interactive'){
-    try{ wireAddFallback(); }catch(e){ console.warn(e); }
-  }else{
-    document.addEventListener('DOMContentLoaded', function(){ try{ wireAddFallback(); }catch(e){ console.warn(e); } });
-  }
-})();
-</script>
-
 </body></html>`;
   }
 
@@ -1365,61 +1311,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="w">
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
-      </div>
-<!-- Fallback injector: IMDb-ID detection for add/search (non-invasive) -->
-<script>
-(function(){
-  function parseImdbId(input){
-    try{
-      var s = String(input||'').trim();
-      var m = s.match(/(tt\d{7,})/i);
-      return m ? m[1] : '';
-    }catch(e){ return ''; }
-  }
-  function wireAddFallback(){
-    var addBtn = document.getElementById('btn-add');
-    var search = document.getElementById('add-search');
-    if(!addBtn || !search || addBtn._imdbIdWrapped) return;
-
-    var original = addBtn.onclick || null;
-    addBtn.onclick = async function(ev){
-      try{
-        var q = (search.value||'').trim();
-        var id = parseImdbId(q);
-        if(id){
-          if(ev){ ev.preventDefault && ev.preventDefault(); ev.stopPropagation && ev.stopPropagation(); }
-          if(typeof OMDB_KEY === 'undefined' || !OMDB_KEY){ console.warn('OMDB_KEY ontbreekt'); return original ? original.call(this, ev) : undefined; }
-          var url = 'https://www.omdbapi.com/?apikey=' + OMDB_KEY + '&i=' + encodeURIComponent(id);
-          var r = await fetch(url).then(function(x){ return x.json(); });
-          if(r && r.Response !== 'False' && typeof window.openAddConfirmModal === 'function'){
-            window.openAddConfirmModal({ Title: r.Title, Year: r.Year, Poster: (r.Poster && r.Poster!=='N/A'? r.Poster : ''), imdbID: r.imdbID, Type: r.Type });
-            return;
-          }
-          // als niet gevonden: val terug op de bestaande flow
-        }
-      }catch(e){ console.warn(e); }
-      // standaardgedrag behouden
-      if(original) return original.call(this, ev);
-    };
-    addBtn._imdbIdWrapped = true;
-
-    // Enter in het zoekveld triggert dezelfde klik (waardoor de wrapper geldt)
-    search.addEventListener('keydown', function(e){
-      if((e.key||'').toLowerCase()==='enter'){
-        e.preventDefault();
-        addBtn.click();
-      }
-    }, {capture:false});
-  }
-  if(document.readyState === 'complete' || document.readyState === 'interactive'){
-    try{ wireAddFallback(); }catch(e){ console.warn(e); }
-  }else{
-    document.addEventListener('DOMContentLoaded', function(){ try{ wireAddFallback(); }catch(e){ console.warn(e); } });
-  }
-})();
-</script>
-
-</body></html>`;
+      </div></body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
     overlay.style.display='flex';
@@ -1444,60 +1336,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if(imdbId){ window.openImdbOverlay(imdbId, poster); }
     }
   });
-})();
-</script>
-
-
-<!-- Fallback injector: IMDb-ID detection for add/search (non-invasive) -->
-<script>
-(function(){
-  function parseImdbId(input){
-    try{
-      var s = String(input||'').trim();
-      var m = s.match(/(tt\d{7,})/i);
-      return m ? m[1] : '';
-    }catch(e){ return ''; }
-  }
-  function wireAddFallback(){
-    var addBtn = document.getElementById('btn-add');
-    var search = document.getElementById('add-search');
-    if(!addBtn || !search || addBtn._imdbIdWrapped) return;
-
-    var original = addBtn.onclick || null;
-    addBtn.onclick = async function(ev){
-      try{
-        var q = (search.value||'').trim();
-        var id = parseImdbId(q);
-        if(id){
-          if(ev){ ev.preventDefault && ev.preventDefault(); ev.stopPropagation && ev.stopPropagation(); }
-          if(typeof OMDB_KEY === 'undefined' || !OMDB_KEY){ console.warn('OMDB_KEY ontbreekt'); return original ? original.call(this, ev) : undefined; }
-          var url = 'https://www.omdbapi.com/?apikey=' + OMDB_KEY + '&i=' + encodeURIComponent(id);
-          var r = await fetch(url).then(function(x){ return x.json(); });
-          if(r && r.Response !== 'False' && typeof window.openAddConfirmModal === 'function'){
-            window.openAddConfirmModal({ Title: r.Title, Year: r.Year, Poster: (r.Poster && r.Poster!=='N/A'? r.Poster : ''), imdbID: r.imdbID, Type: r.Type });
-            return;
-          }
-          // als niet gevonden: val terug op de bestaande flow
-        }
-      }catch(e){ console.warn(e); }
-      // standaardgedrag behouden
-      if(original) return original.call(this, ev);
-    };
-    addBtn._imdbIdWrapped = true;
-
-    // Enter in het zoekveld triggert dezelfde klik (waardoor de wrapper geldt)
-    search.addEventListener('keydown', function(e){
-      if((e.key||'').toLowerCase()==='enter'){
-        e.preventDefault();
-        addBtn.click();
-      }
-    }, {capture:false});
-  }
-  if(document.readyState === 'complete' || document.readyState === 'interactive'){
-    try{ wireAddFallback(); }catch(e){ console.warn(e); }
-  }else{
-    document.addEventListener('DOMContentLoaded', function(){ try{ wireAddFallback(); }catch(e){ console.warn(e); } });
-  }
 })();
 </script>
 
