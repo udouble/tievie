@@ -47,9 +47,8 @@ function attachResetGesture(){
   .offline {background:#ef4444;color:#7f1d1d}
   ::placeholder{font-style:italic;color:#64748b}
   #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
-  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
-  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background: #f8fafc;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background: #e5e7eb;color: #0f172a;height:100%;border:0;background:#0b1020}
   #suggest{position:fixed;display:none;z-index:100001}
   #suggest .card{max-height:420px;overflow:auto}
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
@@ -76,8 +75,9 @@ function attachResetGesture(){
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
 
+
 /* IMDb-knop puur visueel */
-.btn-imdb{ pointer-events:none; }
+.btn-imdb{ pointer-events:auto; }
 
 </style>
 </head>
@@ -86,16 +86,6 @@ function attachResetGesture(){
   <header class="mb-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
-<div class="w-full md:w-auto md:flex-1">
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 md:mt-0">
-    <div class="relative">
-      <input id="add-search" type="search" placeholder="Zoek film/serie (OMDb)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-    </div>
-    <div class="relative">
-      <input id="add-imdbid" type="text" placeholder="IMDb-ID of URL (tt…)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow">
-    </div>
-  </div>
-</div>
       <div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
         <button id="btn-help" aria-haspopup="true" aria-expanded="false"
@@ -134,6 +124,34 @@ function attachResetGesture(){
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
 
+    <div class="glass rounded-xl p-3 shadow mb-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative grow min-w-[260px]">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+<input id="add-imdbid" type="text" placeholder="IMDb-ID of URL (tt…)" class="w-full mt-2 px-3 py-2 rounded-lg bg-white/90 shadow" />
+        </div>
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="film" selected>Film</option>
+          <option value="serie">Serie</option>
+          <option value="herman-film">H-Film</option>
+          <option value="herman-serie">H-Serie</option>
+          <option value="aan-het-kijken">Aan het kijken</option>
+          <option value="bekeken">Bekeken</option>
+        </select>
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="">Niet toegekend</option>
+          <option>Streamz</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
+        
+        <option>Stremio</option></select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+      </div>
     </div>
   </header>
 
@@ -240,6 +258,7 @@ function normalizeStream(raw){
   if(s.startsWith('prim')) return 'Prime Video';
   if(s.includes('play')) return 'Go Play';
   if(s.startsWith('np')) return 'NPO';
+  if(s.startsWith('strem')) return 'Stremio';
   if(s.startsWith('strea')) return 'Streamz';
   if(s.startsWith('disn')) return 'Disney+';
   return '';
@@ -264,7 +283,9 @@ app.render=function(){
 
 app.filtered=function(){
   let a=app.state.items.slice();
-  if(app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
+  // Bij zoekterm: doorzoek volledige app, negeer categorie-filter
+  const __term__ = (app.state.searchTerm||'').trim();
+  if(!__term__ && app.state.filter!=='all') a=a.filter(i=>i.type===app.state.filter);
   const sel=app.state.streamSet;
   if(sel && sel.size){
     a=a.filter(i=>{ const s=normalizeStream(i.streamingOn); return (s && sel.has(s)) || (!s && sel.has('__UNKNOWN__')); });
@@ -300,11 +321,23 @@ function streamingOptionsHTML(sel){
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
+function posterSrcFor(item){
+  try{
+    var p = item && item.poster;
+    if(p && p !== 'N/A') return p;
+    var id = item && (item.imdbID||item.imdbId);
+    if(id && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
+      return 'https://img.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id);
+    }
+  }catch(e){}
+  return 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+}
+
 function card(item, index){
   const div=document.createElement('div');
   div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
-  const posterSrc=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+  const posterSrc = posterSrcFor(item);
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
@@ -329,7 +362,7 @@ function card(item, index){
         <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
       </div>
     </div>
-    <div class="px-3 pt-2 text-xs"><span class="info-strip">${ (item.imdbRating?('IMDb '+item.imdbRating):'IMDb N/B') } • ${item.year||'N/B'} • ${item.runtime||'N/B'}</span></div>
+    <div class="px-3 pt-2 text-xs"><span class="info-strip">IMDb: ${item.imdbRating||'—'}<br>${item.year||'N/B'} • ${item.runtime||'N/B'}</span></div>
     <div class="p-3 pt-2 text-xs space-y-2">
       <div class="grid grid-cols-2 gap-2">
         <div>
@@ -359,7 +392,7 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='none';}catch(e){} }
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='auto'; imdbBtn.setAttribute('data-poster', posterSrc);}catch(e){} }
   return div;
 }
 
@@ -417,9 +450,7 @@ function renderSuggest(arr){
           return;
         }
         const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        await dbPut(it); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
-        setStatus('Toegevoegd: '+title);
-        document.getElementById('add-search').value='';
+        if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
       } finally {
         ADDING_LOCK = false;
       }
@@ -692,12 +723,13 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
+
 <!-- Centrale popup voor dubbele titel -->
 <div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
   <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
       <strong>Dubbele titel</strong>
-      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+      <button id="dupClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
@@ -726,6 +758,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     });
   })();
 </script>
+
 
 <script>
 /* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
@@ -781,6 +814,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
+
 <script>
 /* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
 (function(){
@@ -834,6 +868,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   sweep();
 })();
 </script>
+
 
 <script>
 /* Alleen twee dingen, niets anders:
@@ -929,6 +964,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
+
 <style id="theme-blue-final">
 /* Alleen kleurcorrectie — verder niets aanpassen */
 body {
@@ -943,12 +979,13 @@ body {
 }
 </style>
 
+
 <!-- Popup: willekeurige titel -->
 <div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
   <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
       <strong>Willekeurige keuze</strong>
-      <button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+      <button id="randClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p style="margin:0 0 10px 0" id="randMsg">Deze titel hebben we voor je gekozen.</p>
@@ -981,7 +1018,7 @@ body {
     if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
     var box = m.querySelector('#randCard');
     if(box){
-      var poster = (item && item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+      var poster = posterSrcFor(item).replace('400x600','96x144').replace('Fout','—');
       var title = esc(item && item.title || '');
       var type = esc(item && item.type || '');
       var year = esc(item && item.year || '');
@@ -1046,33 +1083,352 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
 <script>
 /* lotto */
 document.addEventListener('DOMContentLoaded', function(){
   var btn = document.getElementById('btn-random');
   if(!btn) return;
+
+  function hasApp(){ try{ return (typeof app !== 'undefined') && app && app.state; }catch(_){ return false; } }
+
   function setDisabled(){
     try{
-      var f = (window.app && app.state && app.state.filter) ? app.state.filter : 'all';
+      var f = hasApp() && app.state.filter ? app.state.filter : 'all';
       var off = (f==='all' || f==='bekeken');
-      btn.toggleAttribute('disabled', off);
+      if(off){ btn.setAttribute('disabled',''); } else { btn.removeAttribute('disabled'); }
     }catch(e){}
   }
-  btn.addEventListener('click', function(){
-    try{
-      if(!window.app || !app.filtered) return;
-      if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
-      var list = app.filtered();
-      if(!list || !list.length) return;
-      var item = list[Math.floor(Math.random()*list.length)];
-      if(window.openRandomModal) openRandomModal(item);
-    }catch(e){}
-  });
+
+  if(!btn._wired){
+    btn.addEventListener('click', function(){
+      try{
+        if(!hasApp() || typeof app.filtered !== 'function') return;
+        if(app.state.filter==='all' || app.state.filter==='bekeken') return;
+        var list = app.filtered();
+        if(!list || !list.length) return;
+        var item = list[Math.floor(Math.random()*list.length)];
+        if(typeof window.openRandomModal === 'function'){ openRandomModal(item); }
+      }catch(e){}
+    });
+    btn._wired = true;
+  }
+
+  if(hasApp() && typeof app.render === 'function' && !app._lottoPatched){
+    var orig = app.render;
+    app.render = function(){
+      var r = orig.apply(app, arguments);
+      try{ setDisabled(); }catch(_){}
+      return r;
+    };
+    app._lottoPatched = true;
+  }
+
   var fc = document.getElementById('filterControls');
-  if(fc){ fc.addEventListener('click', function(e){ var b=e.target.closest('.filter-btn'); if(b){ setTimeout(setDisabled,0); } }); }
+  if(fc && !fc._lottoWired){
+    fc.addEventListener('click', function(e){
+      var b = e.target && e.target.closest ? e.target.closest('.filter-btn') : null;
+      if(b){ setTimeout(setDisabled,0); }
+    });
+    fc._lottoWired = true;
+  }
+
   setDisabled();
-});
+});</script>
+
+<!-- Popup: toevoeging bevestigen -->
+<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
+  <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#e5e7eb;color:#0f172a">
+      <strong>Toevoegen</strong>
+      <button id="addConfirmClose" style="background:transparent;border:0;color:#334155;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="addConfirmMsg" style="margin:0 0 10px 0">Deze titel hebben we gevonden. Vul categorie en ‘Waar te zien’ in.</p>
+      <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
+        <div class="flex gap-4 items-start">
+          <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
+          <div class="flex-1">
+            <h3 id="addConfirmTitle" class="text-lg font-semibold text-slate-900 m-0">—</h3>
+            <p id="addConfirmMeta" class="m-0 opacity-70 text-sm">—</p>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="block text-sm">
+                <span class="block mb-1 text-slate-600">Categorie</span>
+                <select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select>
+              </label>
+              <label class="block text-sm">
+                <span class="block mb-1 text-slate-600">Waar te zien</span>
+                <select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select>
+              </label>
+            </div>
+            <div class="mt-4">
+              <button id="addConfirmBtn" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Voeg toe</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  let pendingItem = null;
+  function cloneOptions(fromSel, toSel){
+    toSel.innerHTML = '';
+    Array.from(fromSel.options).forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt.value || opt.textContent;
+      o.textContent = opt.textContent;
+      if(opt.selected) o.selected = true;
+      toSel.appendChild(o);
+    });
+  }
+  window.openAddConfirmModal = function(item){
+    pendingItem = item || null;
+    const modal = document.getElementById('addConfirmModal');
+    const t = document.getElementById('addConfirmTitle');
+    const m = document.getElementById('addConfirmMeta');
+    const p = document.getElementById('addConfirmPoster');
+    const typeSel = document.getElementById('addConfirmType');
+    const streamSel = document.getElementById('addConfirmStream');
+    const baseType = document.getElementById('add-type');
+    const baseStream = document.getElementById('add-stream');
+    if(baseType && typeSel) cloneOptions(baseType, typeSel);
+    if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
+    // Set defaults to current base selects
+    if(baseType && typeSel) typeSel.value = baseType.value;
+    if(baseStream && streamSel) streamSel.value = baseStream.value || '';
+    // Fill info
+    const title = (item && item.title) || (item && item.Title) || '';
+    const type = (item && item.type) || (item && item.Type) || '';
+    const year = (item && item.year) || (item && item.Year) || '';
+    const poster = (function(){ var tmp = posterSrcFor({ poster:(item&&item.poster)|| (item&&item.Poster), imdbID:(item&&item.imdbID)||(item&&item.imdbId)||(item&&item.imdbid) }); return tmp.replace('400x600','96x144').replace('Fout','—'); })();
+    t.textContent = title || '—';
+    m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
+    p.src = poster;
+    modal.style.display = 'flex';
+  };
+  function close(){
+    const modal = document.getElementById('addConfirmModal');
+    if(modal) modal.style.display = 'none';
+    pendingItem = null;
+  }
+  document.getElementById('addConfirmClose').addEventListener('click', close);
+  document.getElementById('addConfirmModal').addEventListener('click', function(e){ if(e.target===this) close(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+
+  document.getElementById('addConfirmBtn').addEventListener('click', async function(){
+    if(!pendingItem) return;
+    try{
+      const typeSel = document.getElementById('addConfirmType');
+      const streamSel = document.getElementById('addConfirmStream');
+      const title = pendingItem.title || pendingItem.Title || '';
+      const year = pendingItem.year || pendingItem.Year || '';
+      const imdbID = pendingItem.imdbID || pendingItem.imdbId || pendingItem.imdbid || '';
+      const poster = (pendingItem.poster) || (pendingItem.Poster && pendingItem.Poster!=='N/A' ? pendingItem.Poster : '');
+      const type = typeSel ? typeSel.value : 'film';
+      const streamingOn = streamSel ? streamSel.value : '';
+
+      const all = await dbGetAll();
+      const titleSet = new Set(all.map(x=>normalizeTitle(x.title||'')));
+      if(titleSet.has(normalizeTitle(title))){
+        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+        return;
+      }
+      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now() };
+      const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+      await dbPut(it); app.state.items = await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
+      setStatus('Toegevoegd: '+title);
+      const baseType = document.getElementById('add-type');
+      const baseStream = document.getElementById('add-stream');
+      if(baseType && typeSel) baseType.value = typeSel.value;
+      if(baseStream && streamSel) baseStream.value = streamSel.value;
+      const inp = document.getElementById('add-search'); if(inp) inp.value='';
+      close();
+    }catch(e){ console.error(e); }
+  });
+})();
 </script>
+
+
+<script>
+// IMDb-info popup — rijke OMDb weergave
+(function(){
+  const overlay = document.getElementById('imdbOverlay');
+  const frame   = document.getElementById('imdbFrame');
+  const closeBtn= document.getElementById('imdbClose');
+  const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+
+  function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+  function htmlFor(data){
+    const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : 'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20';
+    const facts = [
+      ['Jaar', data.Year],
+      ['Duur', data.Runtime],
+      ['Rating', data.Rated],
+      ['Genre', data.Genre],
+      ['IMDb', (data.imdbRating||'—') + (data.imdbVotes ? ' ('+data.imdbVotes+')' : '')],
+      ['Regie', data.Director],
+      ['Schrijvers', data.Writer],
+      ['Cast', data.Actors]
+    ].filter(x=>x[1] && x[1]!=='N/A');
+    const factsHtml = facts.map(([k,v])=>`<div><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join('');
+    const plot = (data.Plot && data.Plot!=='N/A') ? data.Plot : '—';
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
+  img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
+  h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0;line-height:1.5}
+  .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem 1rem}
+  @media (max-width:560px){ .facts{grid-template-columns:1fr} .w{flex-direction:column} img{width:180px;height:260px} }
+  a{color:#60a5fa;text-decoration:none}
+</style></head><body>
+<div class="w">
+  <img src="${esc(poster)}" alt="poster">
+  <div>
+    <h1>${esc(data.Title||'IMDb')}</h1>
+    <div class="facts">${factsHtml||''}</div>
+    <p class="m">${esc(plot)}</p>
+    ${data.Website && data.Website!=='N/A' ? `<p><a target="_blank" rel="noopener" href="${esc(data.Website)}">Website</a></p>` : ''}
+    <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
+  </div>
+</div>
+
+<script>
+(function(){
+  function extractImdbId(str){
+    if(!str) return '';
+    var s=String(str).trim();
+    var m=s.match(/tt\d{5,12}/i);
+    if(m) return m[0];
+    return '';
+  }
+  async function fetchById(tt){
+    try{
+      if(!tt) return null;
+      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
+      const j = await r.json();
+      if(j && j.Response!=='False') return j;
+    }catch(e){}
+    return null;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('add-imdbid');
+    if(!inp) return;
+    function tryOpen(){
+      var id = extractImdbId(inp.value);
+      if(!id) return;
+      fetchById(id).then(function(j){
+        if(j && typeof window.openAddConfirmModal==='function'){
+          openAddConfirmModal(j);
+        }
+      });
+    }
+    inp.addEventListener('change', tryOpen);
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
+    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
+  });
+})();
+</script>
+
+</body></html>`;
+  }
+
+  async function fetchOmdb(imdbID){
+    if(!KEY){ return null; }
+    try{
+      const r = await fetch('https://www.omdbapi.com/?apikey='+KEY+'&i='+encodeURIComponent(imdbID)+'&plot=full', {cache:'no-store'});
+      const j = await r.json();
+      if(j && j.Response!=='False') return j;
+    }catch(e){ console.warn('OMDb fetch error', e); }
+    return null;
+  }
+
+  window.openImdbOverlay = async function(imdbID, poster){
+    if(!imdbID){ alert('Geen IMDb ID'); return; }
+    try{
+      const skel = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1"/>
+      <style>
+      body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+      .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
+      img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
+      h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
+      </style></head><body>
+      <div class="w">
+        <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
+        <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
+      </div>
+<script>
+(function(){
+  function extractImdbId(str){
+    if(!str) return '';
+    var s=String(str).trim();
+    var m=s.match(/tt\d{5,12}/i);
+    if(m) return m[0];
+    return '';
+  }
+  async function fetchById(tt){
+    try{
+      if(!tt) return null;
+      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
+      const j = await r.json();
+      if(j && j.Response!=='False') return j;
+    }catch(e){}
+    return null;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('add-imdbid');
+    if(!inp) return;
+    function tryOpen(){
+      var id = extractImdbId(inp.value);
+      if(!id) return;
+      fetchById(id).then(function(j){
+        if(j && typeof window.openAddConfirmModal==='function'){
+          openAddConfirmModal(j);
+        }
+      });
+    }
+    inp.addEventListener('change', tryOpen);
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
+    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
+  });
+})();
+</script>
+
+</body></html>`;
+      frame.setAttribute('srcdoc', skel);
+    }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
+    overlay.style.display='flex';
+
+    const data = await fetchOmdb(imdbID);
+    if(data){
+      try{ frame.setAttribute('srcdoc', htmlFor(data)); }
+      catch(_){ frame.removeAttribute('srcdoc'); frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/'; }
+    }else{
+      frame.removeAttribute('srcdoc');
+      frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
+    }
+  };
+
+  // Activeer knopjes
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest && e.target.closest('.btn-imdb');
+    if(btn){
+      e.preventDefault();
+      const imdbId = btn.getAttribute('data-imdbid') || '';
+      const poster = btn.getAttribute('data-poster') || '';
+      if(imdbId){ window.openImdbOverlay(imdbId, poster); }
+    }
+  });
+})();
+</script>
+
 
 <script>
 (function(){
