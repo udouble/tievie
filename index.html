@@ -128,6 +128,7 @@ function attachResetGesture(){
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative grow min-w-[260px]">
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+<input id="add-imdbid" type="text" placeholder="IMDb-ID of URL (tt…)" class="w-full mt-2 px-3 py-2 rounded-lg bg-white/90 shadow" />
         </div>
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="film" selected>Film</option>
@@ -320,11 +321,23 @@ function streamingOptionsHTML(sel){
   return opts.map(o=>`<option value="${o}" ${normalizeStream(sel)===o?'selected':''}>${o||'Niet toegekend'}</option>`).join('');
 }
 
+function posterSrcFor(item){
+  try{
+    var p = item && item.poster;
+    if(p && p !== 'N/A') return p;
+    var id = item && (item.imdbID||item.imdbId);
+    if(id && typeof OMDB_KEY!=='undefined' && OMDB_KEY){
+      return 'https://img.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(id);
+    }
+  }catch(e){}
+  return 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+}
+
 function card(item, index){
   const div=document.createElement('div');
   div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
-  const posterSrc=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+  const posterSrc = posterSrcFor(item);
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
@@ -1005,7 +1018,7 @@ body {
     if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
     var box = m.querySelector('#randCard');
     if(box){
-      var poster = (item && item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+      var poster = posterSrcFor(item).replace('400x600','96x144').replace('Fout','—');
       var title = esc(item && item.title || '');
       var type = esc(item && item.type || '');
       var year = esc(item && item.year || '');
@@ -1189,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const title = (item && item.title) || (item && item.Title) || '';
     const type = (item && item.type) || (item && item.Type) || '';
     const year = (item && item.year) || (item && item.Year) || '';
-    const poster = (item && item.poster) || (item && item.Poster && item.Poster!=='N/A' ? item.Poster : '') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+    const poster = (function(){ var tmp = posterSrcFor({ poster:(item&&item.poster)|| (item&&item.Poster), imdbID:(item&&item.imdbID)||(item&&item.imdbId)||(item&&item.imdbid) }); return tmp.replace('400x600','96x144').replace('Fout','—'); })();
     t.textContent = title || '—';
     m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
     p.src = poster;
@@ -1283,6 +1296,45 @@ document.addEventListener('DOMContentLoaded', function(){
     <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
   </div>
 </div>
+
+<script>
+(function(){
+  function extractImdbId(str){
+    if(!str) return '';
+    var s=String(str).trim();
+    var m=s.match(/tt\d{5,12}/i);
+    if(m) return m[0];
+    return '';
+  }
+  async function fetchById(tt){
+    try{
+      if(!tt) return null;
+      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
+      const j = await r.json();
+      if(j && j.Response!=='False') return j;
+    }catch(e){}
+    return null;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('add-imdbid');
+    if(!inp) return;
+    function tryOpen(){
+      var id = extractImdbId(inp.value);
+      if(!id) return;
+      fetchById(id).then(function(j){
+        if(j && typeof window.openAddConfirmModal==='function'){
+          openAddConfirmModal(j);
+        }
+      });
+    }
+    inp.addEventListener('change', tryOpen);
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
+    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
+  });
+})();
+</script>
+
 </body></html>`;
   }
 
@@ -1310,7 +1362,46 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="w">
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
-      </div></body></html>`;
+      </div>
+<script>
+(function(){
+  function extractImdbId(str){
+    if(!str) return '';
+    var s=String(str).trim();
+    var m=s.match(/tt\d{5,12}/i);
+    if(m) return m[0];
+    return '';
+  }
+  async function fetchById(tt){
+    try{
+      if(!tt) return null;
+      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
+      const j = await r.json();
+      if(j && j.Response!=='False') return j;
+    }catch(e){}
+    return null;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('add-imdbid');
+    if(!inp) return;
+    function tryOpen(){
+      var id = extractImdbId(inp.value);
+      if(!id) return;
+      fetchById(id).then(function(j){
+        if(j && typeof window.openAddConfirmModal==='function'){
+          openAddConfirmModal(j);
+        }
+      });
+    }
+    inp.addEventListener('change', tryOpen);
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
+    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
+  });
+})();
+</script>
+
+</body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
     overlay.style.display='flex';
@@ -1334,6 +1425,45 @@ document.addEventListener('DOMContentLoaded', function(){
       const poster = btn.getAttribute('data-poster') || '';
       if(imdbId){ window.openImdbOverlay(imdbId, poster); }
     }
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  function extractImdbId(str){
+    if(!str) return '';
+    var s=String(str).trim();
+    var m=s.match(/tt\d{5,12}/i);
+    if(m) return m[0];
+    return '';
+  }
+  async function fetchById(tt){
+    try{
+      if(!tt) return null;
+      if(typeof OMDB_KEY==='undefined' || !OMDB_KEY) return null;
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt)+'&plot=short',{cache:'no-store'});
+      const j = await r.json();
+      if(j && j.Response!=='False') return j;
+    }catch(e){}
+    return null;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('add-imdbid');
+    if(!inp) return;
+    function tryOpen(){
+      var id = extractImdbId(inp.value);
+      if(!id) return;
+      fetchById(id).then(function(j){
+        if(j && typeof window.openAddConfirmModal==='function'){
+          openAddConfirmModal(j);
+        }
+      });
+    }
+    inp.addEventListener('change', tryOpen);
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); tryOpen(); } });
+    inp.addEventListener('paste', function(){ setTimeout(tryOpen, 0); });
   });
 })();
 </script>
