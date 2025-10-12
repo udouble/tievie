@@ -70,15 +70,6 @@ function attachResetGesture(){
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
-
-/* === Protocol: 5 kaarten per rij (≥1280px) — niet visueel veranderen, enkel kolomtelling === */
-@media (min-width: 1280px) {
-  #list {
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0,1fr)) !important;
-  }
-}
-
 </style>
 </head>
 <body>
@@ -147,8 +138,8 @@ function attachResetGesture(){
           <option>Go Play</option>
           <option>NPO</option>
           <option>Disney+</option>
-        
-        <option>Stremio</option></select><button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button></button>
+        </select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
       </div>
     </div>
   </header>
@@ -178,7 +169,6 @@ function attachResetGesture(){
   <div id="imdbPanel">
     <div id="imdbBar">
       <div class="flex items-center gap-2"><span class="text-sm opacity-80">IMDb</span></div>
-<div id="imdbContent" style="height:calc(100% - 42px);overflow:auto;background:#0b1020;color:#e5e7eb;padding:12px"></div>
       <button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
     </div>
     <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
@@ -188,7 +178,9 @@ function attachResetGesture(){
 <div id="suggest">
   <div class="card glass rounded-xl shadow-2xl border border-slate-200 p-2">
     <div id="suggest-list"></div>
-    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div></div></div>
+    <div id="suggest-empty" class="p-3 text-sm text-slate-500 hidden">Geen resultaten…</div>
+  </div>
+</div>
 
 <div id="status">v3.31 — PWA</div>
 
@@ -354,11 +346,10 @@ function card(item, index){
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
-          
-          <option>Stremio</option></select>
+          </select>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -453,7 +444,52 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
-function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+
+function openImdbOverlay(id){
+  const ov = imdbOverlay, frame = imdbFrame;
+  if(!ov || !frame){ return; }
+  if(!id){ alert('Geen IMDb ID'); return; }
+  ov.style.display='flex';
+  // Start with skeleton
+  frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial} .grid{display:grid;grid-template-columns:120px 1fr;gap:16px} .label{color:#94a3b8} .badge{display:inline-block;background:#111827;border:1px solid rgba(148,163,184,.25);padding:2px 8px;border-radius:8px;margin-right:6px} img{width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)} h1{font-size:18px;margin:0 0 4px} .muted{opacity:.8}</style></head><body><div id="root">Laden…</div></body></html>';
+  try{
+    const key = typeof OMDB_KEY!=='undefined' ? OMDB_KEY : '';
+    const url = key ? ('https://www.omdbapi.com/?apikey='+encodeURIComponent(key)+'&i='+encodeURIComponent(id)+'&plot=full') : '';
+    if(!url){ frame.contentWindow.document.getElementById('root').textContent='Geen OMDb-sleutel geconfigureerd.'; return; }
+    fetch(url).then(r=>r.json()).then(data=>{
+      const ok = data && data.Response!=='False';
+      const t = ok ? (data.Title||'—') : '—';
+      const year = ok ? (data.Year||'—') : '—';
+      const type = ok ? (data.Type||'—') : '—';
+      const runtime = ok ? (data.Runtime||'—') : '—';
+      const rating = ok ? (data.imdbRating||'—') : '—';
+      const genre = ok ? (data.Genre||'—') : '—';
+      const plot = ok ? (data.Plot||'—') : '—';
+      const poster = ok ? (data.Poster && data.Poster!=='N/A' ? data.Poster : '') : '';
+      const extra = [];
+      if(ok && data.Director && data.Director!=='N/A') extra.push('<span class="badge">Regie: '+data.Director+'</span>');
+      if(ok && data.Actors && data.Actors!=='N/A') extra.push('<span class="badge">Cast: '+data.Actors+'</span>');
+      if(ok && data.Awards && data.Awards!=='N/A') extra.push('<span class="badge">Prijzen: '+data.Awards+'</span>');
+      const posterHtml = poster ? '<img src="'+poster+'" alt="poster">' : '';
+      const htmlInner = '<div class="grid">'+posterHtml+'<div><h1>'+t+' <span class="muted">('+year+')</span></h1>'
+        + '<div class="label">Type</div><div>'+type+'</div>'
+        + '<div class="label">Duur</div><div>'+runtime+'</div>'
+        + '<div class="label">IMDb-score</div><div>'+rating+'</div>'
+        + '<div class="label">Genres</div><div>'+genre+'</div>'
+        + '<div class="label">Samenvatting</div><div>'+plot+'</div>'
+        + (extra.length?('<div style="grid-column:1/-1;margin-top:8px">'+extra.join(' ')+'</div>'):'')
+        + '</div></div>';
+      const doc = frame.contentWindow.document;
+      doc.open(); doc.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial} .grid{display:grid;grid-template-columns:120px 1fr;gap:16px} .label{color:#94a3b8;margin-top:8px} .badge{display:inline-block;background:#111827;border:1px solid rgba(148,163,184,.25);padding:2px 8px;border-radius:8px;margin-right:6px;margin-top:8px} img{width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)} h1{font-size:18px;margin:0 0 4px} .muted{opacity:.8}</style></head><body>'+htmlInner+'</body></html>'); doc.close();
+    }).catch(err=>{
+      const doc=frame.contentWindow.document; doc.open(); doc.write('<!doctype html><html><body style="margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui">Kon OMDb niet laden.</body></html>'); doc.close();
+      console.warn('OMDb error', err);
+    });
+  }catch(e){
+    console.warn('openImdbOverlay error', e);
+  }
+}
+ imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
 imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
 imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
 
@@ -781,7 +817,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
     right.appendChild(ghost);
     btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
     right.appendChild(btn);
 
     // Vervang inhoud
@@ -963,312 +999,6 @@ body {
   background: linear-gradient(180deg, #e7f6ff 0%, #def1ff 100%) !important;
 }
 </style>
-
-
-<div id="addOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100050">
-  <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(560px,96vw);">
-    <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
-      <strong class="text-sm">Toevoegen</strong>
-      <button id="addClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
-    </div>
-    <div class="p-3 text-slate-900" style="background:#f8fbff">
-      <div class="mb-3">
-        <label class="block text-xs font-medium text-slate-600 mb-0.5">Gekozen titel</label>
-        <div id="addChosenTitle" class="px-3 py-2 rounded-lg bg-white/90 border border-slate-300/50">—</div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-0.5">Categorie</label>
-          <select id="addCatSel" class="w-full px-2 py-2 rounded-lg bg-white/90 border border-slate-300/50">
-            <option value="film">Film</option>
-            <option value="serie">Serie</option>
-            <option value="herman-film">H-Film</option>
-            <option value="herman-serie">H-Serie</option>
-            <option value="aan-het-kijken">Aan het kijken</option>
-            <option value="bekeken">Bekeken</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-0.5">Waar te zien</label>
-          <select id="addStreamSel" class="w-full px-2 py-2 rounded-lg bg-white/90 border border-slate-300/50">
-            <option value="">Niet toegekend</option>
-            <option>Streamz</option>
-            <option>Netflix</option>
-            <option>Prime Video</option>
-            <option>Apple TV+</option>
-            <option>VRT MAX</option>
-            <option>Go Play</option>
-            <option>NPO</option>
-            <option>Disney+</option>
-            <option>Stremio</option>
-          </select>
-        </div>
-      </div>
-      <div class="mt-3 flex items-center justify-end gap-2">
-        <button id="addCancel" class="px-3 py-2 rounded-xl bg-white/70 hover:bg-white text-slate-900 border border-slate-200">Annuleren</button>
-        <button id="addConfirm" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<div id="dupInfoOverlay" style="position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100060">
-  <div class="glass rounded-xl shadow-2xl border border-slate-200 overflow-hidden" style="width:min(520px,96vw);">
-    <div class="flex items-center justify-between px-3 py-2" style="background:#111827;color:#e5e7eb">
-      <strong class="text-sm">Info</strong>
-      <button id="dupInfoCloseX" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
-    </div>
-    <div class="p-4 text-slate-900" style="background:#f8fbff">
-      <p id="dupInfoMsg" class="mb-4">Deze titel staat al in de app, meer bepaald in deze categorie: —</p>
-      <div class="flex justify-end">
-        <button id="dupInfoClose" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Sluit</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<script>
-(function(){
-  if(window.__WIRED_ADD_DUP_FLOW__) return; window.__WIRED_ADD_DUP_FLOW__=true;
-
-  // Helpers
-  window.openDupInfo = function(cat){
-    try{
-      var label = cat || '—';
-      const map = {'film':'Film','serie':'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken','bekeken':'Bekeken'};
-      if(map[label]) label = map[label];
-      var el = document.getElementById('dupInfoMsg'); if(el) el.textContent = 'Deze titel staat al in de app, meer bepaald in deze categorie: ' + label;
-    }catch(e){}
-    var ov = document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeDup(){ var ov=document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='none'; }
-
-  let __pendingAdd = null;
-  window.openAddModal = function(sel){
-    __pendingAdd = sel || null;
-    try{
-      var titleBox = document.getElementById('addChosenTitle'); if(titleBox) titleBox.textContent = sel && sel.title ? sel.title : '—';
-      var t = document.getElementById('add-type')?.value || 'film';
-      var s = document.getElementById('add-stream')?.value || '';
-      var typeSel = document.getElementById('addCatSel'); if(typeSel) typeSel.value=t;
-      var streamSel = document.getElementById('addStreamSel'); if(streamSel) streamSel.value=s;
-    }catch(e){}
-    var ov = document.getElementById('addOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeAdd(){ var ov=document.getElementById('addOverlay'); if(ov) ov.style.display='none'; }
-
-  // Global click handlers
-  document.addEventListener('click', function(e){
-    var id = e.target && e.target.id;
-    if(id==='dupInfoClose' || id==='dupInfoCloseX'){ e.preventDefault(); closeDup(); return; }
-    if(id==='addClose' || id==='addCancel'){ e.preventDefault(); closeAdd(); return; }
-  }, true);
-
-  document.addEventListener('click', async function(e){
-    if(e.target && e.target.id==='addConfirm'){
-      e.preventDefault();
-      if(!__pendingAdd){ closeAdd(); return; }
-      try{
-        const all = await dbGetAll();
-        const { imdbID, title, year, poster } = __pendingAdd || {};
-        // Duplicate guard (safety)
-        const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-        if(existing){ closeAdd(); openDupInfo(existing.type||'—'); return; }
-        const typeSel = document.getElementById('addCatSel')?.value || 'film';
-        const streamSel = document.getElementById('addStreamSel')?.value || '';
-        const inc = { title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-        const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        await dbPut(it);
-        app.state.items = await dbGetAll();
-        app.render(); bindStreamUI(); syncPushDebounced();
-        setStatus && setStatus('Toegevoegd: '+title);
-        var search = document.getElementById('add-search'); if(search) search.value='';
-      } catch(err){ console.warn('add flow error', err); }
-      finally{ closeAdd(); }
-      return;
-    }
-  }, true);
-
-  // Intercept suggest row click
-  document.addEventListener('click', async function(e){
-    const row = e.target && e.target.closest ? e.target.closest('#suggest .row') : null;
-    if(!row) return;
-    e.preventDefault(); e.stopPropagation();
-    try{
-      hideSuggest && hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      const all = await dbGetAll();
-      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-      if(existing){ openDupInfo(existing.type||'—'); return; }
-      openAddModal({imdbID, title, year, poster});
-    }catch(err){ console.warn('suggest click flow error', err); }
-  }, true);
-})();
-</script>
-
-
-<script>
-(function(){
-  if(window.__FIX_WIRE_V3__) return; window.__FIX_WIRE_V3__=true;
-
-  // Duplicate info popup helpers
-  window.openDupInfo = function(cat){
-    try{
-      var label = cat || '—';
-      const map = {'film':'Film','serie':'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken','bekeken':'Bekeken'};
-      if(map[label]) label = map[label];
-      var el = document.getElementById('dupInfoMsg'); if(el) el.textContent = 'Deze titel staat al in de app, meer bepaald in deze categorie: ' + label;
-    }catch(e){}
-    var ov = document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeDup(){ var ov=document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='none'; }
-
-  // Add modal
-  let __pendingAdd = null;
-  window.openAddModal = function(sel){
-    __pendingAdd = sel || null;
-    try{
-      var titleBox = document.getElementById('addChosenTitle'); if(titleBox) titleBox.textContent = sel && sel.title ? sel.title : '—';
-      var t = document.getElementById('add-type')?.value || 'film';
-      var s = document.getElementById('add-stream')?.value || '';
-      var typeSel = document.getElementById('addCatSel'); if(typeSel) typeSel.value=t;
-      var streamSel = document.getElementById('addStreamSel'); if(streamSel) streamSel.value=s;
-    }catch(e){}
-    var ov = document.getElementById('addOverlay'); if(ov) ov.style.display='flex';
-  };
-  function closeAdd(){ var ov=document.getElementById('addOverlay'); if(ov) ov.style.display='none'; }
-
-  // Close buttons
-  document.addEventListener('click', function(e){
-    var id = e.target && e.target.id;
-    if(id==='dupInfoClose' || id==='dupInfoCloseX'){ e.preventDefault(); closeDup(); }
-    if(id==='addClose' || id==='addCancel'){ e.preventDefault(); closeAdd(); }
-  }, true);
-
-  // Confirm add
-  document.addEventListener('click', async function(e){
-    if(!(e.target && e.target.id==='addConfirm')) return;
-    e.preventDefault();
-    if(!__pendingAdd){ closeAdd(); return; }
-    try{
-      const all = await dbGetAll();
-      const { imdbID, title, year, poster } = __pendingAdd || {};
-      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-      if(existing){ closeAdd(); openDupInfo(existing.type||'—'); return; }
-      const typeSel = document.getElementById('addCatSel')?.value || 'film';
-      const streamSel = document.getElementById('addStreamSel')?.value || '';
-      const inc = { title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-      const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-      await dbPut(it);
-      app.state.items = await dbGetAll();
-      app.render(); bindStreamUI(); syncPushDebounced();
-      setStatus && setStatus('Toegevoegd: '+title);
-      var search = document.getElementById('add-search'); if(search) search.value='';
-    } catch(err){ console.warn('add confirm error', err); }
-    finally { closeAdd(); }
-  }, true);
-
-  // Suggest row click: duplicate -> info popup; otherwise -> open add modal
-  document.addEventListener('click', async function(e){
-    const row = e.target && e.target.closest ? e.target.closest('#suggest .row') : null;
-    if(!row) return;
-    e.preventDefault(); e.stopPropagation();
-    try{
-      hideSuggest && hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      const all = await dbGetAll();
-      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
-      if(existing){ openDupInfo(existing.type||'—'); return; }
-      openAddModal({imdbID, title, year, poster});
-    }catch(err){ console.warn('suggest click flow error', err); }
-  }, true);
-
-  // Neutralize any legacy duplicate modal calls
-  window.openDuplicateModal = function(title){ openDupInfo('—'); };
-})();
-</script>
-
-
-<script>
-(function(){
-  if(window.__IMDB_POPUP_WIRED__) return; window.__IMDB_POPUP_WIRED__=true;
-
-  function esc(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-
-  window.openImdbInfo = function(item){
-    try{
-      const ov = document.getElementById('imdbOverlay');
-      const content = document.getElementById('imdbContent');
-      if(!ov || !content){ return; }
-      const title = item?.title || '—';
-      const year = item?.year || '';
-      const type = item?.type || '';
-      const streaming = item?.streamingOn || '';
-      const imdbID = item?.imdbID || '';
-      const imdb = item?.imdbRating || item?.imdb || '';
-      const runtime = item?.runtime || item?.Runtime || '';
-      const genres = item?.genres || item?.Genres || item?.genre || '';
-      const plot = item?.plot || item?.Plot || '';
-      const poster = item?.poster || '';
-
-      const rows = [
-        ['Titel', title + (year? ' ('+year+')':'')],
-        ['Type', type],
-        ['Waar te zien', streaming||'—'],
-        ['IMDb-score', imdb||'—'],
-        ['Duur', runtime||'—'],
-        ['Genres', Array.isArray(genres)? genres.join(', ') : (genres||'—')],
-        ['Samenvatting', plot||'—']
-      ];
-
-      let linkHtml = '';
-      if(imdbID){ linkHtml = ''; }
-
-      let posterHtml = poster ? '<img src="'+esc(poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
-
-      let rowsHtml = rows.map(([k,v])=>'<div class="grid grid-cols-3 gap-2 py-1"><div class="text-slate-400">'+esc(k)+'</div><div class="col-span-2">'+esc(v)+'</div></div>').join('');
-
-      content.innerHTML = '<div class="flex gap-3 items-start">'+posterHtml+'<div class="grow">'+rowsHtml+'</div></div><div class="mt-3">'+linkHtml+'</div>';
-
-      ov.style.display='flex';
-    }catch(e){ console.warn('openImdbInfo error', e); }
-  };
-
-  // Delegate click from any IMDb-info button to openImdbInfo; we try common selectors.
-  document.addEventListener('click', function(e){
-    const btn = e.target && e.target.closest ? e.target.closest('[data-action="imdb-info"], .btn-imdb, button[data-imdbid], a[data-imdbid]') : null;
-    if(!btn) return;
-    e.preventDefault();
-    try{
-      let imdbID = btn.dataset.imdbid || btn.getAttribute('data-imdb-id') || '';
-      let item = null;
-      if(window.app && app.state && Array.isArray(app.state.items)){
-        if(imdbID){ item = app.state.items.find(x=> (x.imdbID||'')===imdbID ); }
-        if(!item){
-          // try to find by closest card data attributes
-          const card = btn.closest && btn.closest('[data-imdbid]');
-          const cid = card && card.getAttribute('data-imdbid');
-          if(cid){ item = app.state.items.find(x=> (x.imdbID||'')===cid ); }
-        }
-      }
-      if(!item && imdbID){ item = { imdbID: imdbID }; }
-      openImdbInfo(item||{});
-    }catch(err){ console.warn('IMDb button error', err); }
-  }, true);
-
-  // Close logic for IMDB overlay via existing close in bar or clicking backdrop
-  document.addEventListener('click', function(e){
-    const ov = document.getElementById('imdbOverlay');
-    if(!ov) return;
-    if(e.target && (e.target.id==='imdbOverlay' || e.target.id==='imdbClose' )){
-      e.preventDefault();
-      ov.style.display='none';
-    }
-  }, true);
-})();
-</script>
 
 </body>
 </html>
