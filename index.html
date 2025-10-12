@@ -148,7 +148,7 @@ function attachResetGesture(){
           <option>NPO</option>
           <option>Disney+</option>
         
-        <option>Stremio</option></select>ss="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+        <option>Stremio</option></select><button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button></button>
       </div>
     </div>
   </header>
@@ -358,7 +358,8 @@ function card(item, index){
           <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
-          </select>
+          
+          <option>Stremio</option></select>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -1105,6 +1106,88 @@ body {
       openAddModal({imdbID, title, year, poster});
     }catch(err){ console.warn('suggest click flow error', err); }
   }, true);
+})();
+</script>
+
+
+<script>
+(function(){
+  if(window.__FIX_WIRE_V3__) return; window.__FIX_WIRE_V3__=true;
+
+  // Duplicate info popup helpers
+  window.openDupInfo = function(cat){
+    try{
+      var label = cat || '—';
+      const map = {'film':'Film','serie':'Serie','herman-film':'H-Film','herman-serie':'H-Serie','aan-het-kijken':'Aan het kijken','bekeken':'Bekeken'};
+      if(map[label]) label = map[label];
+      var el = document.getElementById('dupInfoMsg'); if(el) el.textContent = 'Deze titel staat al in de app, meer bepaald in deze categorie: ' + label;
+    }catch(e){}
+    var ov = document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='flex';
+  };
+  function closeDup(){ var ov=document.getElementById('dupInfoOverlay'); if(ov) ov.style.display='none'; }
+
+  // Add modal
+  let __pendingAdd = null;
+  window.openAddModal = function(sel){
+    __pendingAdd = sel || null;
+    try{
+      var titleBox = document.getElementById('addChosenTitle'); if(titleBox) titleBox.textContent = sel && sel.title ? sel.title : '—';
+      var t = document.getElementById('add-type')?.value || 'film';
+      var s = document.getElementById('add-stream')?.value || '';
+      var typeSel = document.getElementById('addCatSel'); if(typeSel) typeSel.value=t;
+      var streamSel = document.getElementById('addStreamSel'); if(streamSel) streamSel.value=s;
+    }catch(e){}
+    var ov = document.getElementById('addOverlay'); if(ov) ov.style.display='flex';
+  };
+  function closeAdd(){ var ov=document.getElementById('addOverlay'); if(ov) ov.style.display='none'; }
+
+  // Close buttons
+  document.addEventListener('click', function(e){
+    var id = e.target && e.target.id;
+    if(id==='dupInfoClose' || id==='dupInfoCloseX'){ e.preventDefault(); closeDup(); }
+    if(id==='addClose' || id==='addCancel'){ e.preventDefault(); closeAdd(); }
+  }, true);
+
+  // Confirm add
+  document.addEventListener('click', async function(e){
+    if(!(e.target && e.target.id==='addConfirm')) return;
+    e.preventDefault();
+    if(!__pendingAdd){ closeAdd(); return; }
+    try{
+      const all = await dbGetAll();
+      const { imdbID, title, year, poster } = __pendingAdd || {};
+      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
+      if(existing){ closeAdd(); openDupInfo(existing.type||'—'); return; }
+      const typeSel = document.getElementById('addCatSel')?.value || 'film';
+      const streamSel = document.getElementById('addStreamSel')?.value || '';
+      const inc = { title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
+      const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
+      await dbPut(it);
+      app.state.items = await dbGetAll();
+      app.render(); bindStreamUI(); syncPushDebounced();
+      setStatus && setStatus('Toegevoegd: '+title);
+      var search = document.getElementById('add-search'); if(search) search.value='';
+    } catch(err){ console.warn('add confirm error', err); }
+    finally { closeAdd(); }
+  }, true);
+
+  // Suggest row click: duplicate -> info popup; otherwise -> open add modal
+  document.addEventListener('click', async function(e){
+    const row = e.target && e.target.closest ? e.target.closest('#suggest .row') : null;
+    if(!row) return;
+    e.preventDefault(); e.stopPropagation();
+    try{
+      hideSuggest && hideSuggest();
+      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+      const all = await dbGetAll();
+      const existing = all.find(x=>normalizeTitle(x.title||'')===normalizeTitle(title));
+      if(existing){ openDupInfo(existing.type||'—'); return; }
+      openAddModal({imdbID, title, year, poster});
+    }catch(err){ console.warn('suggest click flow error', err); }
+  }, true);
+
+  // Neutralize any legacy duplicate modal calls
+  window.openDuplicateModal = function(title){ openDupInfo('—'); };
 })();
 </script>
 
