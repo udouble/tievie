@@ -148,7 +148,7 @@ function attachResetGesture(){
           <option>NPO</option>
           <option>Disney+</option>
         
-        <option>Stremio</option></select><button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+        <option>Stremio</option></select><button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button></button>
       </div>
     </div>
   </header>
@@ -454,67 +454,7 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
 // IMDb overlay
 const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
-
-function openImdbOverlay(id){
-  const ov = imdbOverlay, frame = imdbFrame;
-  if(!id){ alert('Geen IMDb ID'); return; }
-  if(ov) ov.style.display='flex';
-  const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  // 1) Start met lokale data (altijd zichtbaar, binnen de app)
-  let item = null;
-  try{
-    if(window.app && app.state && Array.isArray(app.state.items)){
-      item = app.state.items.find(x => (x.imdbID||'')===id) || null;
-    }
-  }catch(e){ item=null; }
-  const d = item || {};
-  const poster0 = (d.poster && d.poster!=='N/A') ? '<img src="'+esc(d.poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
-  const baseRows = [
-    ['Titel', (d.title||'—') + (d.year? ' ('+d.year+')':'')],
-    ['Type', d.type||'—'],
-    ['Waar te zien', d.streamingOn||'—'],
-    ['IMDb-score', (d.imdbRating||d.imdb||'—')],
-    ['Duur', (d.runtime||d.Runtime||'—')],
-    ['Genres', Array.isArray(d.genres)? d.genres.join(', ') : (d.genres||d.Genre||d.Genres||'—')],
-    ['Samenvatting', (d.plot||d.Plot||'—')]
-  ].map(([k,v])=>'<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(k)+'</div><div>'+esc(v||'—')+'</div></div>').join('');
-  const baseDoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+poster0+'<div style="flex:1">'+baseRows+'</div></div></body></html>';
-  if(frame) frame.srcdoc = baseDoc;
-
-  // 2) Hydrate met OMDb (binnen de app), indien sleutel aanwezig
-  try{
-    if(typeof OMDB_KEY!=='undefined' && OMDB_KEY){
-      fetch('https://www.omdbapi.com/?apikey='+encodeURIComponent(OMDB_KEY)+'&i='+encodeURIComponent(id)+'&plot=full',{cache:'no-store'})
-        .then(r=>r.json())
-        .then(data=>{
-          if(!data || data.Response==='False') return;
-          const t = data.Title || d.title || '—';
-          const year = data.Year || d.year || '';
-          const type = data.Type || d.type || '—';
-          const runtime = data.Runtime || d.runtime || '—';
-          const rating = data.imdbRating || d.imdbRating || d.imdb || '—';
-          const genre = data.Genre || (Array.isArray(d.genres)? d.genres.join(', ') : (d.genres||d.Genres||'—'));
-          const plot = data.Plot || d.plot || '—';
-          const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : d.poster;
-          const posterHtml = poster ? '<img src="'+esc(poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
-          const rowsHtml = [
-            ['Titel', t + (year? ' ('+year+')':'')],
-            ['Type', type],
-            ['Waar te zien', d.streamingOn||'—'],
-            ['IMDb-score', rating],
-            ['Duur', runtime],
-            ['Genres', genre],
-            ['Samenvatting', plot]
-          ].map(([k,v])=>'<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(k)+'</div><div>'+esc(v||'—')+'</div></div>').join('');
-          const out = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+posterHtml+'<div style="flex:1">'+rowsHtml+'</div></div></body></html>';
-          const doc = frame && frame.contentWindow ? frame.contentWindow.document : null;
-          if(doc){ doc.open(); doc.write(out); doc.close(); } else if(frame){ frame.srcdoc = out; }
-        })
-        .catch(()=>{});
-    }
-  }catch(e){}
-}
- imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
 imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
 imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
 
@@ -1201,7 +1141,72 @@ body {
         var k = rv[0], v = rv[1];
         return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(k)+'</div><div>'+esc(v||'—')+'</div></div>';
       }).join('');
-      var out = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+poster+'<div style="flex:1">'+rowsHtml+'</div></div></body></html>';
+      var out = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+poster+'<div style="flex:1">'+rowsHtml+'</div></div>
+<script>
+(function(){
+  if(window.__IMDB_SAFE_MINI__) return; window.__IMDB_SAFE_MINI__=true;
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]); }); }
+  function fromCard(btn){
+    var card = btn && btn.closest ? btn.closest('[data-imdbid]') : null, d={};
+    try{
+      if(card){
+        d.imdbID = card.getAttribute('data-imdbid') || '';
+        d.title = card.getAttribute('data-title') || '';
+        d.year = card.getAttribute('data-year') || '';
+        d.type = card.getAttribute('data-type') || '';
+        d.streamingOn = card.getAttribute('data-stream') || '';
+        d.imdbRating = card.getAttribute('data-imdb') || '';
+        d.runtime = card.getAttribute('data-runtime') || '';
+        d.genres = card.getAttribute('data-genres') || '';
+        d.plot = card.getAttribute('data-plot') || '';
+        d.poster = card.getAttribute('data-poster') || '';
+      }
+    }catch(e){}
+    return d;
+  }
+  function render(seed){
+    var frame = document.getElementById('imdbFrame'); if(!frame) return;
+    var d = seed || {};
+    var poster = (d.poster && d.poster!=='N/A') ? '<img src="'+esc(d.poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
+    var genres = Array.isArray(d.genres) ? d.genres.join(', ') : (d.genres||'');
+    var rows = [
+      ['Titel', (d.title||'') + (d.year? ' ('+d.year+')':'')],
+      ['Type', d.type||''],
+      ['Waar te zien', d.streamingOn||''],
+      ['IMDb-score', d.imdbRating||''],
+      ['Duur', d.runtime||''],
+      ['Genres', genres],
+      ['Samenvatting', d.plot||'']
+    ];
+    var rowsHtml = rows.map(function(r){ return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(r[0])+'</div><div>'+esc(r[1]||'—')+'</div></div>'; }).join('');
+    var out = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+poster+'<div style="flex:1">'+rowsHtml+'</div></div></body></html>';
+    try{ var doc = frame.contentWindow && frame.contentWindow.document; if(doc){ doc.open(); doc.write(out); doc.close(); } else { frame.srcdoc = out; } }catch(e){ frame.srcdoc = out; }
+  }
+  var _orig = window.openImdbOverlay;
+  window.openImdbOverlay = function(id){
+    try{ if(typeof _orig === 'function'){ _orig(id); } }catch(e){}
+    setTimeout(function(){
+      try{
+        var frame = document.getElementById('imdbFrame');
+        var body = frame && frame.contentDocument && frame.contentDocument.body;
+        var isEmpty = !body || !body.innerText || body.innerText.trim().length < 5;
+        if(isEmpty){
+          var btn = document.activeElement;
+          var seed = fromCard(btn);
+          if((!seed || !seed.title) && window.app && app.state && Array.isArray(app.state.items)){
+            var item = app.state.items.find(function(x){ return (x.imdbID||'')=== (id||''); }) || {};
+            seed = { title:item.title, year:item.year, type:item.type, streamingOn:item.streamingOn,
+                     imdbRating:item.imdbRating||item.imdb, runtime:item.runtime||item.Runtime,
+                     genres:item.genres||item.Genres, plot:item.plot||item.Plot, poster:item.poster };
+          }
+          render(seed);
+        }
+      }catch(e){}
+    }, 50);
+  };
+})();
+</script>
+</body></html>';
       frame.srcdoc = out;
     }catch(e){}
   }
@@ -1212,5 +1217,70 @@ body {
 })();
 </script>
 
+
+<script>
+(function(){
+  if(window.__IMDB_SAFE_MINI__) return; window.__IMDB_SAFE_MINI__=true;
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]); }); }
+  function fromCard(btn){
+    var card = btn && btn.closest ? btn.closest('[data-imdbid]') : null, d={};
+    try{
+      if(card){
+        d.imdbID = card.getAttribute('data-imdbid') || '';
+        d.title = card.getAttribute('data-title') || '';
+        d.year = card.getAttribute('data-year') || '';
+        d.type = card.getAttribute('data-type') || '';
+        d.streamingOn = card.getAttribute('data-stream') || '';
+        d.imdbRating = card.getAttribute('data-imdb') || '';
+        d.runtime = card.getAttribute('data-runtime') || '';
+        d.genres = card.getAttribute('data-genres') || '';
+        d.plot = card.getAttribute('data-plot') || '';
+        d.poster = card.getAttribute('data-poster') || '';
+      }
+    }catch(e){}
+    return d;
+  }
+  function render(seed){
+    var frame = document.getElementById('imdbFrame'); if(!frame) return;
+    var d = seed || {};
+    var poster = (d.poster && d.poster!=='N/A') ? '<img src="'+esc(d.poster)+'" alt="poster" style="width:120px;height:auto;border-radius:8px;object-fit:cover;border:1px solid rgba(148,163,184,.25)"/>' : '';
+    var genres = Array.isArray(d.genres) ? d.genres.join(', ') : (d.genres||'');
+    var rows = [
+      ['Titel', (d.title||'') + (d.year? ' ('+d.year+')':'')],
+      ['Type', d.type||''],
+      ['Waar te zien', d.streamingOn||''],
+      ['IMDb-score', d.imdbRating||''],
+      ['Duur', d.runtime||''],
+      ['Genres', genres],
+      ['Samenvatting', d.plot||'']
+    ];
+    var rowsHtml = rows.map(function(r){ return '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;padding:4px 0"><div style="color:#94a3b8">'+esc(r[0])+'</div><div>'+esc(r[1]||'—')+'</div></div>'; }).join('');
+    var out = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial}</style></head><body><div style="display:flex;gap:12px;align-items:flex-start">'+poster+'<div style="flex:1">'+rowsHtml+'</div></div></body></html>';
+    try{ var doc = frame.contentWindow && frame.contentWindow.document; if(doc){ doc.open(); doc.write(out); doc.close(); } else { frame.srcdoc = out; } }catch(e){ frame.srcdoc = out; }
+  }
+  var _orig = window.openImdbOverlay;
+  window.openImdbOverlay = function(id){
+    try{ if(typeof _orig === 'function'){ _orig(id); } }catch(e){}
+    setTimeout(function(){
+      try{
+        var frame = document.getElementById('imdbFrame');
+        var body = frame && frame.contentDocument && frame.contentDocument.body;
+        var isEmpty = !body || !body.innerText || body.innerText.trim().length < 5;
+        if(isEmpty){
+          var btn = document.activeElement;
+          var seed = fromCard(btn);
+          if((!seed || !seed.title) && window.app && app.state && Array.isArray(app.state.items)){
+            var item = app.state.items.find(function(x){ return (x.imdbID||'')=== (id||''); }) || {};
+            seed = { title:item.title, year:item.year, type:item.type, streamingOn:item.streamingOn,
+                     imdbRating:item.imdbRating||item.imdb, runtime:item.runtime||item.Runtime,
+                     genres:item.genres||item.Genres, plot:item.plot||item.Plot, poster:item.poster };
+          }
+          render(seed);
+        }
+      }catch(e){}
+    }, 50);
+  };
+})();
+</script>
 </body>
 </html>
