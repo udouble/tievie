@@ -164,7 +164,7 @@ function attachResetGesture(){
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="aan-het-kijken">Aan het kijken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="bekeken">Bekeken</button>
       <button class="filter-btn px-3 py-1.5 rounded-lg bg-white/30 hover:bg-white/40 text-white pill" data-filter="all">Alles</button>
-      <button id="btn-random" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</button>
+      <a id="btn-random" href="#" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 pill" title="Kies willekeurig uit huidige lijst (na filters/zoekterm)">Lotto</a>
       <div class="flex-1"></div>
       <input id="search" type="search" placeholder="Zoeken in lijst…" class="px-3 py-2 rounded-lg bg-white/40 text-white placeholder-white/70 shadow w-56 pill"/>
     </div>
@@ -1072,58 +1072,45 @@ document.addEventListener('DOMContentLoaded', function(){
 
 
 
+
 <script>
 /* lotto */
-document.addEventListener('DOMContentLoaded', function(){
-  var btn = document.getElementById('btn-random');
-  if(!btn) return;
-
-  function isBlocked(){
-    try{
-      var f = (window.app && app.state && app.state.filter) ? app.state.filter : 'all';
-      return (f==='all' || f==='bekeken');
-    }catch(e){ return true; }
-  }
-
-  function setDisabled(){
-    try{
-      btn.toggleAttribute('disabled', isBlocked());
-    }catch(e){}
-  }
-
+(function(){
+  function isBlocked(){ try{ var f=(window.app&&app.state&&app.state.filter)?app.state.filter:'all'; return (f==='all'||f==='bekeken'); }catch(e){ return true; } }
   function pickAndShow(){
     try{
-      if(!window.app || !app.filtered) return;
+      if(!window.app||!app.filtered) return;
       if(isBlocked()) return;
-      var list = app.filtered();
-      if(!Array.isArray(list) || !list.length) return;
-      var item = list[Math.floor(Math.random()*list.length)];
+      var list=app.filtered();
+      if(!Array.isArray(list)||!list.length) return;
+      var item=list[Math.floor(Math.random()*list.length)];
       if(window.openRandomModal) openRandomModal(item);
     }catch(e){}
   }
-
-  btn.addEventListener('click', function(e){
-    if(isBlocked()){ e.preventDefault(); return; }
-    pickAndShow();
-  }, true);
-
-  document.addEventListener('click', function(e){
-    var b = e.target && e.target.closest && e.target.closest('#btn-random');
-    if(!b) return;
-    if(isBlocked()){ e.preventDefault(); return; }
-    pickAndShow();
-  }, true);
-
-  var fc = document.getElementById('filterControls');
-  if(fc){
-    var mo = new MutationObserver(function(){ setDisabled(); });
-    mo.observe(fc, { attributes:true, childList:true, subtree:true });
-    fc.addEventListener('click', function(){ setTimeout(setDisabled, 60); });
+  function setDisabled(){
+    try{
+      var btn=document.getElementById('btn-random');
+      if(btn) btn.toggleAttribute('aria-disabled', isBlocked());
+    }catch(e){}
   }
-
-  setInterval(setDisabled, 250);
-  setDisabled();
-});
+  document.addEventListener('DOMContentLoaded', function(){
+    var btn=document.getElementById('btn-random');
+    if(!btn) return;
+    btn.addEventListener('click', function(e){ e.preventDefault(); if(isBlocked()) return; pickAndShow(); }, true);
+    document.addEventListener('click', function(e){
+      var b=e.target&&e.target.closest&&e.target.closest('#btn-random');
+      if(!b) return; e.preventDefault(); if(isBlocked()) return; pickAndShow();
+    }, true);
+    var fc=document.getElementById('filterControls');
+    if(fc){
+      var mo=new MutationObserver(function(){ setDisabled(); });
+      mo.observe(fc,{attributes:true,childList:true,subtree:true});
+      fc.addEventListener('click', function(){ setTimeout(setDisabled, 60); });
+    }
+    setInterval(setDisabled, 300);
+    setDisabled();
+  });
+})();
 </script>
 
 </body>
