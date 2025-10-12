@@ -70,6 +70,16 @@ function attachResetGesture(){
 #filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
 #filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
 .info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+
+/* === Protocol: 5 kaarten per rij */
+@media (min-width: 1280px) {
+  #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
+}
+
+
+/* IMDb-knop puur visueel */
+.btn-imdb{ pointer-events:none; }
+
 </style>
 </head>
 <body>
@@ -347,7 +357,7 @@ function card(item, index){
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te bekijken</label>
+          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
           </select>
@@ -367,7 +377,7 @@ function card(item, index){
   const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ imdbBtn.onclick=()=>openImdbOverlay(item.imdbID); }
+  const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{imdbBtn.style.pointerEvents='none';}catch(e){} }
   return div;
 }
 
@@ -773,7 +783,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
     right.appendChild(ghost);
     btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te bekijken'
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
     right.appendChild(btn);
 
     // Vervang inhoud
