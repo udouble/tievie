@@ -1306,23 +1306,66 @@ if(!baseStream && streamSel){
 </script>
 
 
+
 <script>
 (function(){
   const el = document.getElementById('add-imdb');
-  if(!el || el._ensured_modal_open) return;
-  el._ensured_modal_open = true;
-  const ttRe = /(tt\d{7,9})/;
-  el.addEventListener('input', async ()=>{
-    const m = (el.value||'').match(ttRe);
+  if(!el || el._imdbHandlerBound) return;
+  el._imdbHandlerBound = true;
+
+  let ctrl = null, timer = null, lastVal = '';
+  const TT = /(tt\d{7,9})/;
+
+  async function fetchWithTimeout(url, opts){
+    const { timeout = 10000, ...rest } = opts || {};
+    const ac = new AbortController();
+    const t = setTimeout(()=>ac.abort(), timeout);
+    try{
+      const res = await fetch(url, { ...rest, signal: ac.signal });
+      clearTimeout(t);
+      return res;
+    }catch(e){
+      clearTimeout(t);
+      throw e;
+    }
+  }
+
+  async function tryOpen(){
+    const v = el.value || '';
+    if(v === lastVal) return;
+    lastVal = v;
+    const m = v.match(TT);
     if(!m) return;
     const imdbID = m[1];
+
+    if(ctrl) ctrl.abort();
+    ctrl = new AbortController();
+
     try{
-      const meta = await fetchOmdbById(imdbID);
-      if(meta && typeof openAddConfirmModal==='function'){
-        openAddConfirmModal(meta);
+      if(typeof fetchOmdbById === 'function'){
+        const meta = await fetchOmdbById(imdbID, { signal: ctrl.signal, timeout: 9000 });
+        if(meta && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
+      }else{
+        const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+        if(!KEY) return;
+        const resp = await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`, { timeout: 9000 });
+        const meta = await resp.json();
+        if(meta && meta.imdbID && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
       }
-    }catch(e){}
-  });
+    }catch(e){
+      // silent
+    }
+  }
+
+  function schedule(){
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(tryOpen, 250);
+  }
+
+  el.addEventListener('paste', ()=>{ setTimeout(schedule, 0); });
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
 })();
 </script>
 
@@ -1377,23 +1420,66 @@ if(!baseStream && streamSel){
 </script>
 
 
+
 <script>
 (function(){
   const el = document.getElementById('add-imdb');
-  if(!el || el._ensured_modal_open) return;
-  el._ensured_modal_open = true;
-  const ttRe = /(tt\d{7,9})/;
-  el.addEventListener('input', async ()=>{
-    const m = (el.value||'').match(ttRe);
+  if(!el || el._imdbHandlerBound) return;
+  el._imdbHandlerBound = true;
+
+  let ctrl = null, timer = null, lastVal = '';
+  const TT = /(tt\d{7,9})/;
+
+  async function fetchWithTimeout(url, opts){
+    const { timeout = 10000, ...rest } = opts || {};
+    const ac = new AbortController();
+    const t = setTimeout(()=>ac.abort(), timeout);
+    try{
+      const res = await fetch(url, { ...rest, signal: ac.signal });
+      clearTimeout(t);
+      return res;
+    }catch(e){
+      clearTimeout(t);
+      throw e;
+    }
+  }
+
+  async function tryOpen(){
+    const v = el.value || '';
+    if(v === lastVal) return;
+    lastVal = v;
+    const m = v.match(TT);
     if(!m) return;
     const imdbID = m[1];
+
+    if(ctrl) ctrl.abort();
+    ctrl = new AbortController();
+
     try{
-      const meta = await fetchOmdbById(imdbID);
-      if(meta && typeof openAddConfirmModal==='function'){
-        openAddConfirmModal(meta);
+      if(typeof fetchOmdbById === 'function'){
+        const meta = await fetchOmdbById(imdbID, { signal: ctrl.signal, timeout: 9000 });
+        if(meta && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
+      }else{
+        const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+        if(!KEY) return;
+        const resp = await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`, { timeout: 9000 });
+        const meta = await resp.json();
+        if(meta && meta.imdbID && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
       }
-    }catch(e){}
-  });
+    }catch(e){
+      // silent
+    }
+  }
+
+  function schedule(){
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(tryOpen, 250);
+  }
+
+  el.addEventListener('paste', ()=>{ setTimeout(schedule, 0); });
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
 })();
 </script>
 
@@ -1516,23 +1602,66 @@ if(!baseStream && streamSel){
 </script>
 
 
+
 <script>
 (function(){
   const el = document.getElementById('add-imdb');
-  if(!el || el._ensured_modal_open) return;
-  el._ensured_modal_open = true;
-  const ttRe = /(tt\d{7,9})/;
-  el.addEventListener('input', async ()=>{
-    const m = (el.value||'').match(ttRe);
+  if(!el || el._imdbHandlerBound) return;
+  el._imdbHandlerBound = true;
+
+  let ctrl = null, timer = null, lastVal = '';
+  const TT = /(tt\d{7,9})/;
+
+  async function fetchWithTimeout(url, opts){
+    const { timeout = 10000, ...rest } = opts || {};
+    const ac = new AbortController();
+    const t = setTimeout(()=>ac.abort(), timeout);
+    try{
+      const res = await fetch(url, { ...rest, signal: ac.signal });
+      clearTimeout(t);
+      return res;
+    }catch(e){
+      clearTimeout(t);
+      throw e;
+    }
+  }
+
+  async function tryOpen(){
+    const v = el.value || '';
+    if(v === lastVal) return;
+    lastVal = v;
+    const m = v.match(TT);
     if(!m) return;
     const imdbID = m[1];
+
+    if(ctrl) ctrl.abort();
+    ctrl = new AbortController();
+
     try{
-      const meta = await fetchOmdbById(imdbID);
-      if(meta && typeof openAddConfirmModal==='function'){
-        openAddConfirmModal(meta);
+      if(typeof fetchOmdbById === 'function'){
+        const meta = await fetchOmdbById(imdbID, { signal: ctrl.signal, timeout: 9000 });
+        if(meta && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
+      }else{
+        const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+        if(!KEY) return;
+        const resp = await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`, { timeout: 9000 });
+        const meta = await resp.json();
+        if(meta && meta.imdbID && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
       }
-    }catch(e){}
-  });
+    }catch(e){
+      // silent
+    }
+  }
+
+  function schedule(){
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(tryOpen, 250);
+  }
+
+  el.addEventListener('paste', ()=>{ setTimeout(schedule, 0); });
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
 })();
 </script>
 
