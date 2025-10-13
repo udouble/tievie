@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl">
-<head><style id="noflash2">html{opacity:0}</style><script>(function(){function show(){var s=document.getElementById("noflash2");if(s) s.remove();document.documentElement.style.opacity="1";}if(document.readyState!=="loading"){show()}else{document.addEventListener("DOMContentLoaded",show)}})();</script><noscript><style>#noflash2{display:none}html{opacity:1}</style></noscript>
+<head><script>document.documentElement.classList.add("js-ready")</script><style id="noflash">html:not(.js-ready) body{visibility:hidden}</style>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
@@ -410,25 +410,474 @@ function renderSuggest(arr){
     ADDING_LOCK = true;
     try{
       hideSuggest();
-      const imdbID = row.dataset.imdbid;
-      const title  = row.dataset.title;
-      const year   = row.dataset.year;
-      const poster = row.dataset.poster;
-      const all = await dbGetAll();
-      const titleSet = new Set(all.map(x=>normalizeTitle(x.title||'')));
+      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+      const all=await dbGetAll();
+      const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
       if(titleSet.has(normalizeTitle(title))){
-        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); }
-        else { alert('Deze titel is al eerder toegevoegd.'); }
+        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
         return;
       }
-      if(typeof openAddConfirmModal==='function'){
-        openAddConfirmModal({ title, Year: year, Poster: poster, imdbID });
-      }
+      if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
     } finally {
       ADDING_LOCK = false;
     }
   });
 });
+}
+function showSuggest(){
+  suggestBox.style.display='block'; suggestOpen=true;
+  const inp=document.getElementById('add-search'); const r=inp.getBoundingClientRect();
+  suggestBox.style.left=(r.left+window.scrollX)+'px';
+  suggestBox.style.top=(r.bottom+window.scrollY+6)+'px';
+  suggestBox.querySelector('.card').style.width=Math.max(320, r.width)+'px';
+}
+function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
+
+// IMDb overlay
+const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
+function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
+imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
+imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
+
+function bindUI(){
+  const f=document.getElementById('file-import');
+  document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
+  f.onchange=()=>{const file=f.files&&f.files[0];if(file)importJson(file)};
+  document.getElementById('btn-export').onclick=exportJson;
+  document.getElementById('btn-posters').onclick=fetchMissingPosters;
+  (function(){
+    const fc = document.getElementById('filterControls');
+    if(!fc) return;
+    fc.addEventListener('click', e=>{
+      const b = e.target.closest('.filter-btn');
+      if(!b) return;
+      fc.querySelectorAll('.filter-btn').forEach(btn=>{
+        const active = (btn === b);
+        btn.classList.toggle('bg-sky-500', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('bg-white/30', !active);
+        btn.classList.toggle('hover:bg-white/40', !active);
+      });
+      app.state.filter = b.dataset.filter;
+      app.render();
+    });
+  })();
+  document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
+  document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
+}
+
+async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
+
+async function importJson(file){
+  setStatus('Import JSON gestart…');
+  try{
+    const text=await file.text();const data=JSON.parse(text);
+    const arr=Array.isArray(data)?data:(data.items||[]);
+    const existing=await dbGetAll();
+    const byKey=new Map(existing.map(x=>[keyFor(x), x]));
+    const upserts=[];
+    for(const raw of arr){
+      const incoming={
+        id: raw.id || undefined,
+        title: raw.title || '',
+        type: raw.type || 'film',
+        createdAt: raw.createdAt || Date.now(),
+        imdbRating: raw.imdbRating || '',
+        year: raw.year || '',
+        runtime: raw.runtime || '',
+        poster: (raw.poster && raw.poster!=='N/A')?raw.poster:'',
+        streamingOn: raw.streamingOn || '',
+        ourScore: (raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan') ? '' : String(raw.ourScore),
+        dateSeen: raw.dateSeen || '',
+        imdbID: raw.imdbID || raw.imdbId || ''
+      };
+      const k=keyFor(incoming);
+      if(byKey.has(k)){
+        const merged=mergeItems(byKey.get(k), incoming);
+        byKey.set(k, merged);
+      }else{
+        byKey.set(k, { id: 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...incoming });
+      }
+    }
+    for(const [,val] of byKey) upserts.push(val);
+    await dbBulkPut(upserts);
+    app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
+  }catch(e){console.error(e); setStatus('Import JSON error');}
+}
+
+async function fetchMissingPosters(){
+  if(!IS_ONLINE){alert('Posters ophalen werkt enkel online.');return;}
+  let items=await dbGetAll(); let changed=0;
+  for(const it of items){
+    if(!it.poster || it.poster==='N/A'){
+      let url=''; try{
+        if(it.imdbID){const r=await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(it.imdbID));const j=await r.json();url=j.Poster&&j.Poster!=='N/A'?j.Poster:'';}
+        if(!url && it.title){const r=await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&t='+encodeURIComponent(it.title)+(it.year?('&y='+it.year):''));const j=await r.json();url=j.Poster&&j.Poster!=='N/A'?j.Poster:'';}
+      }catch(e){}
+      if(url){ it.poster=url; await dbPut(it); changed++; }
+    }
+  }
+  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
+  setStatus('Posters afgerond. Geüpdatet: '+changed);
+}
+
+// ======= Auto-seed on first run =======
+async function autoSeedIfEmpty(){
+  const current = await dbGetAll();
+  if(current && current.length>0) return;
+  const files = ['films.json','series.json','herman-film.json','herman-serie.json','aanhetkijken.json','bekeken.json'];
+  let merged=[];
+  for(const f of files){
+    try{
+      const res = await fetch('./data/'+f+'?ts='+Date.now(), {cache:'no-store'});
+      if(!res.ok) continue;
+      const j = await res.json();
+      const arr = Array.isArray(j)?j:(j.items||[]);
+      merged = merged.concat(arr);
+    }catch(e){} 
+  }
+  if(merged.length){
+    const now=Date.now();
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
+    await dbBulkPut(prepped);
+  }
+}
+
+let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
+async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
+async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
+navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+
+// ===== Streaming multi-select (floating panel) =====
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
+
+function buildStreamMenu(){
+  const list = document.getElementById('streamList');
+  if(!list) return;
+  list.innerHTML = '';
+  STREAM_SERVICES.forEach(s=>{
+    const id = 'stream-cb-'+(s==='__UNKNOWN__'?'unknown':s.replace(/\W+/g,'').toLowerCase());
+    const label = s==='__UNKNOWN__' ? 'Onbekend' : s;
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" id="${id}" value="${s}" class="w-4 h-4"> <span>${label}</span>`;
+    const cb = row.querySelector('input');
+    cb.checked = app.state.streamSet.has(s);
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
+      app.render(); bindStreamUI();
+      updateStreamBadge();
+    });
+    list.appendChild(row);
+  });
+}
+
+function positionStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  const btn = document.getElementById('streamBtn');
+  if(!menu || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const top = r.bottom + 6 + window.scrollY;
+  const left = Math.min(r.left + window.scrollX, window.scrollX + (document.documentElement.clientWidth - menu.offsetWidth - 12));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function openStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  buildStreamMenu();
+  menu.style.display = 'block';
+  positionStreamMenu();
+  const onDocClick = (e)=>{
+    const btn = document.getElementById('streamBtn');
+    if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeStreamMenu();
+  };
+  const onKey = (e)=>{ if(e.key==='Escape'){ closeStreamMenu(); } };
+  document.addEventListener('mousedown', onDocClick, {capture:true});
+  document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+  document.addEventListener('keydown', onKey, {capture:true});
+  menu._cleanup = ()=>{
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+  };
+}
+
+function closeStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  menu.style.display = 'none';
+  if(typeof menu._cleanup==='function'){ try{ menu._cleanup(); }catch(e){} }
+}
+
+function bindStreamUI(){
+  const btn = document.getElementById('streamBtn');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const menu = document.getElementById('streamMenu');
+    if(menu && menu.style.display==='block'){ closeStreamMenu(); } else { openStreamMenu(); }
+  });
+  const allBtn = document.getElementById('streamAll');
+  const noneBtn = document.getElementById('streamNone');
+  if(allBtn) allBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set(STREAM_SERVICES);
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set();
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  updateStreamBadge();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
+  bindUI();
+  try{
+    await syncPull();
+    await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    await syncPush();
+  }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
+});
+
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+</script>
+<script src="./tievie-fixes-v3_29.js?v=3.29?v=3.27"></script>
+
+<div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
+  <div class="flex items-center justify-between mb-2">
+    <strong class="text-slate-800">Streamingdiensten</strong>
+    <div class="flex items-center gap-2">
+      <button id="streamAll" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Alles</button>
+      <button id="streamNone" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Niets</button>
+    </div>
+  </div>
+  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900"></div>
+</div>
+
+<script>
+(function(){
+  const btn = document.getElementById('btn-help');
+  const menu = document.getElementById('helpMenu');
+  if(!btn || !menu) return;
+  function open(){ menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); attach(); }
+  function close(){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); detach(); }
+  function toggle(e){ e && e.preventDefault && e.preventDefault(); (menu.classList.contains('hidden')?open():close()); }
+  let onDocClick=null, onKey=null;
+  function attach(){
+    if(onDocClick) return;
+    onDocClick = (e)=>{ if(menu.contains(e.target) || btn.contains(e.target)) return; close(); };
+    onKey = (e)=>{ if(e.key==='Escape') close(); };
+    document.addEventListener('mousedown', onDocClick, {capture:true});
+    document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+    document.addEventListener('keydown', onKey, {capture:true});
+  }
+  function detach(){
+    if(!onDocClick) return;
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+    onDocClick=null; onKey=null;
+  }
+  btn.addEventListener('click', toggle, {passive:false});
+})();
+</script>
+
+
+<!-- Centrale popup voor dubbele titel -->
+<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
+  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+      <strong>Dubbele titel</strong>
+      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
+      <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten met ✕. Er wordt niets toegevoegd.</p>
+    </div>
+  </div>
+</div>
+<script>
+  (function(){
+    window.openDuplicateModal = function(title){
+      var m = document.getElementById('dupModal');
+      if(!m){ alert('Deze titel is al eerder toegevoegd.'); return; }
+      var msg = m.querySelector('#dupMsg');
+      if(msg){ msg.textContent = 'Deze titel is al eerder toegevoegd.'; }
+      m.style.display = 'flex';
+    };
+    var closeBtn = null;
+    function close(){ var m=document.getElementById('dupModal'); if(m) m.style.display='none'; }
+    document.addEventListener('DOMContentLoaded', function(){
+      closeBtn = document.getElementById('dupClose');
+      if(closeBtn) closeBtn.addEventListener('click', close);
+      var modal = document.getElementById('dupModal');
+      if(modal){
+        modal.addEventListener('click', function(e){ if(e.target === modal){ close(); } });
+      }
+    });
+  })();
+</script>
+
+
+<script>
+/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
+(function(){
+  function fixScoreRow(card){
+    if(!card) return;
+    const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
+    if(!row || row.dataset.scoreGrid==='1') return;
+    const label = row.querySelector('label');
+    if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
+    const input = row.querySelector('.our-score-input');
+    const btn = row.querySelector('.btn-imdb');
+    if(!input || !btn) return;
+
+    // Container gelijk maken aan de 2-koloms rij erboven
+    row.classList.remove('flex','items-center','gap-2');
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    row.style.gap = '0.5rem'; // gap-2
+
+    // Linkerkolom
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+    left.appendChild(label);
+    left.appendChild(input);
+    input.style.width = '100%'; // exact uitlijnen met 'Categorie'
+
+    // Rechterkolom
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.flexDirection = 'column';
+    const ghost = document.createElement('label');
+    ghost.className = 'block font-medium text-slate-600 mb-0.5';
+    ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
+    right.appendChild(btn);
+
+    // Vervang inhoud
+    while(row.firstChild) row.removeChild(row.firstChild);
+    row.appendChild(left);
+    row.appendChild(right);
+
+    row.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){ document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow); }
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
+(function(){
+  function toGrid(card){
+    if(!card) return;
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    const flexRow = container.querySelector('.flex.items-center');
+    if(!flexRow || flexRow.dataset.scoreGrid==='1') return;
+    const label = flexRow.querySelector('label');
+    const input = flexRow.querySelector('.our-score-input');
+    const btn   = flexRow.querySelector('.btn-imdb');
+    if(!label || !input || !btn) return;
+
+    // Bouw een grid zoals de rij erboven (2 kolommen, gelijke breedte, zelfde gap)
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '0.5rem';
+
+    // Linkerkolom: bestaand label + input (we verplaatsen de echte nodes, geen clones)
+    const left = document.createElement('div');
+    left.appendChild(label);
+    left.appendChild(input);
+
+    // Rechterkolom: ghost label voor verticale uitlijning + IMDB-knop op volle breedte
+    const right = document.createElement('div');
+    const ghost = document.createElement('label');
+    ghost.textContent = '\u00A0';
+    ghost.style.visibility = 'hidden';
+    right.appendChild(ghost);
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    right.appendChild(btn);
+
+    // Vervang de oude flex-rij door onze grid-rij
+    container.replaceChild(grid, flexRow);
+    grid.appendChild(left);
+    grid.appendChild(right);
+
+    // Markeer, zodat we het niet opnieuw doen
+    grid.dataset.scoreGrid = '1';
+  }
+
+  function sweep(){
+    document.querySelectorAll('.glass[data-item-id]').forEach(toGrid);
+  }
+
+  const obs = new MutationObserver(sweep);
+  obs.observe(document.body, { childList:true, subtree:true });
+  sweep();
+})();
+</script>
+
+
+<script>
+/* Alleen twee dingen, niets anders:
+   1) Delete-X naast de IMDb-badge (badge links, X rechts).
+   2) 'Onze score' + IMDB-knop in 2 gelijke kolommen (zoals rij erboven).
+   Werkt blijvend via MutationObserver. Geen andere layout-wijzigingen. */
+(function(){
+  function relocateX(card){
+    if(!card) return;
+    const imdbStrip = card.querySelector('.info-strip');
+    const delBtn = card.querySelector('[data-action="delete"]');
+    if(!imdbStrip || !delBtn) return;
+
+    const row = imdbStrip.parentElement;
+    // Zet de rij op één lijn met ruimte ertussen (linker: badge, rechter: X)
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.justifyContent = 'space-between';
+
+    // Verplaats de ECHTE knop naar deze rij (niet klonen)
+    if(delBtn.parentElement !== row){
+      try{ row.appendChild(delBtn); }catch(e){}
+    }
+
+    // Verberg de originele bovenste delete-rij zodat poster omhoog komt
+    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
+    if(topRow) topRow.style.display = 'none';
+
+    // Zorg dat de knop niet uitrekt
+    delBtn.style.flexShrink = '0';
+    delBtn.style.marginLeft = '8px';
+  }
+
+  function alignScoreRow(card){
+    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
+    if(!container) return;
+    // Vind de flex-rij met "Onze score"
+    const flexRow = Array.from(container.children).find(el=>{
+      if(!el || !el.querySelector) return false;
+      const lbl = el.querySelector('label');
+      return !!(lbl && /Onze\s*score/i.test(lbl.textContent||''));
+    });
     if(!flexRow) return;
 
     // Als al omgezet naar grid, niets doen
@@ -816,6 +1265,39 @@ document.addEventListener('DOMContentLoaded', function(){
 </div>
 
 
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._addModalBound) return;
+  el._addModalBound = true;
+  let ctrl=null, timer=null, last='';
+  const TT=/(tt\d{7,9})/;
+  async function fetchWithTimeout(url, timeout=9000){
+    const ac = new AbortController(); const t=setTimeout(()=>ac.abort(), timeout);
+    try{const r=await fetch(url,{signal:ac.signal});clearTimeout(t);return r;}catch(e){clearTimeout(t);throw e;}
+  }
+  async function go(){
+    const v=(el.value||'').trim(); if(v===last) return; last=v;
+    const m=v.match(TT); if(!m) return; const imdbID=m[1];
+    if(ctrl) ctrl.abort(); ctrl=new AbortController();
+    try{
+      if(typeof fetchOmdbById==='function'){
+        const meta=await fetchOmdbById(imdbID,{signal:ctrl.signal,timeout:9000});
+        if(meta && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }else{
+        const KEY=(typeof OMDB_KEY!=='undefined'&&OMDB_KEY)?OMDB_KEY:''; if(!KEY) return;
+        const resp=await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`,9000);
+        const meta=await resp.json(); if(meta && meta.imdbID && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }
+    }catch(e){/* silent */}
+  }
+  function schedule(){ if(timer) clearTimeout(timer); timer=setTimeout(go,250); }
+  el.addEventListener('paste', ()=>setTimeout(schedule,0));
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+})();
+</script>
 </body></html>`;
   }
 
@@ -845,6 +1327,39 @@ document.addEventListener('DOMContentLoaded', function(){
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
       </div>
 
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._addModalBound) return;
+  el._addModalBound = true;
+  let ctrl=null, timer=null, last='';
+  const TT=/(tt\d{7,9})/;
+  async function fetchWithTimeout(url, timeout=9000){
+    const ac = new AbortController(); const t=setTimeout(()=>ac.abort(), timeout);
+    try{const r=await fetch(url,{signal:ac.signal});clearTimeout(t);return r;}catch(e){clearTimeout(t);throw e;}
+  }
+  async function go(){
+    const v=(el.value||'').trim(); if(v===last) return; last=v;
+    const m=v.match(TT); if(!m) return; const imdbID=m[1];
+    if(ctrl) ctrl.abort(); ctrl=new AbortController();
+    try{
+      if(typeof fetchOmdbById==='function'){
+        const meta=await fetchOmdbById(imdbID,{signal:ctrl.signal,timeout:9000});
+        if(meta && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }else{
+        const KEY=(typeof OMDB_KEY!=='undefined'&&OMDB_KEY)?OMDB_KEY:''; if(!KEY) return;
+        const resp=await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`,9000);
+        const meta=await resp.json(); if(meta && meta.imdbID && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }
+    }catch(e){/* silent */}
+  }
+  function schedule(){ if(timer) clearTimeout(timer); timer=setTimeout(go,250); }
+  el.addEventListener('paste', ()=>setTimeout(schedule,0));
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+})();
+</script>
 </body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
@@ -889,8 +1404,16 @@ document.addEventListener('DOMContentLoaded', function(){
       const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt), {cache:'no-store'});
       const j = await r.json();
       if(!j || j.Response==='False'){ alert('Niet gevonden op OMDb voor '+tt); return; }
-     if(typeof openAddConfirmModal==='function'){ openAddConfirmModal(j); }
-     if(typeof openAddConfirmModal==='function'){ openAddConfirmModal(j); }script>
+      (typeof openAddConfirmModal==='function') && openAddConfirmModal(j);
+    }catch(err){ console.error(err); alert('Fout bij ophalen via IMDb-ID.'); }
+  });
+  btn._wired_imdb = true;
+})();
+</script>
+
+
+
+<script>
 // IMDb-ID of URL: open de 'Toevoegen'-popup meteen na (in)plakken — geen klik op "Voeg toe" nodig.
 (function(){
   function wire(){
@@ -934,5 +1457,38 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._addModalBound) return;
+  el._addModalBound = true;
+  let ctrl=null, timer=null, last='';
+  const TT=/(tt\d{7,9})/;
+  async function fetchWithTimeout(url, timeout=9000){
+    const ac = new AbortController(); const t=setTimeout(()=>ac.abort(), timeout);
+    try{const r=await fetch(url,{signal:ac.signal});clearTimeout(t);return r;}catch(e){clearTimeout(t);throw e;}
+  }
+  async function go(){
+    const v=(el.value||'').trim(); if(v===last) return; last=v;
+    const m=v.match(TT); if(!m) return; const imdbID=m[1];
+    if(ctrl) ctrl.abort(); ctrl=new AbortController();
+    try{
+      if(typeof fetchOmdbById==='function'){
+        const meta=await fetchOmdbById(imdbID,{signal:ctrl.signal,timeout:9000});
+        if(meta && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }else{
+        const KEY=(typeof OMDB_KEY!=='undefined'&&OMDB_KEY)?OMDB_KEY:''; if(!KEY) return;
+        const resp=await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`,9000);
+        const meta=await resp.json(); if(meta && meta.imdbID && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }
+    }catch(e){/* silent */}
+  }
+  function schedule(){ if(timer) clearTimeout(timer); timer=setTimeout(go,250); }
+  el.addEventListener('paste', ()=>setTimeout(schedule,0));
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+})();
+</script>
 </body>
 </html>
