@@ -726,7 +726,8 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     var closeBtn = null;
     function close(){ var m=document.getElementById('dupModal'); if(m) m.style.display='none'; }
     document.addEventListener('DOMContentLoaded', function(){
-      closeBtn = document.getElementById('dupClose');
+      ensureModalSelectOptions();
+closeBtn = document.getElementById('dupClose');
       if(closeBtn) closeBtn.addEventListener('click', close);
       var modal = document.getElementById('dupModal');
       if(modal){
@@ -1158,7 +1159,54 @@ document.addEventListener('DOMContentLoaded', function(){
       o.textContent = opt.textContent;
       if(opt.selected) o.selected = true;
       toSel.appendChild(o);
+    }
+function ensureModalSelectOptions(){
+  const baseType = document.getElementById('add-type');
+  const baseStream = document.getElementById('add-stream');
+  const typeSel = document.getElementById('addConfirmType');
+  const streamSel = document.getElementById('addConfirmStream');
+  if(typeSel && (!baseType || !baseType.options || baseType.options.length === 0)){
+    typeSel.innerHTML = '';
+    const typeOptions = [
+      {value:'film',label:'Film',selected:true},
+      {value:'serie',label:'Serie'},
+      {value:'herman-film',label:'H-Film'},
+      {value:'herman-serie',label:'H-Serie'},
+      {value:'aan-het-kijken',label:'Aan het kijken'},
+      {value:'bekeken',label:'Bekeken'}
+    ];
+    typeOptions.forEach(o=>{
+      const opt=document.createElement('option');
+      opt.value=o.value;
+      opt.textContent=o.label;
+      if(o.selected) opt.selected=true;
+      typeSel.appendChild(opt);
     });
+  }
+  if(streamSel && (!baseStream || !baseStream.options || baseStream.options.length === 0)){
+    streamSel.innerHTML = '';
+    const streamOptions = [
+      {value:'',label:'Niet toegekend',selected:true},
+      {value:'Streamz',label:'Streamz'},
+      {value:'Netflix',label:'Netflix'},
+      {value:'Prime Video',label:'Prime Video'},
+      {value:'Apple TV+',label:'Apple TV+'},
+      {value:'VRT MAX',label:'VRT MAX'},
+      {value:'Go Play',label:'Go Play'},
+      {value:'NPO',label:'NPO'},
+      {value:'Disney+',label:'Disney+'},
+      {value:'Stremio',label:'Stremio'}
+    ];
+    streamOptions.forEach(o=>{
+      const opt=document.createElement('option');
+      if(o.value) opt.value=o.value;
+      opt.textContent=o.label;
+      if(o.selected) opt.selected=true;
+      streamSel.appendChild(opt);
+    });
+  }
+}
+);
   }
   window.openAddConfirmModal = function(item){
     pendingItem = item || null;
@@ -1172,7 +1220,8 @@ document.addEventListener('DOMContentLoaded', function(){
     const baseStream = document.getElementById('add-stream');
     if(baseType && typeSel) cloneOptions(baseType, typeSel);
     if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
-    // Set defaults to current base selects
+    ensureModalSelectOptions();
+// Set defaults to current base selects
     if(baseType && typeSel) typeSel.value = baseType.value;
     if(baseStream && streamSel) streamSel.value = baseStream.value || '';
     // Fill info
