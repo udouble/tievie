@@ -85,7 +85,7 @@ function attachResetGesture(){
 <body>
 <div class="max-w-7xl mx-auto p-4 pb-28">
   <header class="mb-4">
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
       <div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
@@ -102,11 +102,7 @@ function attachResetGesture(){
             <button id="btn-posters" class="w-full text-left px-3 py-2 hover:bg-white/60">Posters ophalen</button>
             <button id="btn-refresh-meta" class="w-full text-left px-3 py-2 hover:bg-white/60">IMDb-gegevens verversen</button>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+  <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         <option value="created_desc" selected>Nummer (recent → oud)</option>
@@ -119,6 +115,41 @@ function attachResetGesture(){
         <option value="title_desc">Titel Z → A</option>
       </select>
       <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
+      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
+        Waar te zien?
+      </button>
+      <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
+    </div>
+
+    <div class="glass rounded-xl p-3 shadow mb-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative grow min-w-[260px]">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+        </div>
+        <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
+        
+        
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+      </div>
+  <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+      <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
+      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
+        <option value="created_desc" selected>Nummer (recent → oud)</option>
+        <option value="created_asc">Nummer (oud → recent)</option>
+        <option value="imdb_desc">IMDb-score hoog → laag</option>
+        <option value="imdb_asc">IMDb-score laag → hoog</option>
+        <option value="score_desc">Onze score hoog → laag</option>
+        <option value="score_asc">Onze score laag → hoog</option>
+        <option value="title_asc">Titel A → Z</option>
+        <option value="title_desc">Titel Z → A</option>
+      </select>
+      <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
+    
+        </div>
+      </div>
+    </div>
+
+    
       <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         Waar te zien?
       </button>
