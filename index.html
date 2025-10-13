@@ -92,6 +92,27 @@ function attachResetGesture(){
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
         </div>
         <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="film" selected>Film</option>
+          <option value="serie">Serie</option>
+          <option value="herman-film">H-Film</option>
+          <option value="herman-serie">H-Serie</option>
+          <option value="aan-het-kijken">Aan het kijken</option>
+          <option value="bekeken">Bekeken</option>
+        </select>
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="">Niet toegekend</option>
+          <option>Streamz</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
+        
+        <option>Stremio</option></select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
       </div><div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
         <button id="btn-help" aria-haspopup="true" aria-expanded="false"
@@ -412,19 +433,14 @@ function renderSuggest(arr){
       try{
         hideSuggest();
         const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        // (verwijderd) header dropdowns niet meer aanwezig
 const all=await dbGetAll();
-        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
-        const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
-        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-        const k=keyFor(inc);
-        if(titleSet.has(normalizeTitle(title))){
+const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
+if(titleSet.has(normalizeTitle(title))){
           if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
           // Geen toevoeging, geen updates; input laten staan.
           return;
         }
-        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
+if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
       } finally {
         ADDING_LOCK = false;
       }
@@ -1168,27 +1184,27 @@ document.addEventListener('DOMContentLoaded', function(){
     const baseType = document.getElementById('add-type');
     const baseStream = document.getElementById('add-stream');
     if(baseType && typeSel) cloneOptions(baseType, typeSel);
-if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
-// Als de basiselementen NIET bestaan (header dropdowns verwijderd), vul hardcoded opties
-if(!baseType && typeSel){
-  typeSel.innerHTML = [
-    ['film','Film'],
-    ['serie','Serie'],
-    ['herman-film','H-Film'],
-    ['herman-serie','H-Serie'],
-    ['aan-het-kijken','Aan het kijken'],
-    ['bekeken','Bekeken']
-  ].map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
-  typeSel.value = 'film';
-}
-if(!baseStream && streamSel){
-  const streams = ['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
-  streamSel.innerHTML = streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');
-  streamSel.value = '';
-}
-// Set defaults to current base selects indien aanwezig
-if(baseType && typeSel) typeSel.value = baseType.value;
-if(baseStream && streamSel) streamSel.value = baseStream.value || '';
+    if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
+    // Als de header dropdowns niet bestaan, vul de popup met vaste opties (zoals in de app)
+    if(!baseType && typeSel){
+      typeSel.innerHTML = [
+        ['film','Film'],
+        ['serie','Serie'],
+        ['herman-film','H-Film'],
+        ['herman-serie','H-Serie'],
+        ['aan-het-kijken','Aan het kijken'],
+        ['bekeken','Bekeken']
+      ].map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+      typeSel.value = 'film';
+    }
+    if(!baseStream && streamSel){
+      const streams = ['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
+      streamSel.innerHTML = streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');
+      streamSel.value = '';
+    }
+    // Set defaults to current base selects (indien aanwezig)
+    if(baseType && typeSel) typeSel.value = baseType.value;
+    if(baseStream && streamSel) streamSel.value = baseStream.value || '';
     // Fill info
     const title = (item && item.title) || (item && item.Title) || '';
     const type = (item && item.type) || (item && item.Type) || '';
