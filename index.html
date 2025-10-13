@@ -1158,7 +1158,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const t = document.getElementById('addConfirmTitle');
     const m = document.getElementById('addConfirmMeta');
     const p = document.getElementById('addConfirmPoster');
-    \1
+    const typeSel = document.getElementById('addConfirmType');
+    const streamSel = document.getElementById('addConfirmStream');
+    const baseType = document.getElementById('add-type');
+    const baseStream = document.getElementById('add-stream');
 if(baseType && typeSel) cloneOptions(baseType, typeSel);
 if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
 if(!baseType && typeSel){
@@ -1302,6 +1305,27 @@ if(!baseStream && streamSel){
 })();
 </script>
 
+
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._ensured_modal_open) return;
+  el._ensured_modal_open = true;
+  const ttRe = /(tt\d{7,9})/;
+  el.addEventListener('input', async ()=>{
+    const m = (el.value||'').match(ttRe);
+    if(!m) return;
+    const imdbID = m[1];
+    try{
+      const meta = await fetchOmdbById(imdbID);
+      if(meta && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(meta);
+      }
+    }catch(e){}
+  });
+})();
+</script>
+
 </body></html>`;
   }
 
@@ -1335,6 +1359,27 @@ if(!baseStream && streamSel){
 <script>
 (function(){
   const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
+  if(!el || el._ensured_modal_open) return;
+  el._ensured_modal_open = true;
+  const ttRe = /(tt\d{7,9})/;
+  el.addEventListener('input', async ()=>{
+    const m = (el.value||'').match(ttRe);
+    if(!m) return;
+    const imdbID = m[1];
+    try{
+      const meta = await fetchOmdbById(imdbID);
+      if(meta && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(meta);
+      }
+    }catch(e){}
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
   if(!el || el._ensured_modal_open) return;
   el._ensured_modal_open = true;
   const ttRe = /(tt\d{7,9})/;
@@ -1453,6 +1498,27 @@ if(!baseStream && streamSel){
 <script>
 (function(){
   const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
+  if(!el || el._ensured_modal_open) return;
+  el._ensured_modal_open = true;
+  const ttRe = /(tt\d{7,9})/;
+  el.addEventListener('input', async ()=>{
+    const m = (el.value||'').match(ttRe);
+    if(!m) return;
+    const imdbID = m[1];
+    try{
+      const meta = await fetchOmdbById(imdbID);
+      if(meta && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(meta);
+      }
+    }catch(e){}
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
   if(!el || el._ensured_modal_open) return;
   el._ensured_modal_open = true;
   const ttRe = /(tt\d{7,9})/;
