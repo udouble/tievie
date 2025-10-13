@@ -87,13 +87,18 @@ function attachResetGesture(){
   <header class="mb-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
-      <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[320px]">
+      
+<div class="flex flex-wrap items-center gap-2 min-w-[320px]">
   <div class="relative grow min-w-[260px]">
     <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
   </div>
   <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
   <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
-</div><div class="relative">
+</div>
+
+<input id="add-type" type="hidden" value="film">
+<input id="add-stream" type="hidden" value="">
+<div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
         <button id="btn-help" aria-haspopup="true" aria-expanded="false"
                 class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">
@@ -130,7 +135,9 @@ function attachResetGesture(){
       </button>
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
-</header>
+
+    
+  </header>
 
   <section class="mb-3">
     <div id="filterControls" class="flex flex-wrap items-center gap-2">
@@ -411,10 +418,8 @@ function renderSuggest(arr){
       try{
         hideSuggest();
         const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSelEl = document.getElementById('add-type');
-        const streamSelEl = document.getElementById('add-stream');
-        const typeSel = typeSelEl ? typeSelEl.value : 'film';
-        const streamSel = streamSelEl ? streamSelEl.value : '';
+        const typeSel=document.getElementById('add-type').value;
+        const streamSel=document.getElementById('add-stream').value;
 
         const all=await dbGetAll();
         const keyMap=new Map(all.map(x=>[keyFor(x), x]));
@@ -726,8 +731,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     var closeBtn = null;
     function close(){ var m=document.getElementById('dupModal'); if(m) m.style.display='none'; }
     document.addEventListener('DOMContentLoaded', function(){
-      ensureModalSelectOptions();
-closeBtn = document.getElementById('dupClose');
+      closeBtn = document.getElementById('dupClose');
       if(closeBtn) closeBtn.addEventListener('click', close);
       var modal = document.getElementById('dupModal');
       if(modal){
@@ -1152,109 +1156,14 @@ document.addEventListener('DOMContentLoaded', function(){
 (function(){
   let pendingItem = null;
   function cloneOptions(fromSel, toSel){
-  if(!fromSel || !toSel) return;
-  toSel.innerHTML = '';
-  const opts = (fromSel && fromSel.options) ? Array.from(fromSel.options) : [];
-  opts.forEach(opt=>{
-    const o = document.createElement('option');
-    if(opt.value) o.value = opt.value;
-    o.textContent = opt.textContent;
-    if(opt.selected) o.selected = true;
-    toSel.appendChild(o);
-  });
-}
-function ensureModalSelectOptions(){
-  const baseType = document.getElementById('add-type');
-  const baseStream = document.getElementById('add-stream');
-  const typeSel = document.getElementById('addConfirmType');
-  const streamSel = document.getElementById('addConfirmStream');
-  if(typeSel && (!baseType || !baseType.options || baseType.options.length === 0)){
-    typeSel.innerHTML = '';
-    const typeOptions = [
-      {value:'film',label:'Film',selected:true},
-      {value:'serie',label:'Serie'},
-      {value:'herman-film',label:'H-Film'},
-      {value:'herman-serie',label:'H-Serie'},
-      {value:'aan-het-kijken',label:'Aan het kijken'},
-      {value:'bekeken',label:'Bekeken'}
-    ];
-    typeOptions.forEach(o=>{
-      const opt=document.createElement('option');
-      opt.value=o.value;
-      opt.textContent=o.label;
-      if(o.selected) opt.selected=true;
-      typeSel.appendChild(opt);
+    toSel.innerHTML = '';
+    Array.from(fromSel.options).forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt.value || opt.textContent;
+      o.textContent = opt.textContent;
+      if(opt.selected) o.selected = true;
+      toSel.appendChild(o);
     });
-  }
-  if(streamSel && (!baseStream || !baseStream.options || baseStream.options.length === 0)){
-    streamSel.innerHTML = '';
-    const streamOptions = [
-      {value:'',label:'Niet toegekend',selected:true},
-      {value:'Streamz',label:'Streamz'},
-      {value:'Netflix',label:'Netflix'},
-      {value:'Prime Video',label:'Prime Video'},
-      {value:'Apple TV+',label:'Apple TV+'},
-      {value:'VRT MAX',label:'VRT MAX'},
-      {value:'Go Play',label:'Go Play'},
-      {value:'NPO',label:'NPO'},
-      {value:'Disney+',label:'Disney+'},
-      {value:'Stremio',label:'Stremio'}
-    ];
-    streamOptions.forEach(o=>{
-      const opt=document.createElement('option');
-      opt.value=o.value;
-      opt.textContent=o.label;
-      if(o.selected) opt.selected=true;
-      streamSel.appendChild(opt);
-    });
-  }
-}function ensureModalSelectOptions(){
-  const baseType = document.getElementById('add-type');
-  const baseStream = document.getElementById('add-stream');
-  const typeSel = document.getElementById('addConfirmType');
-  const streamSel = document.getElementById('addConfirmStream');
-  if(typeSel && (!baseType || !baseType.options || baseType.options.length === 0)){
-    typeSel.innerHTML = '';
-    const typeOptions = [
-      {value:'film',label:'Film',selected:true},
-      {value:'serie',label:'Serie'},
-      {value:'herman-film',label:'H-Film'},
-      {value:'herman-serie',label:'H-Serie'},
-      {value:'aan-het-kijken',label:'Aan het kijken'},
-      {value:'bekeken',label:'Bekeken'}
-    ];
-    typeOptions.forEach(o=>{
-      const opt=document.createElement('option');
-      opt.value=o.value;
-      opt.textContent=o.label;
-      if(o.selected) opt.selected=true;
-      typeSel.appendChild(opt);
-    });
-  }
-  if(streamSel && (!baseStream || !baseStream.options || baseStream.options.length === 0)){
-    streamSel.innerHTML = '';
-    const streamOptions = [
-      {value:'',label:'Niet toegekend',selected:true},
-      {value:'Streamz',label:'Streamz'},
-      {value:'Netflix',label:'Netflix'},
-      {value:'Prime Video',label:'Prime Video'},
-      {value:'Apple TV+',label:'Apple TV+'},
-      {value:'VRT MAX',label:'VRT MAX'},
-      {value:'Go Play',label:'Go Play'},
-      {value:'NPO',label:'NPO'},
-      {value:'Disney+',label:'Disney+'},
-      {value:'Stremio',label:'Stremio'}
-    ];
-    streamOptions.forEach(o=>{
-      const opt=document.createElement('option');
-      if(o.value) opt.value=o.value;
-      opt.textContent=o.label;
-      if(o.selected) opt.selected=true;
-      streamSel.appendChild(opt);
-    });
-  }
-}
-);
   }
   window.openAddConfirmModal = function(item){
     pendingItem = item || null;
@@ -1268,9 +1177,7 @@ function ensureModalSelectOptions(){
     const baseStream = document.getElementById('add-stream');
     if(baseType && typeSel) cloneOptions(baseType, typeSel);
     if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
-    ensureModalSelectOptions();
-    ensureModalSelectOptions();
-// Set defaults to current base selects
+    // Set defaults to current base selects
     if(baseType && typeSel) typeSel.value = baseType.value;
     if(baseStream && streamSel) streamSel.value = baseStream.value || '';
     // Fill info
