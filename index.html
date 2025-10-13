@@ -404,33 +404,27 @@ function renderSuggest(arr){
     </div>
   </div>`).join('');
   showSuggest();
-  Array.from(suggestList.children).forEach(row=>{
-    row.addEventListener('click', async ()=>{
-      if(ADDING_LOCK) return;
-      ADDING_LOCK = true;
-      try{
-        hideSuggest();
-        const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSel=document.getElementById('add-type').value;
-        const streamSel=document.getElementById('add-stream').value;
-
-        const all=await dbGetAll();
-        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
-        const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
-        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-        const k=keyFor(inc);
-        if(titleSet.has(normalizeTitle(title))){
-          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
-          // Geen toevoeging, geen updates; input laten staan.
-          return;
-        }
-        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
-      } finally {
-        ADDING_LOCK = false;
+  
+Array.from(suggestList.children).forEach(row=>{
+  row.addEventListener('click', async ()=>{
+    if(ADDING_LOCK) return;
+    ADDING_LOCK = true;
+    try{
+      hideSuggest();
+      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+      const all=await dbGetAll();
+      const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
+      if(titleSet.has(normalizeTitle(title))){
+        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+        return;
       }
-    });
+      if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
+    } finally {
+      ADDING_LOCK = false;
+    }
   });
+});
+
 }
 function showSuggest(){
   suggestBox.style.display='block'; suggestOpen=true;
@@ -1164,11 +1158,25 @@ document.addEventListener('DOMContentLoaded', function(){
     const t = document.getElementById('addConfirmTitle');
     const m = document.getElementById('addConfirmMeta');
     const p = document.getElementById('addConfirmPoster');
-    const typeSel = document.getElementById('addConfirmType');
-    const streamSel = document.getElementById('addConfirmStream');
-    const baseType = document.getElementById('add-type');
-    const baseStream = document.getElementById('add-stream');
-    if(baseType && typeSel) cloneOptions(baseType, typeSel);
+    \1
+if(baseType && typeSel) cloneOptions(baseType, typeSel);
+if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
+if(!baseType && typeSel){
+  typeSel.innerHTML = [
+    ['film','Film'],
+    ['serie','Serie'],
+    ['herman-film','H-Film'],
+    ['herman-serie','H-Serie'],
+    ['aan-het-kijken','Aan het kijken'],
+    ['bekeken','Bekeken']
+  ].map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+  typeSel.value = 'film';
+}
+if(!baseStream && streamSel){
+  const streams = ['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
+  streamSel.innerHTML = streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');
+  streamSel.value = '';
+}if(baseType && typeSel) cloneOptions(baseType, typeSel);
     if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
     // Set defaults to current base selects
     if(baseType && typeSel) typeSel.value = baseType.value;
@@ -1273,6 +1281,27 @@ document.addEventListener('DOMContentLoaded', function(){
 </div>
 
 
+
+<script>
+(function(){
+  const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
+  if(!el || el._ensured_modal_open) return;
+  el._ensured_modal_open = true;
+  const ttRe = /(tt\d{7,9})/;
+  el.addEventListener('input', async ()=>{
+    const m = (el.value||'').match(ttRe);
+    if(!m) return;
+    const imdbID = m[1];
+    try{
+      const meta = await fetchOmdbById(imdbID);
+      if(meta && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(meta);
+      }
+    }catch(e){}
+  });
+})();
+</script>
+
 </body></html>`;
   }
 
@@ -1301,6 +1330,27 @@ document.addEventListener('DOMContentLoaded', function(){
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
       </div>
+
+
+<script>
+(function(){
+  const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
+  if(!el || el._ensured_modal_open) return;
+  el._ensured_modal_open = true;
+  const ttRe = /(tt\d{7,9})/;
+  el.addEventListener('input', async ()=>{
+    const m = (el.value||'').match(ttRe);
+    if(!m) return;
+    const imdbID = m[1];
+    try{
+      const meta = await fetchOmdbById(imdbID);
+      if(meta && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(meta);
+      }
+    }catch(e){}
+  });
+})();
+</script>
 
 </body></html>`;
       frame.setAttribute('srcdoc', skel);
@@ -1396,6 +1446,27 @@ document.addEventListener('DOMContentLoaded', function(){
   }else{
     wire();
   }
+})();
+</script>
+
+
+<script>
+(function(){
+  const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
+  if(!el || el._ensured_modal_open) return;
+  el._ensured_modal_open = true;
+  const ttRe = /(tt\d{7,9})/;
+  el.addEventListener('input', async ()=>{
+    const m = (el.value||'').match(ttRe);
+    if(!m) return;
+    const imdbID = m[1];
+    try{
+      const meta = await fetchOmdbById(imdbID);
+      if(meta && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(meta);
+      }
+    }catch(e){}
+  });
 })();
 </script>
 
