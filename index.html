@@ -411,15 +411,9 @@ function renderSuggest(arr){
       try{
         hideSuggest();
         const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSel=document.getElementById('add-type').value;
-        const streamSel=document.getElementById('add-stream').value;
-
         const all=await dbGetAll();
-        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
         const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
-        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-        const k=keyFor(inc);
-        if(titleSet.has(normalizeTitle(title))){
+if(titleSet.has(normalizeTitle(title))){
           if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
           // Geen toevoeging, geen updates; input laten staan.
           return;
@@ -1346,16 +1340,7 @@ document.addEventListener('DOMContentLoaded', function(){
       const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt), {cache:'no-store'});
       const j = await r.json();
       if(!j || j.Response==='False'){ alert('Niet gevonden op OMDb voor '+tt); return; }
-      (typeof openAddConfirmModal==='function') && openAddConfirmModal(j);
-    }catch(err){ console.error(err); alert('Fout bij ophalen via IMDb-ID.'); }
-  });
-  btn._wired_imdb = true;
-})();
-</script>
-
-
-
-<script>
+      if(typeof openAddConfirmModal==='function'){ openAddConfirmModal(j); }script>
 // IMDb-ID of URL: open de 'Toevoegen'-popup meteen na (in)plakken — geen klik op "Voeg toe" nodig.
 (function(){
   function wire(){
