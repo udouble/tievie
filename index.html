@@ -85,15 +85,8 @@ function attachResetGesture(){
 <body>
 <div class="max-w-7xl mx-auto p-4 pb-28">
   <header class="mb-4">
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3 flex-1 min-w-[280px]">
-        <h1 class="text-2xl font-bold whitespace-nowrap">Tievie <span id="netBadge" class="badge">…</span></h1>
-        <div class="flex items-center gap-2 flex-1">
-          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-          <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
-          <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
-        </div>
-      </div>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
       <div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
         <button id="btn-help" aria-haspopup="true" aria-expanded="false"
@@ -132,7 +125,35 @@ function attachResetGesture(){
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
 
-    
+    <div class="glass rounded-xl p-3 shadow mb-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative grow min-w-[260px]">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+        </div>
+        <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
+        <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="film" selected>Film</option>
+          <option value="serie">Serie</option>
+          <option value="herman-film">H-Film</option>
+          <option value="herman-serie">H-Serie</option>
+          <option value="aan-het-kijken">Aan het kijken</option>
+          <option value="bekeken">Bekeken</option>
+        </select>
+        <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
+          <option value="">Niet toegekend</option>
+          <option>Streamz</option>
+          <option>Netflix</option>
+          <option>Prime Video</option>
+          <option>Apple TV+</option>
+          <option>VRT MAX</option>
+          <option>Go Play</option>
+          <option>NPO</option>
+          <option>Disney+</option>
+        
+        <option>Stremio</option></select>
+        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+      </div>
+    </div>
   </header>
 
   <section class="mb-3">
@@ -414,8 +435,8 @@ function renderSuggest(arr){
       try{
         hideSuggest();
         const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSel=(document.getElementById('add-type')?.value)||'film';
-        const streamSel=(document.getElementById('add-stream')?.value)||'';
+        const typeSel=document.getElementById('add-type').value;
+        const streamSel=document.getElementById('add-stream').value;
 
         const all=await dbGetAll();
         const keyMap=new Map(all.map(x=>[keyFor(x), x]));
