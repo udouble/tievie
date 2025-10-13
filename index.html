@@ -46,10 +46,6 @@ function attachResetGesture(){
   .online {background:#22c55e;color:#052e16}
   .offline {background:#ef4444;color:#7f1d1d}
   ::placeholder{font-style:italic;color:#64748b}
-  #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
-  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
-  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
   #suggest{position:fixed;display:none;z-index:100001}
   #suggest .card{max-height:420px;overflow:auto}
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
@@ -176,11 +172,7 @@ function attachResetGesture(){
   </main>
 </div>
 
-<div id="imdbOverlay">
-  <div id="imdbPanel">
-    <div id="imdbBar">
-      <div class="flex items-center gap-2"><span class="text-sm opacity-80">IMDb</span></div>
-      <button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
+<button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
     </div>
     <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
   </div>
@@ -369,7 +361,7 @@ function card(item, index){
       <div class="flex items-center gap-2">
         <label class="text-sm text-slate-700">Onze score:</label>
         <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm"> disabled aria-disabled="true">IMDB</button>
       </div>
       ${dateSeenHTML}
     </div>
@@ -455,10 +447,10 @@ function showSuggest(){
 function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
 // IMDb overlay
-const imdbOverlay=document.getElementById('imdbOverlay'); const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
-function openImdbOverlay(id){ if(!id){alert('Geen IMDb ID'); return;} imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/'; imdbOverlay.style.display='flex'; }
-imdbClose.addEventListener('click', ()=>{ imdbOverlay.style.display='none'; imdbFrame.src='about:blank'; });
-imdbOverlay.addEventListener('click', (e)=>{ if(e.target===imdbOverlay){ imdbClose.click(); } });
+const  const imdbFrame=document.getElementById('imdbFrame'); const imdbClose=document.getElementById('imdbClose');
+imdbFrame.src='https://www.imdb.com/title/'+encodeURIComponent(id)+'/';  }
+imdbClose.addEventListener('click', ()=>{  imdbFrame.src='about:blank'; });
+ } });
 
 function bindUI(){
   const f=document.getElementById('file-import');
@@ -1020,7 +1012,7 @@ body {
           <div class="flex-1">
             <div class="flex items-center justify-between gap-3">
               <h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3>
-              <button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+              <button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm"> disabled aria-disabled="true">IMDB</button>
             </div>
             <div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase()+type.slice(1) : ''} • ${year||'—'} ${stream?('• '+stream):''}</div>
             <div class="mt-2 flex gap-3 text-sm">
@@ -1034,7 +1026,7 @@ body {
         if(b){
           b.addEventListener('click', function(e){
             e.preventDefault(); e.stopPropagation();
-            if(window.openImdbOverlay){ window.openImdbOverlay(imdbId); }
+            if( }
           });
         }
       }catch(e){}
@@ -1242,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 // IMDb-info popup — rijke OMDb weergave
 (function(){
-  const overlay = document.getElementById('imdbOverlay');
+  const overlay = document.getElementById('
   const frame   = document.getElementById('imdbFrame');
   const closeBtn= document.getElementById('imdbClose');
   const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
@@ -1297,8 +1289,7 @@ document.addEventListener('DOMContentLoaded', function(){
     return null;
   }
 
-  window.openImdbOverlay = async function(imdbID, poster){
-    if(!imdbID){ alert('Geen IMDb ID'); return; }
+   return; }
     try{
       const skel = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
       <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -1333,7 +1324,7 @@ document.addEventListener('DOMContentLoaded', function(){
       e.preventDefault();
       const imdbId = btn.getAttribute('data-imdbid') || '';
       const poster = btn.getAttribute('data-poster') || '';
-      if(imdbId){ window.openImdbOverlay(imdbId, poster); }
+      if(imdbId){  }
     }
   });
 })();
