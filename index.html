@@ -1348,6 +1348,38 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   btn._wired_imdb = true;
 })();
+
+// Auto-open add modal when a valid IMDb ID/URL is pasted into the IMDb field
+(function(){
+  const imdbInput = document.getElementById('add-imdb');
+  if(!imdbInput || imdbInput._wired_auto_open) return;
+  let lastHandled = '';
+  async function tryHandle(value){
+    const raw = (value||'').trim();
+    if(!raw) return;
+    const m = raw.match(/tt\d{6,}/i);
+    if(!m) return;
+    const tt = m[0].toLowerCase();
+    if(tt === lastHandled) return;
+    lastHandled = tt;
+    try{
+      if(!IS_ONLINE){ alert('Online nodig om via IMDb-ID toe te voegen.'); return; }
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt), {cache:'no-store'});
+      const j = await r.json();
+      if(!j || j.Response==='False'){ alert('Niet gevonden op OMDb voor '+tt); return; }
+      (typeof openAddConfirmModal==='function') && openAddConfirmModal(j);
+    }catch(err){ console.error(err); }
+  }
+  imdbInput.addEventListener('paste', (e)=>{
+    setTimeout(()=>{ tryHandle(imdbInput.value); }, 0);
+  });
+  imdbInput.addEventListener('input', ()=>{
+    // only trigger when a full tt… appears; guard prevents repeated fetches
+    tryHandle(imdbInput.value);
+  });
+  imdbInput._wired_auto_open = true;
+})();
+
 </script>
 
 </body>
