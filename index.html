@@ -130,6 +130,7 @@ function attachResetGesture(){
         <div class="relative grow min-w-[260px]">
           <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
         </div>
+        <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
         <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
           <option value="film" selected>Film</option>
           <option value="serie">Serie</option>
@@ -198,6 +199,16 @@ function attachResetGesture(){
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
 const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
+
+// === Unified poster helper ===
+function posterFor(imdbID, omdbPoster, placeholder){
+  try{
+    const key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+    if(omdbPoster && omdbPoster!=='N/A') return omdbPoster;
+    if(imdbID && key){ return 'https://img.omdbapi.com/?apikey='+key+'&i='+encodeURIComponent(imdbID); }
+  }catch(_){}
+  return placeholder || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+}
 let IS_ONLINE=navigator.onLine;const netBadge=document.getElementById('netBadge');
 let ADDING_LOCK=false;
 function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline')}
@@ -325,7 +336,7 @@ function card(item, index){
   const div=document.createElement('div');
   div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
-  const posterSrc=(item.poster&&item.poster!=='N/A')?item.poster:'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+  const posterSrc=posterFor(item.imdbID||item.imdbId||'', item.poster, 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout');
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
@@ -1006,7 +1017,7 @@ body {
     if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
     var box = m.querySelector('#randCard');
     if(box){
-      var poster = (item && item.poster && item.poster!=='N/A') ? item.poster : 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+      var poster = posterFor(item && (item.imdbID||item.imdbId), item && item.poster, 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—');
       var title = esc(item && item.title || '');
       var type = esc(item && item.type || '');
       var year = esc(item && item.year || '');
@@ -1190,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const title = (item && item.title) || (item && item.Title) || '';
     const type = (item && item.type) || (item && item.Type) || '';
     const year = (item && item.year) || (item && item.Year) || '';
-    const poster = (item && item.poster) || (item && item.Poster && item.Poster!=='N/A' ? item.Poster : '') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
+    const poster = posterFor((item&&item.imdbID)||(item&&item.imdbId)||(item&&item.imdbid), (item&&item.poster)||(item&&item.Poster), 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—');
     t.textContent = title || '—';
     m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
     p.src = poster;
@@ -1336,6 +1347,29 @@ document.addEventListener('DOMContentLoaded', function(){
       if(imdbId){ window.openImdbOverlay(imdbId, poster); }
     }
   });
+})();
+
+// IMDb-ID quick add
+(function(){
+  const btn = document.getElementById('btn-add');
+  if(!btn || btn._wired_imdb) return;
+  btn.addEventListener('click', async function(){
+    const imdbInput = document.getElementById('add-imdb');
+    if(!imdbInput) return;
+    const raw = (imdbInput.value||'').trim();
+    if(!raw) return;
+    const m = raw.match(/tt\d{6,}/i);
+    if(!m){ alert('Geen geldige IMDb-ID (tt…)'); return; }
+    const tt = m[0];
+    try{
+      if(!IS_ONLINE){ alert('Online nodig om via IMDb-ID toe te voegen.'); return; }
+      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt), {cache:'no-store'});
+      const j = await r.json();
+      if(!j || j.Response==='False'){ alert('Niet gevonden op OMDb voor '+tt); return; }
+      (typeof openAddConfirmModal==='function') && openAddConfirmModal(j);
+    }catch(err){ console.error(err); alert('Fout bij ophalen via IMDb-ID.'); }
+  });
+  btn._wired_imdb = true;
 })();
 </script>
 
