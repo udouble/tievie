@@ -1295,50 +1295,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
   </div>
 </div>
-<script>
-// IMDb-ID of URL: open de 'Toevoegen'-popup meteen na (in)plakken — geen klik op "Voeg toe" nodig.
-(function(){
-  function wire(){
-    var imdbInput = document.getElementById('add-imdb');
-    if(!imdbInput || imdbInput._autoOpenWired) return;
-    var busy = false;
-    var lastTT = '';
-    async function maybeOpen(){
-      try{
-        var raw = (imdbInput.value||'').trim();
-        if(!raw) return;
-        var m = raw.match(/tt\d{6,}/i);
-        if(!m) return;
-        var tt = (m[0]||'').toLowerCase();
-        if(busy || tt===lastTT) return;
-        lastTT = tt;
-        busy = true;
-        if(typeof IS_ONLINE!=='undefined' && !IS_ONLINE){ busy=false; return; }
-        var key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-        if(!key){ busy=false; return; }
-        var r = await fetch('https://www.omdbapi.com/?apikey='+key+'&i='+encodeURIComponent(tt), {cache:'no-store'});
-        var j = await r.json();
-        if(j && j.Response!=='False' && typeof window.openAddConfirmModal==='function'){
-          window.openAddConfirmModal(j);
-        }
-      }catch(e){
-        // silent
-      }finally{
-        busy = false;
-      }
-    }
-    // Na plakken of typen
-    imdbInput.addEventListener('paste', function(){ setTimeout(maybeOpen, 0); }, {passive:true});
-    imdbInput.addEventListener('input', function(){ setTimeout(maybeOpen, 0); });
-    imdbInput._autoOpenWired = true;
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', wire);
-  }else{
-    wire();
-  }
-})();
-</script>
+
 
 </body></html>`;
   }
@@ -1367,50 +1324,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="w">
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
-      </div><script>
-// IMDb-ID of URL: open de 'Toevoegen'-popup meteen na (in)plakken — geen klik op "Voeg toe" nodig.
-(function(){
-  function wire(){
-    var imdbInput = document.getElementById('add-imdb');
-    if(!imdbInput || imdbInput._autoOpenWired) return;
-    var busy = false;
-    var lastTT = '';
-    async function maybeOpen(){
-      try{
-        var raw = (imdbInput.value||'').trim();
-        if(!raw) return;
-        var m = raw.match(/tt\d{6,}/i);
-        if(!m) return;
-        var tt = (m[0]||'').toLowerCase();
-        if(busy || tt===lastTT) return;
-        lastTT = tt;
-        busy = true;
-        if(typeof IS_ONLINE!=='undefined' && !IS_ONLINE){ busy=false; return; }
-        var key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-        if(!key){ busy=false; return; }
-        var r = await fetch('https://www.omdbapi.com/?apikey='+key+'&i='+encodeURIComponent(tt), {cache:'no-store'});
-        var j = await r.json();
-        if(j && j.Response!=='False' && typeof window.openAddConfirmModal==='function'){
-          window.openAddConfirmModal(j);
-        }
-      }catch(e){
-        // silent
-      }finally{
-        busy = false;
-      }
-    }
-    // Na plakken of typen
-    imdbInput.addEventListener('paste', function(){ setTimeout(maybeOpen, 0); }, {passive:true});
-    imdbInput.addEventListener('input', function(){ setTimeout(maybeOpen, 0); });
-    imdbInput._autoOpenWired = true;
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', wire);
-  }else{
-    wire();
-  }
-})();
-</script>
+      </div>
 
 </body></html>`;
       frame.setAttribute('srcdoc', skel);
@@ -1463,6 +1377,8 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+
+
 <script>
 // IMDb-ID of URL: open de 'Toevoegen'-popup meteen na (in)plakken — geen klik op "Voeg toe" nodig.
 (function(){
@@ -1495,7 +1411,6 @@ document.addEventListener('DOMContentLoaded', function(){
         busy = false;
       }
     }
-    // Na plakken of typen
     imdbInput.addEventListener('paste', function(){ setTimeout(maybeOpen, 0); }, {passive:true});
     imdbInput.addEventListener('input', function(){ setTimeout(maybeOpen, 0); });
     imdbInput._autoOpenWired = true;
