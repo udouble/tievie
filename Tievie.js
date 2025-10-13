@@ -38,7 +38,14 @@
       const frame = overlay.querySelector('#imdbFrame');
       overlay.addEventListener('click', (e)=>{ if(e.target===overlay){ overlay.style.display='none'; frame.src='about:blank'; } });
       overlay.querySelector('#imdbClose').addEventListener('click', ()=>{ overlay.style.display='none'; frame.src='about:blank'; });
-      /* imdb code removed */background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+      window.openImdbOverlay = (imdbID, poster)=>{
+        try{
+          if(poster && poster!=='N/A'){
+            const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
   .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
   img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,25)}
   h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
