@@ -86,13 +86,13 @@ function attachResetGesture(){
 <div class="max-w-7xl mx-auto p-4 pb-28">
   <header class="mb-4">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3 min-w-[260px]">
+      <div class="flex items-center gap-3 flex-1 min-w-[280px]">
         <h1 class="text-2xl font-bold whitespace-nowrap">Tievie <span id="netBadge" class="badge">…</span></h1>
-      </div>
-      <div class="flex items-center gap-2 flex-1 min-w-[360px]">
-        <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="px-3 py-2 rounded-lg bg-white/90 shadow flex-1 min-w-[240px]" autocomplete="off">
-        <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow flex-1 min-w-[240px]" autocomplete="off">
-        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+        <div class="flex items-center gap-2 flex-1">
+          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+          <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
+          <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+        </div>
       </div>
       <div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
@@ -111,7 +111,9 @@ function attachResetGesture(){
           </div>
         </div>
       </div>
-    </div><div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+    </div>
+
+    <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         <option value="created_desc" selected>Nummer (recent → oud)</option>
@@ -412,8 +414,8 @@ function renderSuggest(arr){
       try{
         hideSuggest();
         const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSel=document.getElementById('add-type').value;
-        const streamSel=document.getElementById('add-stream').value;
+        const typeSel=(document.getElementById('add-type')?.value)||'film';
+        const streamSel=(document.getElementById('add-stream')?.value)||'';
 
         const all=await dbGetAll();
         const keyMap=new Map(all.map(x=>[keyFor(x), x]));
@@ -1343,66 +1345,12 @@ document.addEventListener('DOMContentLoaded', function(){
       const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt), {cache:'no-store'});
       const j = await r.json();
       if(!j || j.Response==='False'){ alert('Niet gevonden op OMDb voor '+tt); return; }
-      (typeof __hideSuggest===\'function\') && __hideSuggest(); (typeof openAddConfirmModal===\'function\') && openAddConfirmModal(j);
+      (typeof openAddConfirmModal==='function') && openAddConfirmModal(j);
     }catch(err){ console.error(err); alert('Fout bij ophalen via IMDb-ID.'); }
   });
   btn._wired_imdb = true;
 })();
-
-// Auto-open add modal when a valid IMDb ID/URL is pasted into the IMDb field
-(function(){
-  const imdbInput = document.getElementById('add-imdb');
-  if(!imdbInput || imdbInput._wired_auto_open) return;
-  let lastHandled = '';
-  async function tryHandle(value){
-    const raw = (value||'').trim();
-    if(!raw) return;
-    const m = raw.match(/tt\d{6,}/i);
-    if(!m) return;
-    const tt = m[0].toLowerCase();
-    if(tt === lastHandled) return;
-    lastHandled = tt;
-    try{
-      if(!IS_ONLINE){ alert('Online nodig om via IMDb-ID toe te voegen.'); return; }
-      const r = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(tt), {cache:'no-store'});
-      const j = await r.json();
-      if(!j || j.Response==='False'){ alert('Niet gevonden op OMDb voor '+tt); return; }
-      (typeof __hideSuggest===\'function\') && __hideSuggest(); (typeof openAddConfirmModal===\'function\') && openAddConfirmModal(j);
-    }catch(err){ console.error(err); }
-  }
-  imdbInput.addEventListener('paste', (e)=>{
-    setTimeout(()=>{ tryHandle(imdbInput.value); }, 0);
-  });
-  imdbInput.addEventListener('input', ()=>{
-    // only trigger when a full tt… appears; guard prevents repeated fetches
-    tryHandle(imdbInput.value);
-  });
-  imdbInput._wired_auto_open = true;
-})();
-
-
-// Ensure suggest overlay never blocks the add popup
-(function(){
-  function hideSuggest(){
-    const sb = document.getElementById('suggest');
-    if(sb){ sb.style.display = 'none'; sb.innerHTML = sb.innerHTML; } // quick clear scroll position
-  }
-  window.__hideSuggest = hideSuggest;
-  if (typeof window.openAddConfirmModal === 'function' && !window.openAddConfirmModal.__wrapped) {
-    const _orig = window.openAddConfirmModal;
-    window.openAddConfirmModal = function(){
-      hideSuggest();
-      return _orig.apply(this, arguments);
-    };
-    window.openAddConfirmModal.__wrapped = true;
-  }
-  const sb = document.getElementById('suggest');
-  if (sb && !sb.__wired_hide_on_click) {
-    sb.addEventListener('click', function(){ hideSuggest(); }, true);
-    sb.__wired_hide_on_click = true;
-  }
-})();
-
 </script>
+
 </body>
 </html>
