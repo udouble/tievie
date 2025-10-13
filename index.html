@@ -85,9 +85,15 @@ function attachResetGesture(){
 <body>
 <div class="max-w-7xl mx-auto p-4 pb-28">
   <header class="mb-4">
-  <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-bold">Tievie <span id="netBadge" class="badge">…</span></h1>
-      <div class="relative">
+      <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[320px]">
+  <div class="relative grow min-w-[260px]">
+    <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
+  </div>
+  <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
+  <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
+</div><div class="relative">
         <input id="file-import" type="file" accept="application/json" class="hidden"/>
         <button id="btn-help" aria-haspopup="true" aria-expanded="false"
                 class="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-900 shadow text-sm pill">
@@ -102,7 +108,11 @@ function attachResetGesture(){
             <button id="btn-posters" class="w-full text-left px-3 py-2 hover:bg-white/60">Posters ophalen</button>
             <button id="btn-refresh-meta" class="w-full text-left px-3 py-2 hover:bg-white/60">IMDb-gegevens verversen</button>
           </div>
-  <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
+        </div>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         <option value="created_desc" selected>Nummer (recent → oud)</option>
@@ -120,54 +130,7 @@ function attachResetGesture(){
       </button>
       <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
     </div>
-
-    <div class="glass rounded-xl p-3 shadow mb-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="relative grow min-w-[260px]">
-          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-        </div>
-        <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
-        
-        
-        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
-      </div>
-  <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
-      <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
-      <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <option value="created_desc" selected>Nummer (recent → oud)</option>
-        <option value="created_asc">Nummer (oud → recent)</option>
-        <option value="imdb_desc">IMDb-score hoog → laag</option>
-        <option value="imdb_asc">IMDb-score laag → hoog</option>
-        <option value="score_desc">Onze score hoog → laag</option>
-        <option value="score_asc">Onze score laag → hoog</option>
-        <option value="title_asc">Titel A → Z</option>
-        <option value="title_desc">Titel Z → A</option>
-      </select>
-      <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
-    
-        </div>
-      </div>
-    </div>
-
-    
-      <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        Waar te zien?
-      </button>
-      <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
-    </div>
-
-    <div class="glass rounded-xl p-3 shadow mb-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="relative grow min-w-[260px]">
-          <input id="add-search" type="search" placeholder="Zoek en voeg toe… (films én series)" class="w-full px-3 py-2 rounded-lg bg-white/90 shadow" autocomplete="off">
-        </div>
-        <input id="add-imdb" type="search" placeholder="IMDb-ID of URL (tt…)" class="px-3 py-2 rounded-lg bg-white/90 shadow w-56" autocomplete="off">
-        
-        
-        <button id="btn-add" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow">Voeg toe</button>
-      </div>
-    </div>
-  </header>
+</header>
 
   <section class="mb-3">
     <div id="filterControls" class="flex flex-wrap items-center gap-2">
@@ -448,8 +411,10 @@ function renderSuggest(arr){
       try{
         hideSuggest();
         const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSel=document.getElementById('add-type').value;
-        const streamSel=document.getElementById('add-stream').value;
+        const typeSelEl = document.getElementById('add-type');
+        const streamSelEl = document.getElementById('add-stream');
+        const typeSel = typeSelEl ? typeSelEl.value : 'film';
+        const streamSel = streamSelEl ? streamSelEl.value : '';
 
         const all=await dbGetAll();
         const keyMap=new Map(all.map(x=>[keyFor(x), x]));
@@ -1308,6 +1273,8 @@ document.addEventListener('DOMContentLoaded', function(){
     <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
   </div>
 </div>
+
+
 </body></html>`;
   }
 
@@ -1335,7 +1302,9 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="w">
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
-      </div></body></html>`;
+      </div>
+
+</body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
     overlay.style.display='flex';
@@ -1386,28 +1355,51 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
-<div id="add-base-selects" class="hidden" aria-hidden="true" style="display:none;visibility:hidden">
-  <select id="add-type" class="px-2 py-2 rounded-lg bg-white/90 shadow">
-          <option value="film" selected>Film</option>
-          <option value="serie">Serie</option>
-          <option value="herman-film">H-Film</option>
-          <option value="herman-serie">H-Serie</option>
-          <option value="aan-het-kijken">Aan het kijken</option>
-          <option value="bekeken">Bekeken</option>
-        </select>
-  <select id="add-stream" class="px-2 py-2 rounded-lg bg-white/90 shadow">
-          <option value="">Niet toegekend</option>
-          <option>Streamz</option>
-          <option>Netflix</option>
-          <option>Prime Video</option>
-          <option>Apple TV+</option>
-          <option>VRT MAX</option>
-          <option>Go Play</option>
-          <option>NPO</option>
-          <option>Disney+</option>
-        
-        <option>Stremio</option></select>
-</div>
+
+
+<script>
+// IMDb-ID of URL: open de 'Toevoegen'-popup meteen na (in)plakken — geen klik op "Voeg toe" nodig.
+(function(){
+  function wire(){
+    var imdbInput = document.getElementById('add-imdb');
+    if(!imdbInput || imdbInput._autoOpenWired) return;
+    var busy = false;
+    var lastTT = '';
+    async function maybeOpen(){
+      try{
+        var raw = (imdbInput.value||'').trim();
+        if(!raw) return;
+        var m = raw.match(/tt\d{6,}/i);
+        if(!m) return;
+        var tt = (m[0]||'').toLowerCase();
+        if(busy || tt===lastTT) return;
+        lastTT = tt;
+        busy = true;
+        if(typeof IS_ONLINE!=='undefined' && !IS_ONLINE){ busy=false; return; }
+        var key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
+        if(!key){ busy=false; return; }
+        var r = await fetch('https://www.omdbapi.com/?apikey='+key+'&i='+encodeURIComponent(tt), {cache:'no-store'});
+        var j = await r.json();
+        if(j && j.Response!=='False' && typeof window.openAddConfirmModal==='function'){
+          window.openAddConfirmModal(j);
+        }
+      }catch(e){
+        // silent
+      }finally{
+        busy = false;
+      }
+    }
+    imdbInput.addEventListener('paste', function(){ setTimeout(maybeOpen, 0); }, {passive:true});
+    imdbInput.addEventListener('input', function(){ setTimeout(maybeOpen, 0); });
+    imdbInput._autoOpenWired = true;
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', wire);
+  }else{
+    wire();
+  }
+})();
+</script>
 
 </body>
 </html>
