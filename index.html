@@ -405,32 +405,24 @@ function renderSuggest(arr){
   </div>`).join('');
   showSuggest();
   Array.from(suggestList.children).forEach(row=>{
-    row.addEventListener('click', async ()=>{
-      if(ADDING_LOCK) return;
-      ADDING_LOCK = true;
-      try{
-        hideSuggest();
-        const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-        const typeSel=document.getElementById('add-type').value;
-        const streamSel=document.getElementById('add-stream').value;
-
-        const all=await dbGetAll();
-        const keyMap=new Map(all.map(x=>[keyFor(x), x]));
-        const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
-        const inc={ title, year, imdbID, poster, type:typeSel, streamingOn:streamSel, createdAt:Date.now() };
-        const k=keyFor(inc);
-        if(titleSet.has(normalizeTitle(title))){
-          if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
-          // Geen toevoeging, geen updates; input laten staan.
-          return;
-        }
-        const it={ id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-        if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
-      } finally {
-        ADDING_LOCK = false;
+  row.addEventListener('click', async ()=>{
+    if(ADDING_LOCK) return;
+    ADDING_LOCK = true;
+    try{
+      hideSuggest();
+      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
+      const all=await dbGetAll();
+      const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
+      if(titleSet.has(normalizeTitle(title))){
+        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+        return;
       }
-    });
+      if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
+    } finally {
+      ADDING_LOCK = false;
+    }
   });
+});
 }
 function showSuggest(){
   suggestBox.style.display='block'; suggestOpen=true;
@@ -1273,6 +1265,39 @@ document.addEventListener('DOMContentLoaded', function(){
 </div>
 
 
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._addModalBound) return;
+  el._addModalBound = true;
+  let ctrl=null, timer=null, last='';
+  const TT=/(tt\d{7,9})/;
+  async function fetchWithTimeout(url, timeout=9000){
+    const ac = new AbortController(); const t=setTimeout(()=>ac.abort(), timeout);
+    try{const r=await fetch(url,{signal:ac.signal});clearTimeout(t);return r;}catch(e){clearTimeout(t);throw e;}
+  }
+  async function go(){
+    const v=(el.value||'').trim(); if(v===last) return; last=v;
+    const m=v.match(TT); if(!m) return; const imdbID=m[1];
+    if(ctrl) ctrl.abort(); ctrl=new AbortController();
+    try{
+      if(typeof fetchOmdbById==='function'){
+        const meta=await fetchOmdbById(imdbID,{signal:ctrl.signal,timeout:9000});
+        if(meta && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }else{
+        const KEY=(typeof OMDB_KEY!=='undefined'&&OMDB_KEY)?OMDB_KEY:''; if(!KEY) return;
+        const resp=await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`,9000);
+        const meta=await resp.json(); if(meta && meta.imdbID && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }
+    }catch(e){/* silent */}
+  }
+  function schedule(){ if(timer) clearTimeout(timer); timer=setTimeout(go,250); }
+  el.addEventListener('paste', ()=>setTimeout(schedule,0));
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+})();
+</script>
 </body></html>`;
   }
 
@@ -1302,6 +1327,39 @@ document.addEventListener('DOMContentLoaded', function(){
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
       </div>
 
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._addModalBound) return;
+  el._addModalBound = true;
+  let ctrl=null, timer=null, last='';
+  const TT=/(tt\d{7,9})/;
+  async function fetchWithTimeout(url, timeout=9000){
+    const ac = new AbortController(); const t=setTimeout(()=>ac.abort(), timeout);
+    try{const r=await fetch(url,{signal:ac.signal});clearTimeout(t);return r;}catch(e){clearTimeout(t);throw e;}
+  }
+  async function go(){
+    const v=(el.value||'').trim(); if(v===last) return; last=v;
+    const m=v.match(TT); if(!m) return; const imdbID=m[1];
+    if(ctrl) ctrl.abort(); ctrl=new AbortController();
+    try{
+      if(typeof fetchOmdbById==='function'){
+        const meta=await fetchOmdbById(imdbID,{signal:ctrl.signal,timeout:9000});
+        if(meta && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }else{
+        const KEY=(typeof OMDB_KEY!=='undefined'&&OMDB_KEY)?OMDB_KEY:''; if(!KEY) return;
+        const resp=await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`,9000);
+        const meta=await resp.json(); if(meta && meta.imdbID && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }
+    }catch(e){/* silent */}
+  }
+  function schedule(){ if(timer) clearTimeout(timer); timer=setTimeout(go,250); }
+  el.addEventListener('paste', ()=>setTimeout(schedule,0));
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+})();
+</script>
 </body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
@@ -1399,5 +1457,38 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+<script>
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._addModalBound) return;
+  el._addModalBound = true;
+  let ctrl=null, timer=null, last='';
+  const TT=/(tt\d{7,9})/;
+  async function fetchWithTimeout(url, timeout=9000){
+    const ac = new AbortController(); const t=setTimeout(()=>ac.abort(), timeout);
+    try{const r=await fetch(url,{signal:ac.signal});clearTimeout(t);return r;}catch(e){clearTimeout(t);throw e;}
+  }
+  async function go(){
+    const v=(el.value||'').trim(); if(v===last) return; last=v;
+    const m=v.match(TT); if(!m) return; const imdbID=m[1];
+    if(ctrl) ctrl.abort(); ctrl=new AbortController();
+    try{
+      if(typeof fetchOmdbById==='function'){
+        const meta=await fetchOmdbById(imdbID,{signal:ctrl.signal,timeout:9000});
+        if(meta && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }else{
+        const KEY=(typeof OMDB_KEY!=='undefined'&&OMDB_KEY)?OMDB_KEY:''; if(!KEY) return;
+        const resp=await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`,9000);
+        const meta=await resp.json(); if(meta && meta.imdbID && typeof openAddConfirmModal==='function') openAddConfirmModal(meta);
+      }
+    }catch(e){/* silent */}
+  }
+  function schedule(){ if(timer) clearTimeout(timer); timer=setTimeout(go,250); }
+  el.addEventListener('paste', ()=>setTimeout(schedule,0));
+  el.addEventListener('change', schedule);
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') schedule(); });
+  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+})();
+</script>
 </body>
 </html>
