@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="nl">
 <head>
-<script src="flashfix.js"></script>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
@@ -322,14 +321,7 @@ function card(item, index){
     </div>` : '';
 
   div.innerHTML = `
-    <h3 class="px-3 font-bold text-base leading-tight mb-1">${item.title||'—'}</h3>
-    <div class="px-3 pb-1 flex items-center justify-end">
-      <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/60 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition">
-        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-    </div>
+    <h3 class="px-3 font-bold text-base leading-tight" style="margin-top: 6px; margin-bottom: 0.25rem;">${item.title||'—'}</h3>
     <div class="px-3">
       <div class="relative">
         <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200/40">
@@ -338,7 +330,14 @@ function card(item, index){
         <div class="absolute top-2 left-2 bg-black/70 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">${index}</div>
       </div>
     </div>
-    <div class="px-3 pt-2 text-xs"><span class="info-strip">IMDb: ${item.imdbRating||'—'}<br>${item.year||'N/B'} • ${item.runtime||'N/B'}</span></div>
+    <div class="px-3 pt-2 text-xs" style="display: flex; align-items: center; justify-content: space-between;">
+      <span class="info-strip">IMDb: ${item.imdbRating||'—'}<br>${item.year||'N/B'} • ${item.runtime||'N/B'}</span>
+      <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/60 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition" style="flex-shrink: 0; margin-left: 8px;">
+          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+      </button>
+    </div>
     <div class="p-3 pt-2 text-xs space-y-2">
       <div class="grid grid-cols-2 gap-2">
         <div>
@@ -354,10 +353,15 @@ function card(item, index){
           </select>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-slate-700">Onze score:</label>
-        <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
-        <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem;">
+          <div>
+              <label class="block font-medium text-slate-600 mb-0.5">Onze score:</label>
+              <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
+          </div>
+          <div>
+              <label class="block font-medium text-slate-600 mb-0.5">&nbsp;</label>
+              <button data-imdbid="${item.imdbID||''}" class="btn-imdb w-full px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
+          </div>
       </div>
       ${dateSeenHTML}
     </div>
@@ -694,7 +698,6 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 </script>
 
 
-<!-- Centrale popup voor dubbele titel -->
 <div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
   <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
@@ -729,212 +732,6 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   })();
 </script>
 
-
-<script>
-/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
-(function(){
-  function fixScoreRow(card){
-    if(!card) return;
-    const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
-    if(!row || row.dataset.scoreGrid==='1') return;
-    const label = row.querySelector('label');
-    if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
-    const input = row.querySelector('.our-score-input');
-    const btn = row.querySelector('.btn-imdb');
-    if(!input || !btn) return;
-
-    // Container gelijk maken aan de 2-koloms rij erboven
-    row.classList.remove('flex','items-center','gap-2');
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-    row.style.gap = '0.5rem'; // gap-2
-
-    // Linkerkolom
-    const left = document.createElement('div');
-    left.style.display = 'flex';
-    left.style.flexDirection = 'column';
-    left.appendChild(label);
-    left.appendChild(input);
-    input.style.width = '100%'; // exact uitlijnen met 'Categorie'
-
-    // Rechterkolom
-    const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.flexDirection = 'column';
-    const ghost = document.createElement('label');
-    ghost.className = 'block font-medium text-slate-600 mb-0.5';
-    ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
-    right.appendChild(ghost);
-    btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
-    right.appendChild(btn);
-
-    // Vervang inhoud
-    while(row.firstChild) row.removeChild(row.firstChild);
-    row.appendChild(left);
-    row.appendChild(right);
-
-    row.dataset.scoreGrid = '1';
-  }
-
-  function sweep(){ document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow); }
-  const obs = new MutationObserver(sweep);
-  obs.observe(document.body, { childList:true, subtree:true });
-  sweep();
-})();
-</script>
-
-
-<script>
-/* Score-rij uitlijnen zoals de twee dropdowns erboven (2 gelijke kolommen). */
-(function(){
-  function toGrid(card){
-    if(!card) return;
-    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
-    if(!container) return;
-    const flexRow = container.querySelector('.flex.items-center');
-    if(!flexRow || flexRow.dataset.scoreGrid==='1') return;
-    const label = flexRow.querySelector('label');
-    const input = flexRow.querySelector('.our-score-input');
-    const btn   = flexRow.querySelector('.btn-imdb');
-    if(!label || !input || !btn) return;
-
-    // Bouw een grid zoals de rij erboven (2 kolommen, gelijke breedte, zelfde gap)
-    const grid = document.createElement('div');
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = '1fr 1fr';
-    grid.style.gap = '0.5rem';
-
-    // Linkerkolom: bestaand label + input (we verplaatsen de echte nodes, geen clones)
-    const left = document.createElement('div');
-    left.appendChild(label);
-    left.appendChild(input);
-
-    // Rechterkolom: ghost label voor verticale uitlijning + IMDB-knop op volle breedte
-    const right = document.createElement('div');
-    const ghost = document.createElement('label');
-    ghost.textContent = '\u00A0';
-    ghost.style.visibility = 'hidden';
-    right.appendChild(ghost);
-    btn.style.display = 'block';
-    btn.style.width = '100%';
-    right.appendChild(btn);
-
-    // Vervang de oude flex-rij door onze grid-rij
-    container.replaceChild(grid, flexRow);
-    grid.appendChild(left);
-    grid.appendChild(right);
-
-    // Markeer, zodat we het niet opnieuw doen
-    grid.dataset.scoreGrid = '1';
-  }
-
-  function sweep(){
-    document.querySelectorAll('.glass[data-item-id]').forEach(toGrid);
-  }
-
-  const obs = new MutationObserver(sweep);
-  obs.observe(document.body, { childList:true, subtree:true });
-  sweep();
-})();
-</script>
-
-
-<script>
-/* Alleen twee dingen, niets anders:
-   1) Delete-X naast de IMDb-badge (badge links, X rechts).
-   2) 'Onze score' + IMDB-knop in 2 gelijke kolommen (zoals rij erboven).
-   Werkt blijvend via MutationObserver. Geen andere layout-wijzigingen. */
-(function(){
-  function relocateX(card){
-    if(!card) return;
-    const imdbStrip = card.querySelector('.info-strip');
-    const delBtn = card.querySelector('[data-action="delete"]');
-    if(!imdbStrip || !delBtn) return;
-
-    const row = imdbStrip.parentElement;
-    // Zet de rij op één lijn met ruimte ertussen (linker: badge, rechter: X)
-    row.style.display = 'flex';
-    row.style.alignItems = 'center';
-    row.style.justifyContent = 'space-between';
-
-    // Verplaats de ECHTE knop naar deze rij (niet klonen)
-    if(delBtn.parentElement !== row){
-      try{ row.appendChild(delBtn); }catch(e){}
-    }
-
-    // Verberg de originele bovenste delete-rij zodat poster omhoog komt
-    const topRow = card.querySelector('.px-3.pb-1.flex.items-center.justify-end');
-    if(topRow) topRow.style.display = 'none';
-
-    // Zorg dat de knop niet uitrekt
-    delBtn.style.flexShrink = '0';
-    delBtn.style.marginLeft = '8px';
-  }
-
-  function alignScoreRow(card){
-    const container = card.querySelector('.p-3.pt-2.text-xs.space-y-2');
-    if(!container) return;
-    // Vind de flex-rij met "Onze score"
-    const flexRow = Array.from(container.children).find(el=>{
-      if(!el || !el.querySelector) return false;
-      const lbl = el.querySelector('label');
-      return !!(lbl && /Onze\s*score/i.test(lbl.textContent||''));
-    });
-    if(!flexRow) return;
-
-    // Als al omgezet naar grid, niets doen
-    if(flexRow.dataset.scoreGrid === '1') return;
-
-    const label = flexRow.querySelector('label');
-    const input = flexRow.querySelector('.our-score-input');
-    const btn   = flexRow.querySelector('.btn-imdb');
-    if(!label || !input || !btn) return;
-
-    const grid = document.createElement('div');
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = '1fr 1fr';
-    grid.style.gap = '0.5rem';
-
-    const left = document.createElement('div');
-    left.appendChild(label);
-    left.appendChild(input);
-
-    const right = document.createElement('div');
-    const ghost = document.createElement('label');
-    ghost.textContent = '\u00A0';
-    ghost.style.visibility = 'hidden';
-    right.appendChild(ghost);
-    btn.style.display = 'block';
-    btn.style.width = '100%';
-    right.appendChild(btn);
-
-    container.replaceChild(grid, flexRow);
-    grid.appendChild(left);
-    grid.appendChild(right);
-    grid.dataset.scoreGrid = '1';
-  }
-
-  function nudgeTitle(card){
-    const title = card.querySelector('h3,h2,h1');
-    if(title) title.style.marginTop = '6px';
-  }
-
-  function sweep(){
-    document.querySelectorAll('.glass[data-item-id]').forEach(card=>{
-      relocateX(card);
-      alignScoreRow(card);
-      nudgeTitle(card);
-    });
-  }
-
-  const obs = new MutationObserver(sweep);
-  obs.observe(document.body, { childList:true, subtree:true });
-  sweep();
-})();
-</script>
-
-
 <style id="theme-blue-final">
 /* Alleen kleurcorrectie — verder niets aanpassen */
 body {
@@ -950,7 +747,6 @@ body {
 </style>
 
 
-<!-- Popup: willekeurige titel -->
 <div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
   <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
@@ -960,8 +756,7 @@ body {
     <div style="padding:16px 18px;color:#e5e7eb">
       <p style="margin:0 0 10px 0" id="randMsg">Deze titel hebben we voor je gekozen.</p>
       <div id="randCard" class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
-        <!-- wordt dynamisch gevuld -->
-      </div>
+        </div>
     </div>
   </div>
 </div>
@@ -1106,7 +901,6 @@ document.addEventListener('DOMContentLoaded', function(){
   setDisabled();
 });</script>
 
-<!-- Popup: toevoeging bevestigen -->
 <div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
   <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
@@ -1283,93 +1077,6 @@ if(!baseStream && streamSel){
     <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
   </div>
 </div>
-
-
-
-<script>
-(function(){
-  const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
-  if(!el || el._ensured_modal_open) return;
-  el._ensured_modal_open = true;
-  const ttRe = /(tt\d{7,9})/;
-  el.addEventListener('input', async ()=>{
-    const m = (el.value||'').match(ttRe);
-    if(!m) return;
-    const imdbID = m[1];
-    try{
-      const meta = await fetchOmdbById(imdbID);
-      if(meta && typeof openAddConfirmModal==='function'){
-        openAddConfirmModal(meta);
-      }
-    }catch(e){}
-  });
-})();
-</script>
-
-
-
-<script>
-(function(){
-  const el = document.getElementById('add-imdb');
-  if(!el || el._imdbHandlerBound) return;
-  el._imdbHandlerBound = true;
-
-  let ctrl = null, timer = null, lastVal = '';
-  const TT = /(tt\d{7,9})/;
-
-  async function fetchWithTimeout(url, opts){
-    const { timeout = 10000, ...rest } = opts || {};
-    const ac = new AbortController();
-    const t = setTimeout(()=>ac.abort(), timeout);
-    try{
-      const res = await fetch(url, { ...rest, signal: ac.signal });
-      clearTimeout(t);
-      return res;
-    }catch(e){
-      clearTimeout(t);
-      throw e;
-    }
-  }
-
-  async function tryOpen(){
-    const v = el.value || '';
-    if(v === lastVal) return;
-    lastVal = v;
-    const m = v.match(TT);
-    if(!m) return;
-    const imdbID = m[1];
-
-    if(ctrl) ctrl.abort();
-    ctrl = new AbortController();
-
-    try{
-      if(typeof fetchOmdbById === 'function'){
-        const meta = await fetchOmdbById(imdbID, { signal: ctrl.signal, timeout: 9000 });
-        if(meta && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
-      }else{
-        const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-        if(!KEY) return;
-        const resp = await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`, { timeout: 9000 });
-        const meta = await resp.json();
-        if(meta && meta.imdbID && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
-      }
-    }catch(e){
-      // silent
-    }
-  }
-
-  function schedule(){
-    if(timer) clearTimeout(timer);
-    timer = setTimeout(tryOpen, 250);
-  }
-
-  el.addEventListener('paste', ()=>{ setTimeout(schedule, 0); });
-  el.addEventListener('change', schedule);
-  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') schedule(); });
-  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
-})();
-</script>
-
 </body></html>`;
   }
 
@@ -1398,92 +1105,6 @@ if(!baseStream && streamSel){
         <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
         <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
       </div>
-
-
-<script>
-(function(){
-  const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
-  if(!el || el._ensured_modal_open) return;
-  el._ensured_modal_open = true;
-  const ttRe = /(tt\d{7,9})/;
-  el.addEventListener('input', async ()=>{
-    const m = (el.value||'').match(ttRe);
-    if(!m) return;
-    const imdbID = m[1];
-    try{
-      const meta = await fetchOmdbById(imdbID);
-      if(meta && typeof openAddConfirmModal==='function'){
-        openAddConfirmModal(meta);
-      }
-    }catch(e){}
-  });
-})();
-</script>
-
-
-
-<script>
-(function(){
-  const el = document.getElementById('add-imdb');
-  if(!el || el._imdbHandlerBound) return;
-  el._imdbHandlerBound = true;
-
-  let ctrl = null, timer = null, lastVal = '';
-  const TT = /(tt\d{7,9})/;
-
-  async function fetchWithTimeout(url, opts){
-    const { timeout = 10000, ...rest } = opts || {};
-    const ac = new AbortController();
-    const t = setTimeout(()=>ac.abort(), timeout);
-    try{
-      const res = await fetch(url, { ...rest, signal: ac.signal });
-      clearTimeout(t);
-      return res;
-    }catch(e){
-      clearTimeout(t);
-      throw e;
-    }
-  }
-
-  async function tryOpen(){
-    const v = el.value || '';
-    if(v === lastVal) return;
-    lastVal = v;
-    const m = v.match(TT);
-    if(!m) return;
-    const imdbID = m[1];
-
-    if(ctrl) ctrl.abort();
-    ctrl = new AbortController();
-
-    try{
-      if(typeof fetchOmdbById === 'function'){
-        const meta = await fetchOmdbById(imdbID, { signal: ctrl.signal, timeout: 9000 });
-        if(meta && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
-      }else{
-        const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-        if(!KEY) return;
-        const resp = await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`, { timeout: 9000 });
-        const meta = await resp.json();
-        if(meta && meta.imdbID && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
-      }
-    }catch(e){
-      // silent
-    }
-  }
-
-  function schedule(){
-    if(timer) clearTimeout(timer);
-    timer = setTimeout(tryOpen, 250);
-  }
-
-  el.addEventListener('paste', ()=>{ setTimeout(schedule, 0); });
-  el.addEventListener('change', schedule);
-  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') schedule(); });
-  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
-})();
-</script>
-
 </body></html>`;
       frame.setAttribute('srcdoc', skel);
     }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
@@ -1580,29 +1201,6 @@ if(!baseStream && streamSel){
   }
 })();
 </script>
-
-
-<script>
-(function(){
-  const el = document.getElementById('imdb-input') || document.getElementById('imdbUrl') || document.getElementById('imdb-id');
-  if(!el || el._ensured_modal_open) return;
-  el._ensured_modal_open = true;
-  const ttRe = /(tt\d{7,9})/;
-  el.addEventListener('input', async ()=>{
-    const m = (el.value||'').match(ttRe);
-    if(!m) return;
-    const imdbID = m[1];
-    try{
-      const meta = await fetchOmdbById(imdbID);
-      if(meta && typeof openAddConfirmModal==='function'){
-        openAddConfirmModal(meta);
-      }
-    }catch(e){}
-  });
-})();
-</script>
-
-
 
 <script>
 (function(){
