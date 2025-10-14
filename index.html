@@ -87,7 +87,7 @@ function attachResetGesture(){
   font-weight: normal;
 }
 
-/* === Protocol: 5 kaarten per rij */
+/* === Protocol: 5 kaarten per rij === */
 @media (min-width: 1280px) {
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
@@ -171,7 +171,7 @@ function attachResetGesture(){
       <div class="flex items-center gap-2"><span class="text-sm opacity-80">IMDb</span></div>
       <button id="imdbClose" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">✕</button>
     </div>
-    <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+    <iframe id="imdbFrame" sandbox="allow-scripts allow-same-origin"></iframe>
   </div>
 </div>
 
@@ -186,40 +186,41 @@ function attachResetGesture(){
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
-const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
+const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';
+const OMDB_KEY='8a70a767';
 const TMDB_KEY = '75be79c893bcefbcc58f55adc8caca8e';
 
-// === Unified poster helper ===
-function posterFor(imdbID, omdbPoster, placeholder){
-  try{
-    const key = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-    if(omdbPoster && omdbPoster!=='N/A') return omdbPoster;
-    if(imdbID && key){ return 'https://img.omdbapi.com/?apikey='+key+'&i='+encodeURIComponent(imdbID); }
-  }catch(_){}
-  return placeholder || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
+// === Image & Data Helpers ===
+function getPosterUrl(path, size = 'w500') {
+  if (!path) return null;
+  return `https://image.tmdb.org/t/p/${size}${path}`;
 }
 
-// === Nieuwe TMDb Helper Functie ===
-async function getTmdbPoster(imdbID) {
+async function getTmdbDetails(imdbID) {
   if (!TMDB_KEY || !imdbID) return null;
   try {
-    const findUrl = `https://api.themoviedb.org/3/find/${imdbID}?api_key=${TMDB_KEY}&external_source=imdb_id`;
+    const findUrl = `https://api.themoviedb.org/3/find/${imdbID}?api_key=${TMDB_KEY}&language=en-US&external_source=imdb_id`;
     const findRes = await fetch(findUrl);
+    if (!findRes.ok) return null;
     const findData = await findRes.json();
-
+    
     let details = null;
+    let type = null;
     if (findData.movie_results && findData.movie_results.length > 0) {
       details = findData.movie_results[0];
+      type = 'movie';
     } else if (findData.tv_results && findData.tv_results.length > 0) {
       details = findData.tv_results[0];
+      type = 'tv';
     }
 
-    if (details && details.poster_path) {
-      return 'https://image.tmdb.org/t/p/w500' + details.poster_path;
+    if (details && type) {
+        const detailsUrl = `https://api.themoviedb.org/3/${type}/${details.id}?api_key=${TMDB_KEY}&language=nl-BE&append_to_response=external_ids`;
+        const detailsRes = await fetch(detailsUrl);
+        if (!detailsRes.ok) return null;
+        return await detailsRes.json();
     }
-  } catch (e) {
-    console.warn('TMDb poster fetch failed', e);
-  }
+  } catch (e) { console.warn('TMDb fetch failed', e); }
   return null;
 }
 
@@ -236,7 +237,7 @@ async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{
 async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
-const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
+const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:'', focusScoreInputForItem: null}};
 
 // === Anti-duplicate helpers ===
 function normalizeTitle(t){
@@ -350,7 +351,7 @@ function card(item, index){
   const div=document.createElement('div');
   div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
-  const posterSrc=posterFor(item.imdbID||item.imdbId||'', item.poster, 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout');
+  const posterSrc = item.poster || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
@@ -411,7 +412,26 @@ function card(item, index){
 
   div.querySelector('[data-action="delete"]').onclick=async()=>{await dbDel(item.id); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();};
   const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const catSel=div.querySelector('.category-select'); if(catSel){ catSel.onchange=async(e)=>{ item.type=e.target.value; const sortSel=document.getElementById('sortBy'); if(sortSel && sortSel.value==='created_desc'){ item.createdAt=Date.now(); } await dbPut(item); app.render(); bindStreamUI(); syncPushDebounced(); };}
+  const catSel=div.querySelector('.category-select'); 
+  if(catSel){
+    catSel.onchange = async (e) => {
+      item.type = e.target.value;
+      const sortSel = document.getElementById('sortBy');
+      if (sortSel && sortSel.value === 'created_desc') {
+        item.createdAt = Date.now();
+      }
+      if (item.type === 'bekeken' && !item.dateSeen) {
+        item.dateSeen = new Date().toISOString().split('T')[0];
+      }
+      await dbPut(item);
+      if (item.type === 'bekeken') {
+        app.state.focusScoreInputForItem = item.id;
+      }
+      app.render();
+      bindStreamUI();
+      syncPushDebounced();
+    };
+  }
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{ imdbBtn.setAttribute('data-poster', posterSrc); }catch(e){} }
@@ -429,6 +449,17 @@ function card(item, index){
     };
   }
   
+  if (app.state.focusScoreInputForItem === item.id) {
+    const scoreInputToFocus = div.querySelector('.our-score-input');
+    if (scoreInputToFocus) {
+      setTimeout(() => {
+        scoreInputToFocus.focus();
+        scoreInputToFocus.select();
+      }, 0);
+    }
+    app.state.focusScoreInputForItem = null;
+  }
+
   return div;
 }
 
@@ -443,49 +474,69 @@ document.getElementById('add-search').addEventListener('input', (e)=>{
 document.body.addEventListener('click', (e)=>{
   if(suggestOpen && !suggestBox.contains(e.target) && e.target.id!=='add-search'){ hideSuggest(); }
 });
+
 async function doSuggest(q){
-  if(!IS_ONLINE){ setStatus('Online nodig voor zoeken.'); return; }
+  if(!IS_ONLINE || !TMDB_KEY){ setStatus('Online nodig voor zoeken.'); return; }
   try{
-    const byT = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&s='+encodeURIComponent(q)+'&type=movie').then(r=>r.json());
-    const byS = await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&s='+encodeURIComponent(q)+'&type=series').then(r=>r.json());
-    const results = [...(byT.Search||[]), ...(byS.Search||[])];
-    renderSuggest(results);
-  }catch(e){ renderSuggest([]); }
+    const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&language=nl-BE&query=${encodeURIComponent(q)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    renderSuggest(data.results || []);
+  } catch(e){ renderSuggest([]); }
 }
-function renderSuggest(arr){
-  if(!arr || arr.length===0){
+
+function renderSuggest(results){
+  const arr = results.filter(r => r.media_type === 'movie' || r.media_type === 'tv');
+  if(!arr || arr.length === 0){
     suggestList.innerHTML=''; suggestEmpty.classList.remove('hidden'); showSuggest(); return;
   }
   suggestEmpty.classList.add('hidden');
-  suggestList.innerHTML = arr.map(r=>`<div class="row cursor-pointer" data-imdbid="${r.imdbID}" data-title="${(r.Title||'').replace(/"/g,'&quot;')}" data-year="${r.Year||''}" data-type="${r.Type||''}" data-poster="${r.Poster&&r.Poster!=='N/A'?r.Poster:''}">
-    <img src="${r.Poster&&r.Poster!=='N/A'?r.Poster:'https://placehold.co/44x66/e2e8f0/94a3b8?text=—'}" alt="">
-    <div class="flex flex-col">
-      <span class="text-sm font-semibold">${r.Title||'—'}</span>
-      <span class="text-xs opacity-70">${(r.Type||'').toUpperCase()} • ${r.Year||''}</span>
-    </div>
-  </div>`).join('');
+  suggestList.innerHTML = arr.map(r => {
+    const title = r.title || r.name;
+    const year = (r.release_date || r.first_air_date || '').split('-')[0];
+    const type = r.media_type === 'tv' ? 'SERIES' : 'MOVIE';
+    const posterUrl = getPosterUrl(r.poster_path, 'w92') || 'https://placehold.co/44x66/e2e8f0/94a3b8?text=—';
+    
+    return `<div class="row cursor-pointer" data-tmdb-id="${r.id}" data-media-type="${r.media_type}">
+      <img src="${posterUrl}" alt="Poster">
+      <div class="flex flex-col">
+        <span class="text-sm font-semibold">${title}</span>
+        <span class="text-xs opacity-70">${type} • ${year}</span>
+      </div>
+    </div>`;
+  }).join('');
   showSuggest();
   
-Array.from(suggestList.children).forEach(row=>{
-  row.addEventListener('click', async ()=>{
-    if(ADDING_LOCK) return;
-    ADDING_LOCK = true;
-    try{
-      hideSuggest();
-      const imdbID=row.dataset.imdbid, title=row.dataset.title, year=row.dataset.year, poster=row.dataset.poster;
-      const all=await dbGetAll();
-      const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));
-      if(titleSet.has(normalizeTitle(title))){
-        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
-        return;
+  Array.from(suggestList.children).forEach(row => {
+    row.addEventListener('click', async () => {
+      if(ADDING_LOCK) return;
+      ADDING_LOCK = true;
+      try{
+        hideSuggest();
+        const tmdbId = row.dataset.tmdbId;
+        const mediaType = row.dataset.mediaType;
+        
+        const url = `https://api.themoviedb.org/3/${mediaType}/${tmdbId}?api_key=${TMDB_KEY}&language=nl-BE&append_to_response=external_ids`;
+        const res = await fetch(url);
+        const details = await res.json();
+        
+        const all = await dbGetAll();
+        const titleSet = new Set(all.map(x => normalizeTitle(x.title || '')));
+        const newTitle = details.title || details.name;
+        if (titleSet.has(normalizeTitle(newTitle))) {
+          if(typeof openDuplicateModal==='function'){ openDuplicateModal(newTitle); } 
+          else { alert('Deze titel is al eerder toegevoegd.'); }
+          return;
+        }
+        
+        if (typeof openAddConfirmModal === 'function') {
+          openAddConfirmModal(details);
+        }
+      } finally {
+        ADDING_LOCK = false;
       }
-      if(typeof openAddConfirmModal==='function'){ openAddConfirmModal({ title, Year: year, Poster: poster, imdbID }); }
-    } finally {
-      ADDING_LOCK = false;
-    }
+    });
   });
-});
-
 }
 function showSuggest(){
   suggestBox.style.display='block'; suggestOpen=true;
@@ -572,12 +623,13 @@ async function fetchMissingPosters(){
   if(!IS_ONLINE){alert('Posters ophalen werkt enkel online.');return;}
   let items=await dbGetAll(); let changed=0;
   for(const it of items){
-    if(!it.poster || it.poster==='N/A'){
-      let url=''; try{
-        if(it.imdbID){const r=await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&i='+encodeURIComponent(it.imdbID));const j=await r.json();url=j.Poster&&j.Poster!=='N/A'?j.Poster:'';}
-        if(!url && it.title){const r=await fetch('https://www.omdbapi.com/?apikey='+OMDB_KEY+'&t='+encodeURIComponent(it.title)+(it.year?('&y='+it.year):''));const j=await r.json();url=j.Poster&&j.Poster!=='N/A'?j.Poster:'';}
-      }catch(e){}
-      if(url){ it.poster=url; await dbPut(it); changed++; }
+    if((!it.poster || it.poster.includes('placehold.co')) && it.imdbID){
+      const tmdbPoster = await getTmdbPoster(it.imdbID);
+      if (tmdbPoster) {
+        it.poster = tmdbPoster;
+        await dbPut(it);
+        changed++;
+      }
     }
   }
   if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
@@ -839,7 +891,7 @@ body {
     if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
     var box = m.querySelector('#randCard');
     if(box){
-      var poster = posterFor(item && (item.imdbID||item.imdbId), item && item.poster, 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—');
+      var poster = item.poster || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
       var title = esc(item && item.title || '');
       var type = esc(item && item.type || '');
       var year = esc(item && item.year || '');
@@ -892,7 +944,6 @@ document.addEventListener('DOMContentLoaded', function(){
   btn.addEventListener('click', function(){
     try{
       if(!window.app || !app.filtered) return;
-      // Niet actief bij 'all' of 'bekeken'
       if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
       var list = app.filtered();
       if(!list || !list.length) return;
@@ -993,16 +1044,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 (function(){
   let pendingItem = null;
-  function cloneOptions(fromSel, toSel){
-    toSel.innerHTML = '';
-    Array.from(fromSel.options).forEach(opt=>{
-      const o = document.createElement('option');
-      o.value = opt.value || opt.textContent;
-      o.textContent = opt.textContent;
-      if(opt.selected) o.selected = true;
-      toSel.appendChild(o);
-    });
-  }
+  
   window.openAddConfirmModal = function(item){
     pendingItem = item || null;
     const modal = document.getElementById('addConfirmModal');
@@ -1011,38 +1053,26 @@ document.addEventListener('DOMContentLoaded', function(){
     const p = document.getElementById('addConfirmPoster');
     const typeSel = document.getElementById('addConfirmType');
     const streamSel = document.getElementById('addConfirmStream');
-    const baseType = document.getElementById('add-type');
-    const baseStream = document.getElementById('add-stream');
-if(baseType && typeSel) cloneOptions(baseType, typeSel);
-if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
-if(!baseType && typeSel){
-  typeSel.innerHTML = [
-    ['film','Film'],
-    ['serie','Serie'],
-    ['herman-film','H-Film'],
-    ['herman-serie','H-Serie'],
-    ['aan-het-kijken','Aan het kijken'],
-    ['bekeken','Bekeken']
-  ].map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
-  typeSel.value = 'film';
-}
-if(!baseStream && streamSel){
-  const streams = ['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
-  streamSel.innerHTML = streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');
-  streamSel.value = '';
-}if(baseType && typeSel) cloneOptions(baseType, typeSel);
-    if(baseStream && streamSel) cloneOptions(baseStream, streamSel);
-    // Set defaults to current base selects
-    if(baseType && typeSel) typeSel.value = baseType.value;
-    if(baseStream && streamSel) streamSel.value = baseStream.value || '';
-    // Fill info
-    const title = (item && item.title) || (item && item.Title) || '';
-    const type = (item && item.type) || (item && item.Type) || '';
-    const year = (item && item.year) || (item && item.Year) || '';
-    const poster = posterFor((item&&item.imdbID)||(item&&item.imdbId)||(item&&item.imdbid), (item&&item.poster)||(item&&item.Poster), 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—');
+    
+    if(typeSel) {
+      typeSel.innerHTML = [
+        ['film','Film'], ['serie','Serie'], ['herman-film','H-Film'],
+        ['herman-serie','H-Serie'], ['aan-het-kijken','Aan het kijken'], ['bekeken','Bekeken']
+      ].map(([v,txt])=>`<option value="${v}">${txt}</option>`).join('');
+      typeSel.value = (item.media_type === 'tv' || item.Type === 'series') ? 'serie' : 'film';
+    }
+    if(streamSel){
+      const streams = ['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
+      streamSel.innerHTML = streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');
+      streamSel.value = '';
+    }
+
+    const title = item.title || item.name;
+    const year = (item.release_date || item.first_air_date || '').split('-')[0];
+    const type = item.media_type === 'tv' ? 'Serie' : 'Film';
+    p.src = getPosterUrl(item.poster_path, 'w185') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
     t.textContent = title || '—';
-    m.textContent = (type? String(type).toUpperCase() : '—') + (year? ' • '+year : '');
-    p.src = poster;
+    m.textContent = `${type} • ${year}`;
     modal.style.display = 'flex';
   };
   function close(){
@@ -1057,153 +1087,112 @@ if(!baseStream && streamSel){
   document.getElementById('addConfirmBtn').addEventListener('click', async function(){
     if(!pendingItem) return;
     try {
-      const typeSel = document.getElementById('addConfirmType');
-      const streamSel = document.getElementById('addConfirmStream');
-      const title = pendingItem.title || pendingItem.Title || '';
-      const year = pendingItem.year || pendingItem.Year || '';
-      const imdbID = pendingItem.imdbID || pendingItem.imdbId || pendingItem.imdbid || '';
-      
-      let poster = (pendingItem.poster) || (pendingItem.Poster && pendingItem.Poster !== 'N/A' ? pendingItem.Poster : '');
-
-      if (!poster && imdbID) {
-        poster = await getTmdbPoster(imdbID);
-      }
-
-      const type = typeSel ? typeSel.value : 'film';
-      const streamingOn = streamSel ? streamSel.value : '';
-
       const all = await dbGetAll();
+      const newTitle = pendingItem.title || pendingItem.name;
       const titleSet = new Set(all.map(x => normalizeTitle(x.title || '')));
-      if (titleSet.has(normalizeTitle(title))) {
-        if (typeof openDuplicateModal === 'function') {
-          openDuplicateModal(title);
-        } else {
-          alert('Deze titel is al eerder toegevoegd.');
-        }
+      if (titleSet.has(normalizeTitle(newTitle))) {
+        if (typeof openDuplicateModal === 'function') openDuplicateModal(newTitle);
+        else alert('Deze titel is al eerder toegevoegd.');
         return;
       }
-      const inc = { title, year, imdbID, poster: poster || '', type, streamingOn, createdAt: Date.now() };
-      const it = { id: 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), ...inc };
+      
+      const type = document.getElementById('addConfirmType').value;
+      const streamingOn = document.getElementById('addConfirmStream').value;
+      const year = (pendingItem.release_date || pendingItem.first_air_date || '').split('-')[0];
+      let runtime = pendingItem.runtime || (pendingItem.episode_run_time ? pendingItem.episode_run_time[0] : null) || '';
+      if(runtime) runtime = runtime + ' min';
+
+      const it = {
+        id: 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        title: newTitle,
+        year: year,
+        imdbID: pendingItem.external_ids ? pendingItem.external_ids.imdb_id : '',
+        imdbRating: pendingItem.vote_average ? pendingItem.vote_average.toFixed(1) : '',
+        runtime: runtime,
+        poster: getPosterUrl(pendingItem.poster_path, 'w500'),
+        type: type,
+        streamingOn: streamingOn,
+        createdAt: Date.now(),
+        ourScore: '',
+        dateSeen: ''
+      };
+      
       await dbPut(it);
       app.state.items = await dbGetAll();
       app.render();
       bindStreamUI();
       syncPushDebounced();
-      setStatus('Toegevoegd: ' + title);
+      setStatus('Toegevoegd: ' + newTitle);
       
-      const baseType = document.getElementById('add-type');
-      const baseStream = document.getElementById('add-stream');
-      if (baseType && typeSel) baseType.value = typeSel.value;
-      if (baseStream && streamSel) baseStream.value = streamSel.value;
       const inp = document.getElementById('add-search');
       if (inp) inp.value = '';
       close();
     } catch (e) {
-      console.error(e);
+      console.error('Error adding item:', e);
     }
   });
 })();
 </script>
 
-
 <script>
 // IMDb-info popup — rijke OMDb weergave
 (function(){
-  const overlay = document.getElementById('imdbOverlay');
-  const frame   = document.getElementById('imdbFrame');
-  const closeBtn= document.getElementById('imdbClose');
-  const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-
   function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
-  function htmlFor(data){
-    const poster = (data.Poster && data.Poster!=='N/A') ? data.Poster : 'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20';
-    const facts = [
-      ['Jaar', data.Year],
-      ['Duur', data.Runtime],
-      ['Rating', data.Rated],
-      ['Genre', data.Genre],
-      ['IMDb', (data.imdbRating||'—') + (data.imdbVotes ? ' ('+data.imdbVotes+')' : '')],
-      ['Regie', data.Director],
-      ['Schrijvers', data.Writer],
-      ['Cast', data.Actors]
-    ].filter(x=>x[1] && x[1]!=='N/A');
-    const factsHtml = facts.map(([k,v])=>`<div><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join('');
-    const plot = (data.Plot && data.Plot!=='N/A') ? data.Plot : '—';
+  
+  function tmdbHtmlFor(data){
+    const backdropUrl = getPosterUrl(data.backdrop_path, 'w1280');
+    const posterUrl = getPosterUrl(data.poster_path, 'w500');
+    const title = data.title || data.name;
+    const year = (data.release_date || data.first_air_date || '').split('-')[0];
+    let runtime = data.runtime || (data.episode_run_time ? data.episode_run_time[0] : null) || '';
+    if(runtime) runtime = runtime + ' min';
+    const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
+    const genres = (data.genres || []).map(g => g.name).join(', ');
 
     return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <style>
-  body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-  .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
-  img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
-  h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0;line-height:1.5}
-  .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem 1rem}
-  @media (max-width:560px){ .facts{grid-template-columns:1fr} .w{flex-direction:column} img{width:180px;height:260px} }
-  a{color:#60a5fa;text-decoration:none}
+  body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;}
+  .backdrop{ background-image: linear-gradient(to top, rgba(11,16,32,1) 10%, rgba(11,16,32,0.7) 50%), url(${backdropUrl}); background-size:cover; background-position: center 20%; }
+  .content{ display:flex; gap:24px; padding: 24px; }
+  img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; }
+  h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;}
+  p{margin:0 0 16px 0; opacity: 0.85;}
+  .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; }
+  .genres{ font-size: 14px; opacity:0.7; font-style: italic; margin-bottom: 16px; }
+  a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline}
 </style></head><body>
-<div class="w">
-  <img src="${esc(poster)}" alt="poster">
-  <div>
-    <h1>${esc(data.Title||'IMDb')}</h1>
-    <div class="facts">${factsHtml||''}</div>
-    <p class="m">${esc(plot)}</p>
-    ${data.Website && data.Website!=='N/A' ? `<p><a target="_blank" rel="noopener" href="${esc(data.Website)}">Website</a></p>` : ''}
-    <p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(data.imdbID||'')}/">Open op IMDb</a></p>
+<div class="backdrop">
+  <div class="content">
+    <img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster">
+    <div>
+      <h1>${esc(title)}</h1>
+      <div class="meta">${year} • ${runtime}</div>
+      <div class="genres">${genres}</div>
+      <p>${esc(data.overview)}</p>
+      ${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}
+    </div>
   </div>
 </div>
 </body></html>`;
   }
 
-  async function fetchOmdb(imdbID){
-    if(!KEY){ return null; }
-    try{
-      const r = await fetch('https://www.omdbapi.com/?apikey='+KEY+'&i='+encodeURIComponent(imdbID)+'&plot=full', {cache:'no-store'});
-      const j = await r.json();
-      if(j && j.Response!=='False') return j;
-    }catch(e){ console.warn('OMDb fetch error', e); }
-    return null;
-  }
-
-  window.openImdbOverlay = async function(imdbID, poster){
+  window.openImdbOverlay = async function(imdbID){
     if(!imdbID){ alert('Geen IMDb ID'); return; }
-    try{
-      const skel = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1"/>
-      <style>
-      body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-      .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
-      img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,.25)}
-      h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
-      </style></head><body>
-      <div class="w">
-        <img src="${esc(poster&&poster!=='N/A'?poster:'https://placehold.co/210x310/e2e8f0/94a3b8?text=%20')}" alt="poster">
-        <div><h1>IMDb</h1><p class="m">Details worden geladen…</p></div>
-      </div>
-</body></html>`;
-      frame.setAttribute('srcdoc', skel);
-    }catch(_){ frame.removeAttribute('srcdoc'); frame.src='about:blank'; }
+    
+    const frame = document.getElementById('imdbFrame');
+    const overlay = document.getElementById('imdbOverlay');
     overlay.style.display='flex';
+    frame.src = 'about:blank';
 
-    const data = await fetchOmdb(imdbID);
+    const data = await getTmdbDetails(imdbID);
     if(data){
-      try{ frame.setAttribute('srcdoc', htmlFor(data)); }
-      catch(_){ frame.removeAttribute('srcdoc'); frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/'; }
-    }else{
-      frame.removeAttribute('srcdoc');
+      try{ frame.setAttribute('srcdoc', tmdbHtmlFor(data)); }
+      catch(_){ frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/'; }
+    } else {
       frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
     }
   };
-
-  // Activeer knopjes
-  document.addEventListener('click', function(e){
-    const btn = e.target.closest && e.target.closest('.btn-imdb');
-    if(btn){
-      e.preventDefault();
-      const imdbId = btn.getAttribute('data-imdbid') || '';
-      const poster = btn.getAttribute('data-poster') || '';
-      if(imdbId){ window.openImdbOverlay(imdbId, poster); }
-    }
-  });
 })();
 
 // IMDb-ID quick add
@@ -1212,54 +1201,32 @@ if(!baseStream && streamSel){
   if(!el || el._imdbHandlerBound) return;
   el._imdbHandlerBound = true;
 
-  let ctrl = null, timer = null, lastVal = '';
   const TT = /(tt\d{7,9})/;
-
-  async function fetchWithTimeout(url, opts){
-    const { timeout = 10000, ...rest } = opts || {};
-    const ac = new AbortController();
-    const t = setTimeout(()=>ac.abort(), timeout);
-    try{
-      const res = await fetch(url, { ...rest, signal: ac.signal });
-      clearTimeout(t);
-      return res;
-    }catch(e){
-      clearTimeout(t);
-      throw e;
-    }
-  }
 
   async function tryOpen(){
     const v = el.value || '';
-    if(v === lastVal) return;
-    lastVal = v;
     const m = v.match(TT);
     if(!m) return;
     const imdbID = m[1];
-
-    if(ctrl) ctrl.abort();
-    ctrl = new AbortController();
+    el.disabled = true;
 
     try{
-      const KEY = (typeof OMDB_KEY!=='undefined' && OMDB_KEY) ? OMDB_KEY : '';
-      if(!KEY) return;
-      const resp = await fetchWithTimeout(`https://www.omdbapi.com/?apikey=${KEY}&i=${imdbID}&plot=short`, { timeout: 9000 });
-      const meta = await resp.json();
-      if(meta && meta.imdbID && typeof openAddConfirmModal==='function'){ openAddConfirmModal(meta); }
+      const details = await getTmdbDetails(imdbID);
+      if(details && typeof openAddConfirmModal==='function'){
+        openAddConfirmModal(details);
+        el.value = '';
+      } else {
+        alert('Titel niet gevonden voor ID ' + imdbID);
+      }
     }catch(e){
       // silent
+    } finally {
+      el.disabled = false;
     }
   }
 
-  function schedule(){
-    if(timer) clearTimeout(timer);
-    timer = setTimeout(tryOpen, 250);
-  }
-
-  el.addEventListener('paste', ()=>{ setTimeout(schedule, 0); });
-  el.addEventListener('change', schedule);
-  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter') schedule(); });
-  el.addEventListener('input', ()=>{ if(TT.test(el.value||'')) schedule(); });
+  el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
+  el.addEventListener('change', tryOpen);
 })();
 </script>
 
