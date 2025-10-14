@@ -551,9 +551,6 @@ function bindUI(){
     lottoBtn.addEventListener('click', () => {
       try {
         if (!window.app || typeof app.filtered !== 'function') return;
-        if (app.state && (app.state.filter === 'all' || app.state.filter === 'bekeken')) {
-          return;
-        }
         const list = app.filtered();
         if (!list || list.length === 0) return;
         const item = list[Math.floor(Math.random() * list.length)];
