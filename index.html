@@ -782,7 +782,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   const randModal=document.getElementById('randModal'),randClose=document.getElementById('randClose'),randCard=document.getElementById('randCard');
   window.openRandomModal = function(item) {
     if (!randModal) { alert('Keuze: ' + (item && item.title ? item.title : '–')); return; }
-    const esc = s => (s || '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const esc = s => (s || '').toString().replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
     const poster = item.poster || "https://placehold.co/96x144/e2e8f0/94a3b8?text=—";
     const title = esc(item.title);
     const type = esc(item.type);
