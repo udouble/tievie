@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<style id="pre-hide">.hidden{display:none}#suggest,#imdbOverlay,#helpMenu,#addConfirmModal{display:none}</style>
+<style id="prehide">.hidden,[hidden],[aria-hidden="true"],#suggest,#imdbOverlay,#helpMenu,#addConfirmModal,[role="dialog"],[role="alertdialog"],[role="menu"],.modal,.overlay,.dropdown,.popover,.tooltip{display:none!important}</style>
+<script>(function(){function rm(){var s=document.getElementById("prehide");if(s&&s.parentNode){s.parentNode.removeChild(s);} }if(document.readyState==="complete"){rm();}else{window.addEventListener("load",function(){requestAnimationFrame(rm);},{once:true});}})();</script>
 <meta name="theme-color" content="#0ea5e9"/>
 <title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
