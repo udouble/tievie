@@ -410,7 +410,7 @@ function card(item, index){
     </div>
   `;
 
-  div.querySelector('[data-action="delete"]').onclick=() => openDeleteConfirmModal(item);
+  div.querySelector('[data-action="delete"]').onclick = () => openDeleteConfirmModal(item);
   const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();}; }
   
   const catSel=div.querySelector('.category-select'); 
@@ -792,7 +792,6 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
-<!-- Modals -->
 <div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
   <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
@@ -905,7 +904,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
       deleteConfirmModal.style.display = 'flex';
   }
   function closeDeleteConfirmModal() {
-      deleteConfirmModal.style.display = 'none';
+      if (deleteConfirmModal) deleteConfirmModal.style.display = 'none';
       itemToDelete = null;
   }
   document.getElementById('deleteConfirmClose').addEventListener('click', closeDeleteConfirmModal);
@@ -940,7 +939,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
     const genres = (data.genres || []).map(g => g.name).join(', ');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(11, 16, 32, 1) 20%, rgba(11, 16, 32, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);} p{margin:0 0 16px 0; opacity: 0.9; text-shadow: 0 1px 3px rgba(0,0,0,0.5);} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);} .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);} a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(11, 16, 32, 1) 20%, rgba(11, 16, 32, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(0,0,0,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
   }
 
   window.openImdbOverlay = async function(imdbID){
@@ -960,16 +959,21 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     }
   };
 
-  document.addEventListener('click', function(e){
-    const btn = e.target.closest && e.target.closest('.btn-imdb');
-    if(btn){
-      e.preventDefault();
-      const imdbId = btn.getAttribute('data-imdbid') || '';
-      if(imdbId && window.openImdbOverlay){
-        window.openImdbOverlay(imdbId);
-      }
-    }
-  });
+  const imdbOverlay = document.getElementById('imdbOverlay');
+  const imdbClose = document.getElementById('imdbClose');
+  const imdbFrame = document.getElementById('imdbFrame');
+
+  if (imdbClose && imdbOverlay && imdbFrame) {
+      imdbClose.addEventListener('click', () => {
+          imdbOverlay.style.display = 'none';
+          imdbFrame.src = 'about:blank';
+      });
+      imdbOverlay.addEventListener('click', (e) => {
+          if (e.target === imdbOverlay) {
+              imdbClose.click();
+          }
+      });
+  }
 })();
 
 // IMDb-ID quick add
