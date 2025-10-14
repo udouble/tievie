@@ -546,20 +546,23 @@ function bindUI(){
   document.getElementById('btn-export').onclick=exportJson;
   document.getElementById('btn-posters').onclick=fetchMissingPosters;
   
-  document.getElementById('btn-random').addEventListener('click', () => {
-    try {
-      if (!window.app || typeof app.filtered !== 'function') return;
-      if (app.state && (app.state.filter === 'all' || app.state.filter === 'bekeken')) {
-        return;
-      }
-      const list = app.filtered();
-      if (!list || list.length === 0) return;
-      const item = list[Math.floor(Math.random() * list.length)];
-      if (window.openRandomModal) {
-        openRandomModal(item);
-      }
-    } catch (e) { console.error("Lotto button error:", e); }
-  });
+  const lottoBtn = document.getElementById('btn-random');
+  if (lottoBtn) {
+    lottoBtn.addEventListener('click', () => {
+      try {
+        if (!window.app || typeof app.filtered !== 'function') return;
+        if (app.state && (app.state.filter === 'all' || app.state.filter === 'bekeken')) {
+          return;
+        }
+        const list = app.filtered();
+        if (!list || list.length === 0) return;
+        const item = list[Math.floor(Math.random() * list.length)];
+        if (window.openRandomModal) {
+          openRandomModal(item);
+        }
+      } catch (e) { console.error("Lotto button error:", e); }
+    });
+  }
 
   (function(){
     const fc = document.getElementById('filterControls');
@@ -897,7 +900,20 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 
   // Random Modal
   const randModal=document.getElementById('randModal'),randClose=document.getElementById('randClose'),randCard=document.getElementById('randCard');
-  window.openRandomModal=function(item){if(!randModal){alert('Keuze: '+(item&&item.title?item.title:'–'));return}var e=(item.poster||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—"),t=(item&&item.title||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),o=(item&&item.type||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),l=(item&&item.year||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),a=normalizeStream(item&&item.streamingOn),n=(item&&item.imdbRating||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),i=(item&&item.ourScore||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),d=(item&&(item.imdbID||item.imdbId)||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e]));randCard.innerHTML=`<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${e}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${t}</h3><button data-imdbid="${d}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${o?o.charAt(0).toUpperCase()+o.slice(1):""} • ${l||"—"} ${a?"• "+a:""}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${n||"—"}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${i||"—"}</span></div></div></div></div>`;randModal.style.display='flex'};
+  window.openRandomModal = function(item) {
+    if (!randModal) { alert('Keuze: ' + (item && item.title ? item.title : '–')); return; }
+    const esc = s => (s || '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const poster = item.poster || "https://placehold.co/96x144/e2e8f0/94a3b8?text=—";
+    const title = esc(item.title);
+    const type = esc(item.type);
+    const year = esc(item.year);
+    const stream = normalizeStream(item.streamingOn);
+    const imdb = esc(item.imdbRating);
+    const our = esc(item.ourScore);
+    const imdbId = esc(item.imdbID || item.imdbId);
+    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    randModal.style.display = 'flex';
+  };
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
 
   // Add Confirm Modal
