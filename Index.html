@@ -2,8 +2,8 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8"/>
-\1<style>html{visibility:hidden}</style>
-<script>window.addEventListener("load",function(){document.documentElement.style.visibility="visible"});</script>
+<style id="anti-flash">html.cloak body{visibility:hidden!important}</style>
+<script>(function(){document.documentElement.classList.add("cloak");function reveal(){document.documentElement.classList.remove("cloak");var s=document.getElementById("anti-flash");if(s) s.remove();}window.addEventListener("load",function(){requestAnimationFrame(function(){requestAnimationFrame(reveal);});});})();</script>
 <meta name="theme-color" content="#0ea5e9"/>
 <title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
