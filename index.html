@@ -237,7 +237,7 @@ async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{
 async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
-const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:'', focusScoreInputForItem: null}};
+const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
 // === Anti-duplicate helpers ===
 function normalizeTitle(t){
@@ -412,26 +412,28 @@ function card(item, index){
 
   div.querySelector('[data-action="delete"]').onclick=async()=>{await dbDel(item.id); app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();};
   const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  
   const catSel=div.querySelector('.category-select'); 
   if(catSel){
+    const originalType = item.type;
     catSel.onchange = async (e) => {
-      item.type = e.target.value;
-      const sortSel = document.getElementById('sortBy');
-      if (sortSel && sortSel.value === 'created_desc') {
-        item.createdAt = Date.now();
+      const newType = e.target.value;
+      if (newType === 'bekeken' && originalType !== 'bekeken') {
+        e.target.value = originalType; // Reset dropdown temporarily
+        openScoreModal(item);
+      } else {
+        item.type = newType;
+        if (document.getElementById('sortBy').value === 'created_desc') {
+            item.createdAt = Date.now();
+        }
+        await dbPut(item);
+        app.render();
+        bindStreamUI();
+        syncPushDebounced();
       }
-      if (item.type === 'bekeken' && !item.dateSeen) {
-        item.dateSeen = new Date().toISOString().split('T')[0];
-      }
-      await dbPut(item);
-      if (item.type === 'bekeken') {
-        app.state.focusScoreInputForItem = item.id;
-      }
-      app.render();
-      bindStreamUI();
-      syncPushDebounced();
     };
   }
+
   const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{ imdbBtn.setAttribute('data-poster', posterSrc); }catch(e){} }
@@ -449,17 +451,6 @@ function card(item, index){
     };
   }
   
-  if (app.state.focusScoreInputForItem === item.id) {
-    const scoreInputToFocus = div.querySelector('.our-score-input');
-    if (scoreInputToFocus) {
-      setTimeout(() => {
-        scoreInputToFocus.focus();
-        scoreInputToFocus.select();
-      }, 0);
-    }
-    app.state.focusScoreInputForItem = null;
-  }
-
   return div;
 }
 
@@ -486,7 +477,7 @@ async function doSuggest(q){
 }
 
 function renderSuggest(results){
-  const arr = results.filter(r => r.media_type === 'movie' || r.media_type === 'tv');
+  const arr = results.filter(r => (r.media_type === 'movie' || r.media_type === 'tv') && r.poster_path);
   if(!arr || arr.length === 0){
     suggestList.innerHTML=''; suggestEmpty.classList.remove('hidden'); showSuggest(); return;
   }
@@ -494,7 +485,7 @@ function renderSuggest(results){
   suggestList.innerHTML = arr.map(r => {
     const title = r.title || r.name;
     const year = (r.release_date || r.first_air_date || '').split('-')[0];
-    const type = r.media_type === 'tv' ? 'SERIES' : 'MOVIE';
+    const type = r.media_type === 'tv' ? 'SERIE' : 'FILM';
     const posterUrl = getPosterUrl(r.poster_path, 'w92') || 'https://placehold.co/44x66/e2e8f0/94a3b8?text=—';
     
     return `<div class="row cursor-pointer" data-tmdb-id="${r.id}" data-media-type="${r.media_type}">
@@ -624,7 +615,7 @@ async function fetchMissingPosters(){
   let items=await dbGetAll(); let changed=0;
   for(const it of items){
     if((!it.poster || it.poster.includes('placehold.co')) && it.imdbID){
-      const tmdbPoster = await getTmdbPoster(it.imdbID);
+      const tmdbPoster = await getTmdbDetails(it.imdbID).then(d => d && getPosterUrl(d.poster_path));
       if (tmdbPoster) {
         it.poster = tmdbPoster;
         await dbPut(it);
@@ -805,217 +796,33 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
-
 <div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
   <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Dubbele titel</strong>
-      <button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+      <strong>Dubbele titel</strong><button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
       <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
-      <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten met ✕. Er wordt niets toegevoegd.</p>
+      <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten. Er wordt niets toegevoegd.</p>
     </div>
   </div>
 </div>
-<script>
-  (function(){
-    window.openDuplicateModal = function(title){
-      var m = document.getElementById('dupModal');
-      if(!m){ alert('Deze titel is al eerder toegevoegd.'); return; }
-      var msg = m.querySelector('#dupMsg');
-      if(msg){ msg.textContent = 'Deze titel is al eerder toegevoegd.'; }
-      m.style.display = 'flex';
-    };
-    var closeBtn = null;
-    function close(){ var m=document.getElementById('dupModal'); if(m) m.style.display='none'; }
-    document.addEventListener('DOMContentLoaded', function(){
-      closeBtn = document.getElementById('dupClose');
-      if(closeBtn) closeBtn.addEventListener('click', close);
-      var modal = document.getElementById('dupModal');
-      if(modal){
-        modal.addEventListener('click', function(e){ if(e.target === modal){ close(); } });
-      }
-    });
-  })();
-</script>
-
-<style id="theme-blue-final">
-/* Alleen kleurcorrectie — verder niets aanpassen */
-body {
-  background: linear-gradient(180deg,
-    #0b2a5b 0%,
-    #0a2552 38%,
-    #092048 72%,
-    #081a3b 100%) !important;
-}
-.glass {
-  background: linear-gradient(180deg, #e7f6ff 0%, #def1ff 100%) !important;
-}
-</style>
-
 
 <div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
   <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Willekeurige keuze</strong>
-      <button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+      <strong>Willekeurige keuze</strong><button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
-    <div style="padding:16px 18px;color:#e5e7eb">
-      <p style="margin:0 0 10px 0" id="randMsg">Deze titel hebben we voor je gekozen.</p>
-      <div id="randCard" class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
-        </div>
-    </div>
+    <div id="randCard" style="padding:16px 18px;color:#e5e7eb"></div>
   </div>
 </div>
-<script>
-(function(){
-  function esc(s){ return (s||'').toString().replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
-  function normalizeStream(raw){
-    const s=(raw||'').toString().trim().toLowerCase();
-    if(!s) return '';
-    if(s.startsWith('appl')) return 'Apple TV+';
-    if(s.startsWith('netf')) return 'Netflix';
-    if(s.startsWith('vrt')) return 'VRT MAX';
-    if(s.startsWith('vtm')) return 'VTM Go';
-    if(s.startsWith('prim')) return 'Prime Video';
-    if(s.includes('play')) return 'Go Play';
-    if(s.startsWith('np')) return 'NPO';
-    if(s.startsWith('strea')) return 'Streamz';
-    if(s.startsWith('strem')) return 'Stremio';
-    if(s.startsWith('disn')) return 'Disney+';
-    return '';
-  }
-  window.openRandomModal = function(item){
-    var m = document.getElementById('randModal');
-    if(!m){ alert('Keuze: '+(item&&item.title?item.title:'–')); return; }
-    var box = m.querySelector('#randCard');
-    if(box){
-      var poster = item.poster || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
-      var title = esc(item && item.title || '');
-      var type = esc(item && item.type || '');
-      var year = esc(item && item.year || '');
-      var stream = normalizeStream(item && item.streamingOn);
-      var imdb = esc(item && item.imdbRating || '');
-      var our  = esc(item && item.ourScore || '');
-      var imdbId = esc(item && (item.imdbID||item.imdbId) || '');
-      box.innerHTML = `
-        <div class="flex gap-4 items-start">
-          <img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
-          <div class="flex-1">
-            <div class="flex items-center justify-between gap-3">
-              <h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3>
-              <button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
-            </div>
-            <div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase()+type.slice(1) : ''} • ${year||'—'} ${stream?('• '+stream):''}</div>
-            <div class="mt-2 flex gap-3 text-sm">
-              <span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb||'—'}</span>
-              <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our||'—'}</span>
-            </div>
-          </div>
-        </div>`;
-      try{
-        var b = box.querySelector('.btn-imdb');
-        if(b){
-          b.addEventListener('click', function(e){
-            e.preventDefault(); e.stopPropagation();
-            if(window.openImdbOverlay){ window.openImdbOverlay(imdbId); }
-          });
-        }
-      }catch(e){}
-    }
-    m.style.display = 'flex';
-  };
-  function close(){ var m=document.getElementById('randModal'); if(m) m.style.display='none'; }
-  document.addEventListener('DOMContentLoaded', function(){
-    var closeBtn = document.getElementById('randClose');
-    if(closeBtn) closeBtn.addEventListener('click', close);
-    var modal = document.getElementById('randModal');
-    if(modal){ modal.addEventListener('click', function(e){ if(e.target === modal){ close(); } }); }
-  });
-})();
-</script>
-
-<script>
-// lotto
-document.addEventListener('DOMContentLoaded', function(){
-  var btn = document.getElementById('btn-random');
-  if(!btn) return;
-  btn.addEventListener('click', function(){
-    try{
-      if(!window.app || !app.filtered) return;
-      if(app.state && (app.state.filter==='all' || app.state.filter==='bekeken')) return;
-      var list = app.filtered();
-      if(!list || !list.length) return;
-      var idx = Math.floor(Math.random()*list.length);
-      var item = list[idx];
-      if(window.openRandomModal) openRandomModal(item);
-    }catch(e){ /* silent */ }
-  });
-});
-</script>
-
-
-<script>
-/* lotto */
-document.addEventListener('DOMContentLoaded', function(){
-  var btn = document.getElementById('btn-random');
-  if(!btn) return;
-
-  function hasApp(){ try{ return (typeof app !== 'undefined') && app && app.state; }catch(_){ return false; } }
-
-  function setDisabled(){
-    try{
-      var f = hasApp() && app.state.filter ? app.state.filter : 'all';
-      var off = (f==='all' || f==='bekeken');
-      if(off){ btn.setAttribute('disabled',''); } else { btn.removeAttribute('disabled'); }
-    }catch(e){}
-  }
-
-  if(!btn._wired){
-    btn.addEventListener('click', function(){
-      try{
-        if(!hasApp() || typeof app.filtered !== 'function') return;
-        if(app.state.filter==='all' || app.state.filter==='bekeken') return;
-        var list = app.filtered();
-        if(!list || !list.length) return;
-        var item = list[Math.floor(Math.random()*list.length)];
-        if(typeof window.openRandomModal === 'function'){ openRandomModal(item); }
-      }catch(e){}
-    });
-    btn._wired = true;
-  }
-
-  if(hasApp() && typeof app.render === 'function' && !app._lottoPatched){
-    var orig = app.render;
-    app.render = function(){
-      var r = orig.apply(app, arguments);
-      try{ setDisabled(); }catch(_){}
-      return r;
-    };
-    app._lottoPatched = true;
-  }
-
-  var fc = document.getElementById('filterControls');
-  if(fc && !fc._lottoWired){
-    fc.addEventListener('click', function(e){
-      var b = e.target && e.target.closest ? e.target.closest('.filter-btn') : null;
-      if(b){ setTimeout(setDisabled,0); }
-    });
-    fc._lottoWired = true;
-  }
-
-  setDisabled();
-});</script>
 
 <div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
   <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Toevoegen</strong>
-      <button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+      <strong>Toevoegen</strong><button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
-      <p id="addConfirmMsg" style="margin:0 0 10px 0">Deze titel hebben we gevonden. Vul categorie en ‘Waar te zien’ in.</p>
       <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
         <div class="flex gap-4 items-start">
           <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
@@ -1023,119 +830,106 @@ document.addEventListener('DOMContentLoaded', function(){
             <h3 id="addConfirmTitle" class="text-lg font-semibold text-slate-900 m-0">—</h3>
             <p id="addConfirmMeta" class="m-0 opacity-70 text-sm">—</p>
             <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label class="block text-sm">
-                <span class="block mb-1 text-slate-600">Categorie</span>
-                <select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select>
-              </label>
-              <label class="block text-sm">
-                <span class="block mb-1 text-slate-600">Waar te zien</span>
-                <select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select>
-              </label>
+              <label class="block text-sm"><span class="block mb-1 text-slate-600">Categorie</span><select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
+              <label class="block text-sm"><span class="block mb-1 text-slate-600">Waar te zien</span><select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
             </div>
-            <div class="mt-4">
-              <button id="addConfirmBtn" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Voeg toe</button>
-            </div>
+            <div class="mt-4"><button id="addConfirmBtn" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Voeg toe</button></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<div id="scoreModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+      <strong>Item bekeken</strong><button id="scoreModalClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="scoreModalTitle" style="font-weight:600; margin: 0 0 12px 0;"></p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="block text-sm"><span class="block mb-1 opacity-80">Onze score</span><input id="scoreModalScore" type="text" class="w-full p-2 border-slate-300/60 rounded-md"></label>
+        <label class="block text-sm"><span class="block mb-1 opacity-80">Datum gezien</span><input id="scoreModalDate" type="date" class="w-full p-2 border-slate-300/60 rounded-md"></label>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button id="scoreModalSave" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Opslaan</button>
+        <button id="scoreModalCancel" class="px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20">Annuleren</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// Modal Logic
 (function(){
-  let pendingItem = null;
-  
-  window.openAddConfirmModal = function(item){
-    pendingItem = item || null;
-    const modal = document.getElementById('addConfirmModal');
-    const t = document.getElementById('addConfirmTitle');
-    const m = document.getElementById('addConfirmMeta');
-    const p = document.getElementById('addConfirmPoster');
-    const typeSel = document.getElementById('addConfirmType');
-    const streamSel = document.getElementById('addConfirmStream');
-    
-    if(typeSel) {
-      typeSel.innerHTML = [
-        ['film','Film'], ['serie','Serie'], ['herman-film','H-Film'],
-        ['herman-serie','H-Serie'], ['aan-het-kijken','Aan het kijken'], ['bekeken','Bekeken']
-      ].map(([v,txt])=>`<option value="${v}">${txt}</option>`).join('');
-      typeSel.value = (item.media_type === 'tv' || item.Type === 'series') ? 'serie' : 'film';
-    }
-    if(streamSel){
-      const streams = ['', 'Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];
-      streamSel.innerHTML = streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');
-      streamSel.value = '';
-    }
-
-    const title = item.title || item.name;
-    const year = (item.release_date || item.first_air_date || '').split('-')[0];
-    const type = item.media_type === 'tv' ? 'Serie' : 'Film';
-    p.src = getPosterUrl(item.poster_path, 'w185') || 'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';
-    t.textContent = title || '—';
-    m.textContent = `${type} • ${year}`;
-    modal.style.display = 'flex';
+  // Duplicate Modal
+  const dupModal = document.getElementById('dupModal');
+  const dupClose = document.getElementById('dupClose');
+  window.openDuplicateModal = function(title){
+    if(!dupModal) { alert('Deze titel is al eerder toegevoegd.'); return; }
+    dupModal.querySelector('#dupMsg').textContent = `De titel "${title}" is al eerder toegevoegd.`;
+    dupModal.style.display = 'flex';
   };
-  function close(){
-    const modal = document.getElementById('addConfirmModal');
-    if(modal) modal.style.display = 'none';
-    pendingItem = null;
+  if(dupModal){
+    dupClose.addEventListener('click', ()=>dupModal.style.display='none');
+    dupModal.addEventListener('click', (e)=>{ if(e.target === dupModal) dupModal.style.display='none'; });
   }
-  document.getElementById('addConfirmClose').addEventListener('click', close);
-  document.getElementById('addConfirmModal').addEventListener('click', function(e){ if(e.target===this) close(); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
 
-  document.getElementById('addConfirmBtn').addEventListener('click', async function(){
-    if(!pendingItem) return;
-    try {
-      const all = await dbGetAll();
-      const newTitle = pendingItem.title || pendingItem.name;
-      const titleSet = new Set(all.map(x => normalizeTitle(x.title || '')));
-      if (titleSet.has(normalizeTitle(newTitle))) {
-        if (typeof openDuplicateModal === 'function') openDuplicateModal(newTitle);
-        else alert('Deze titel is al eerder toegevoegd.');
-        return;
-      }
-      
-      const type = document.getElementById('addConfirmType').value;
-      const streamingOn = document.getElementById('addConfirmStream').value;
-      const year = (pendingItem.release_date || pendingItem.first_air_date || '').split('-')[0];
-      let runtime = pendingItem.runtime || (pendingItem.episode_run_time ? pendingItem.episode_run_time[0] : null) || '';
-      if(runtime) runtime = runtime + ' min';
+  // Random Modal
+  const randModal=document.getElementById('randModal');const randClose=document.getElementById('randClose');const randCard=document.getElementById('randCard');
+  window.openRandomModal=function(item){if(!randModal){alert('Keuze: '+(item&&item.title?item.title:'–'));return}var poster=item.poster||'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';var title=(item&&item.title||'').toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));var type=(item&&item.type||'').toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));var year=(item&&item.year||'').toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));var stream=normalizeStream(item&&item.streamingOn);var imdb=(item&&item.imdbRating||'').toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));var our=(item&&item.ourScore||'').toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));var imdbId=(item&&(item.imdbID||item.imdbId)||'').toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));randCard.innerHTML=`<div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type?type.charAt(0).toUpperCase()+type.slice(1):''} • ${year||'—'} ${stream?('• '+stream):''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb||'—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our||'—'}</span></div></div></div>`;var b=randCard.querySelector('.btn-imdb');if(b){b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();if(window.openImdbOverlay){window.openImdbOverlay(imdbId)}})}randModal.style.display='flex'};
+  if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
 
-      const it = {
-        id: 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-        title: newTitle,
-        year: year,
-        imdbID: pendingItem.external_ids ? pendingItem.external_ids.imdb_id : '',
-        imdbRating: pendingItem.vote_average ? pendingItem.vote_average.toFixed(1) : '',
-        runtime: runtime,
-        poster: getPosterUrl(pendingItem.poster_path, 'w500'),
-        type: type,
-        streamingOn: streamingOn,
-        createdAt: Date.now(),
-        ourScore: '',
-        dateSeen: ''
-      };
-      
-      await dbPut(it);
-      app.state.items = await dbGetAll();
-      app.render();
-      bindStreamUI();
-      syncPushDebounced();
-      setStatus('Toegevoegd: ' + newTitle);
-      
-      const inp = document.getElementById('add-search');
-      if (inp) inp.value = '';
-      close();
-    } catch (e) {
-      console.error('Error adding item:', e);
-    }
+  // Add Confirm Modal
+  let pendingItem = null;
+  const addConfirmModal=document.getElementById('addConfirmModal'),addConfirmClose=document.getElementById('addConfirmClose'),addConfirmBtn=document.getElementById('addConfirmBtn');
+  window.openAddConfirmModal=function(item){pendingItem=item||null;const t=document.getElementById('addConfirmTitle'),m=document.getElementById('addConfirmMeta'),p=document.getElementById('addConfirmPoster'),typeSel=document.getElementById('addConfirmType'),streamSel=document.getElementById('addConfirmStream');if(typeSel){typeSel.innerHTML=[['film','Film'],['serie','Serie'],['herman-film','H-Film'],['herman-serie','H-Serie'],['aan-het-kijken','Aan het kijken'],['bekeken','Bekeken']].map(([v,txt])=>`<option value="${v}">${txt}</option>`).join('');typeSel.value=(item.media_type==='tv'||item.Type==='series')?'serie':'film'}if(streamSel){const streams=['','Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio'];streamSel.innerHTML=streams.map(s=>`<option value="${s}">${s||'Niet toegekend'}</option>`).join('');streamSel.value=''}const title=item.title||item.name;const year=(item.release_date||item.first_air_date||'').split('-')[0];const type=item.media_type==='tv'?'Serie':'Film';p.src=getPosterUrl(item.poster_path,'w185')||'https://placehold.co/96x144/e2e8f0/94a3b8?text=—';t.textContent=title||'—';m.textContent=`${type} • ${year}`;addConfirmModal.style.display='flex'};
+  function closeAddConfirm(){if(addConfirmModal)addConfirmModal.style.display='none';pendingItem=null}
+  if(addConfirmModal){addConfirmClose.addEventListener('click',closeAddConfirm);addConfirmModal.addEventListener('click',function(e){if(e.target===this)closeAddConfirm()});document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAddConfirm()});addConfirmBtn.addEventListener('click',async function(){if(!pendingItem)return;try{const all=await dbGetAll();const newTitle=pendingItem.title||pendingItem.name;const titleSet=new Set(all.map(x=>normalizeTitle(x.title||'')));if(titleSet.has(normalizeTitle(newTitle))){if(typeof openDuplicateModal==='function')openDuplicateModal(newTitle);else alert('Deze titel is al eerder toegevoegd.');return}const type=document.getElementById('addConfirmType').value;const streamingOn=document.getElementById('addConfirmStream').value;const year=(pendingItem.release_date||pendingItem.first_air_date||'').split('-')[0];let runtime=pendingItem.runtime||(pendingItem.episode_run_time?pendingItem.episode_run_time[0]:null)||'';if(runtime)runtime=runtime+' min';const it={id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),title:newTitle,year:year,imdbID:pendingItem.external_ids?pendingItem.external_ids.imdb_id:'',imdbRating:pendingItem.vote_average?pendingItem.vote_average.toFixed(1):'',runtime:runtime,poster:getPosterUrl(pendingItem.poster_path,'w500'),type:type,streamingOn:streamingOn,createdAt:Date.now(),ourScore:'',dateSeen:''};await dbPut(it);app.state.items=await dbGetAll();app.render();bindStreamUI();syncPushDebounced();setStatus('Toegevoegd: '+newTitle);const inp=document.getElementById('add-search');if(inp)inp.value='';closeAddConfirm()}catch(e){console.error('Error adding item:',e)}})}
+
+  // Score Modal for 'Bekeken'
+  const scoreModal = document.getElementById('scoreModal');
+  const scoreModalClose = document.getElementById('scoreModalClose');
+  const scoreModalCancel = document.getElementById('scoreModalCancel');
+  const scoreModalSave = document.getElementById('scoreModalSave');
+  const scoreModalTitle = document.getElementById('scoreModalTitle');
+  const scoreModalScore = document.getElementById('scoreModalScore');
+  const scoreModalDate = document.getElementById('scoreModalDate');
+  let scoreModalItem = null;
+
+  function closeScoreModal() {
+    scoreModal.style.display = 'none';
+    scoreModalItem = null;
+  }
+  window.openScoreModal = function(item) {
+    scoreModalItem = item;
+    scoreModalTitle.textContent = item.title;
+    scoreModalScore.value = item.ourScore || '';
+    scoreModalDate.value = item.dateSeen || new Date().toISOString().split('T')[0];
+    scoreModal.style.display = 'flex';
+    setTimeout(() => scoreModalScore.focus(), 50);
+  };
+  scoreModalSave.addEventListener('click', async () => {
+    if (!scoreModalItem) return;
+    scoreModalItem.type = 'bekeken';
+    scoreModalItem.ourScore = scoreModalScore.value;
+    scoreModalItem.dateSeen = scoreModalDate.value;
+    scoreModalItem.createdAt = Date.now();
+    await dbPut(scoreModalItem);
+    closeScoreModal();
+    app.render();
+    bindStreamUI();
+    syncPushDebounced();
   });
+  scoreModalClose.addEventListener('click', closeScoreModal);
+  scoreModalCancel.addEventListener('click', closeScoreModal);
+  scoreModal.addEventListener('click', (e) => { if (e.target === scoreModal) closeScoreModal(); });
 })();
 </script>
 
 <script>
-// IMDb-info popup — rijke OMDb weergave
+// IMDb Details Popup
 (function(){
   function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
   
@@ -1149,32 +943,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
     const genres = (data.genres || []).map(g => g.name).join(', ');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<style>
-  body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;}
-  .backdrop{ background-image: linear-gradient(to top, rgba(11,16,32,1) 10%, rgba(11,16,32,0.7) 50%), url(${backdropUrl}); background-size:cover; background-position: center 20%; }
-  .content{ display:flex; gap:24px; padding: 24px; }
-  img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; }
-  h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;}
-  p{margin:0 0 16px 0; opacity: 0.85;}
-  .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; }
-  .genres{ font-size: 14px; opacity:0.7; font-style: italic; margin-bottom: 16px; }
-  a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline}
-</style></head><body>
-<div class="backdrop">
-  <div class="content">
-    <img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster">
-    <div>
-      <h1>${esc(title)}</h1>
-      <div class="meta">${year} • ${runtime}</div>
-      <div class="genres">${genres}</div>
-      <p>${esc(data.overview)}</p>
-      ${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}
-    </div>
-  </div>
-</div>
-</body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(11,16,32,1) 10%, rgba(11,16,32,0.7) 50%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.85;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.7; font-style: italic; margin-bottom: 16px; } a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
   }
 
   window.openImdbOverlay = async function(imdbID){
@@ -1193,6 +962,17 @@ document.addEventListener('DOMContentLoaded', function(){
       frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
     }
   };
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest && e.target.closest('.btn-imdb');
+    if(btn){
+      e.preventDefault();
+      const imdbId = btn.getAttribute('data-imdbid') || '';
+      if(imdbId && window.openImdbOverlay){
+        window.openImdbOverlay(imdbId);
+      }
+    }
+  });
 })();
 
 // IMDb-ID quick add
@@ -1200,16 +980,13 @@ document.addEventListener('DOMContentLoaded', function(){
   const el = document.getElementById('add-imdb');
   if(!el || el._imdbHandlerBound) return;
   el._imdbHandlerBound = true;
-
   const TT = /(tt\d{7,9})/;
-
   async function tryOpen(){
     const v = el.value || '';
     const m = v.match(TT);
     if(!m) return;
     const imdbID = m[1];
     el.disabled = true;
-
     try{
       const details = await getTmdbDetails(imdbID);
       if(details && typeof openAddConfirmModal==='function'){
@@ -1224,7 +1001,6 @@ document.addEventListener('DOMContentLoaded', function(){
       el.disabled = false;
     }
   }
-
   el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
   el.addEventListener('change', tryOpen);
 })();
