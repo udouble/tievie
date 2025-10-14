@@ -187,6 +187,7 @@ function attachResetGesture(){
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
 const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';const OMDB_KEY='8a70a767';
+const TMDB_KEY = '75be79c893bcefbcc58f55adc8caca8e';
 
 // === Unified poster helper ===
 function posterFor(imdbID, omdbPoster, placeholder){
@@ -197,6 +198,31 @@ function posterFor(imdbID, omdbPoster, placeholder){
   }catch(_){}
   return placeholder || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 }
+
+// === Nieuwe TMDb Helper Functie ===
+async function getTmdbPoster(imdbID) {
+  if (!TMDB_KEY || !imdbID) return null;
+  try {
+    const findUrl = `https://api.themoviedb.org/3/find/${imdbID}?api_key=${TMDB_KEY}&external_source=imdb_id`;
+    const findRes = await fetch(findUrl);
+    const findData = await findRes.json();
+
+    let details = null;
+    if (findData.movie_results && findData.movie_results.length > 0) {
+      details = findData.movie_results[0];
+    } else if (findData.tv_results && findData.tv_results.length > 0) {
+      details = findData.tv_results[0];
+    }
+
+    if (details && details.poster_path) {
+      return 'https://image.tmdb.org/t/p/w500' + details.poster_path;
+    }
+  } catch (e) {
+    console.warn('TMDb poster fetch failed', e);
+  }
+  return null;
+}
+
 let IS_ONLINE=navigator.onLine;const netBadge=document.getElementById('netBadge');
 let ADDING_LOCK=false;
 function setNetBadge(){netBadge.textContent=IS_ONLINE?'online':'offline';netBadge.className='badge '+(IS_ONLINE?'online':'offline')}
@@ -1030,33 +1056,51 @@ if(!baseStream && streamSel){
 
   document.getElementById('addConfirmBtn').addEventListener('click', async function(){
     if(!pendingItem) return;
-    try{
+    try {
       const typeSel = document.getElementById('addConfirmType');
       const streamSel = document.getElementById('addConfirmStream');
       const title = pendingItem.title || pendingItem.Title || '';
       const year = pendingItem.year || pendingItem.Year || '';
       const imdbID = pendingItem.imdbID || pendingItem.imdbId || pendingItem.imdbid || '';
-      const poster = (pendingItem.poster) || (pendingItem.Poster && pendingItem.Poster!=='N/A' ? pendingItem.Poster : '');
+      
+      let poster = (pendingItem.poster) || (pendingItem.Poster && pendingItem.Poster !== 'N/A' ? pendingItem.Poster : '');
+
+      if (!poster && imdbID) {
+        poster = await getTmdbPoster(imdbID);
+      }
+
       const type = typeSel ? typeSel.value : 'film';
       const streamingOn = streamSel ? streamSel.value : '';
 
       const all = await dbGetAll();
-      const titleSet = new Set(all.map(x=>normalizeTitle(x.title||'')));
-      if(titleSet.has(normalizeTitle(title))){
-        if(typeof openDuplicateModal==='function'){ openDuplicateModal(title); } else { alert('Deze titel is al eerder toegevoegd.'); }
+      const titleSet = new Set(all.map(x => normalizeTitle(x.title || '')));
+      if (titleSet.has(normalizeTitle(title))) {
+        if (typeof openDuplicateModal === 'function') {
+          openDuplicateModal(title);
+        } else {
+          alert('Deze titel is al eerder toegevoegd.');
+        }
         return;
       }
-      const inc = { title, year, imdbID, poster, type, streamingOn, createdAt: Date.now() };
-      const it = { id:'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7), ...inc };
-      await dbPut(it); app.state.items = await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced();
-      setStatus('Toegevoegd: '+title);
+      const inc = { title, year, imdbID, poster: poster || '', type, streamingOn, createdAt: Date.now() };
+      const it = { id: 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), ...inc };
+      await dbPut(it);
+      app.state.items = await dbGetAll();
+      app.render();
+      bindStreamUI();
+      syncPushDebounced();
+      setStatus('Toegevoegd: ' + title);
+      
       const baseType = document.getElementById('add-type');
       const baseStream = document.getElementById('add-stream');
-      if(baseType && typeSel) baseType.value = typeSel.value;
-      if(baseStream && streamSel) baseStream.value = streamSel.value;
-      const inp = document.getElementById('add-search'); if(inp) inp.value='';
+      if (baseType && typeSel) baseType.value = typeSel.value;
+      if (baseStream && streamSel) baseStream.value = streamSel.value;
+      const inp = document.getElementById('add-search');
+      if (inp) inp.value = '';
       close();
-    }catch(e){ console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   });
 })();
 </script>
