@@ -879,10 +879,11 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   window.openDuplicateModal=function(t){if(!dupModal){alert('Deze titel is al eerder toegevoegd.');return}dupModal.querySelector('#dupMsg').textContent=`De titel "${t}" is al eerder toegevoegd.`;dupModal.style.display='flex'};
   if(dupModal){dupClose.addEventListener('click',()=>dupModal.style.display='none');dupModal.addEventListener('click',e=>{if(e.target===dupModal)dupModal.style.display='none'})}
 
-  // Random Modal
+  // Random Modal & Lotto Button
   const randModal=document.getElementById('randModal'),randClose=document.getElementById('randClose'),randCard=document.getElementById('randCard');
-  window.openRandomModal=function(item){if(!randModal){alert('Keuze: '+(item&&item.title?item.title:'–'));return}var e=(item.poster||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—"),t=(item&&item.title||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),o=(item&&item.type||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),l=(item&&item.year||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),a=normalizeStream(item&&item.streamingOn),n=(item&&item.imdbRating||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),i=(item&&item.ourScore||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),d=(item&&(item.imdbID||item.imdbId)||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e]));randCard.innerHTML=`<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${e}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${t}</h3><button data-imdbid="${d}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${o?o.charAt(0).toUpperCase()+o.slice(1):""} • ${l||"—"} ${a?"• "+a:""}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${n||"—"}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${i||"—"}</span></div></div></div></div>`;var r=randCard.querySelector(".btn-imdb");if(r)r.addEventListener("click",function(e){e.preventDefault(),e.stopPropagation(),window.openImdbOverlay&&window.openImdbOverlay(d)});randModal.style.display='flex'};
+  window.openRandomModal=function(item){if(!randModal){alert('Keuze: '+(item&&item.title?item.title:'–'));return}var e=(item.poster||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—"),t=(item&&item.title||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),o=(item&&item.type||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),l=(item&&item.year||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),a=normalizeStream(item&&item.streamingOn),n=(item&&item.imdbRating||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),i=(item&&item.ourScore||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e])),d=(item&&(item.imdbID||item.imdbId)||"").toString().replace(/[&<>]/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[e]));randCard.innerHTML=`<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${e}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${t}</h3><button data-imdbid="${d}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${o?o.charAt(0).toUpperCase()+o.slice(1):""} • ${l||"—"} ${a?"• "+a:""}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${n||"—"}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${i||"—"}</span></div></div></div></div>`;randModal.style.display='flex'};
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
+  document.addEventListener('DOMContentLoaded', ()=>{const btn=document.getElementById('btn-random');if(btn)btn.addEventListener('click',()=>{try{if(!window.app||!app.filtered)return;if(app.state&&(app.state.filter==='all'||app.state.filter==='bekeken'))return;var list=app.filtered();if(!list||!list.length)return;var item=list[Math.floor(Math.random()*list.length)];if(window.openRandomModal)openRandomModal(item)}catch(e){}})});
 
   // Add Confirm Modal
   let pendingItem=null;const addConfirmModal=document.getElementById('addConfirmModal'),addConfirmClose=document.getElementById('addConfirmClose'),addConfirmBtn=document.getElementById('addConfirmBtn');window.openAddConfirmModal=function(t){pendingItem=t||null;const e=document.getElementById("addConfirmTitle"),o=document.getElementById("addConfirmMeta"),d=document.getElementById("addConfirmPoster"),n=document.getElementById("addConfirmType"),i=document.getElementById("addConfirmStream");if(n){n.innerHTML=[["film","Film"],["serie","Serie"],["herman-film","H-Film"],["herman-serie","H-Serie"],["aan-het-kijken","Aan het kijken"],["bekeken","Bekeken"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),n.value="tv"===t.media_type||"series"===t.Type?"serie":"film"}if(i){const t=["","Streamz","Netflix","Prime Video","Apple TV+","VRT MAX","Go Play","NPO","Disney+","Stremio"];i.innerHTML=t.map(t=>`<option value="${t}">${t||"Niet toegekend"}</option>`).join(""),i.value=""}const l=t.title||t.name,a=(t.release_date||t.first_air_date||"").split("-")[0],r="tv"===t.media_type?"Serie":"Film";d.src=getPosterUrl(t.poster_path,"w185")||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—",e.textContent=l||"—",o.textContent=`${r} • ${a}`,addConfirmModal.style.display="flex"};function closeAddConfirm(){addConfirmModal&&"none"!==addConfirmModal.style.display&&(addConfirmModal.style.display="none"),pendingItem=null}
@@ -896,31 +897,10 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   scoreModalClose.addEventListener('click',closeScoreModal);scoreModalCancel.addEventListener('click',closeScoreModal);scoreModal.addEventListener('click',e=>{if(e.target===scoreModal)closeScoreModal()});
   
   // Delete Confirmation Modal
-  const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-  let itemToDelete = null;
-  window.openDeleteConfirmModal = function(item) {
-      itemToDelete = item;
-      deleteConfirmModal.querySelector('#deleteConfirmTitle').textContent = `Wil je "${item.title}" echt verwijderen?`;
-      deleteConfirmModal.style.display = 'flex';
-  }
-  function closeDeleteConfirmModal() {
-      if (deleteConfirmModal) deleteConfirmModal.style.display = 'none';
-      itemToDelete = null;
-  }
-  document.getElementById('deleteConfirmClose').addEventListener('click', closeDeleteConfirmModal);
-  document.getElementById('deleteCancelBtn').addEventListener('click', closeDeleteConfirmModal);
-  deleteConfirmModal.addEventListener('click', (e) => { if(e.target === deleteConfirmModal) closeDeleteConfirmModal() });
-  document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
-      if (itemToDelete) {
-          await dbDel(itemToDelete.id);
-          app.state.items = await dbGetAll();
-          app.render();
-          bindStreamUI();
-          syncPushDebounced();
-          closeDeleteConfirmModal();
-      }
-  });
-
+  const deleteConfirmModal=document.getElementById('deleteConfirmModal');let itemToDelete=null;
+  window.openDeleteConfirmModal=function(item){itemToDelete=item;deleteConfirmModal.querySelector('#deleteConfirmTitle').textContent=`Wil je "${item.title}" echt verwijderen?`;deleteConfirmModal.style.display='flex'}
+  function closeDeleteConfirmModal(){if(deleteConfirmModal)deleteConfirmModal.style.display='none';itemToDelete=null}
+  document.getElementById('deleteConfirmClose').addEventListener('click',closeDeleteConfirmModal);document.getElementById('deleteCancelBtn').addEventListener('click',closeDeleteConfirmModal);deleteConfirmModal.addEventListener('click',e=>{if(e.target===deleteConfirmModal)closeDeleteConfirmModal()});document.getElementById('deleteConfirmBtn').addEventListener('click',async()=>{if(itemToDelete){await dbDel(itemToDelete.id);app.state.items=await dbGetAll();app.render();bindStreamUI();syncPushDebounced();closeDeleteConfirmModal()}});
 })();
 </script>
 
@@ -974,6 +954,17 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
           }
       });
   }
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest && e.target.closest('.btn-imdb');
+    if(btn){
+      e.preventDefault();
+      const imdbId = btn.getAttribute('data-imdbid') || '';
+      if(imdbId && window.openImdbOverlay){
+        window.openImdbOverlay(imdbId);
+      }
+    }
+  });
 })();
 
 // IMDb-ID quick add
