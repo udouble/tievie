@@ -571,7 +571,7 @@ function bindUI(){
     const btnRand = document.getElementById('btn-random');
     if (btnRand && !btnRand._bound) {
       btnRand._bound = true;
-      btnRand.addEventListener('click', function(e){
+      btnRand.addEventListener('click', async function(e){
         e.preventDefault();
         try{
           const pool = (typeof app!=='undefined' && app.filtered) ? app.filtered() : [];
@@ -905,19 +905,38 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 
   // Random Modal
   const randModal=document.getElementById('randModal'),randClose=document.getElementById('randClose'),randCard=document.getElementById('randCard');
-  window.openRandomModal = function(item) {
+  window.openRandomModal = async function(item) {
     if (!randModal) { alert('Keuze: ' + (item && item.title ? item.title : '–')); return; }
-    const esc = s => (s || '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-    const poster = item.poster || "https://placehold.co/96x144/e2e8f0/94a3b8?text=—";
-    const title = esc(item.title);
-    const type = esc(item.type);
-    const year = esc(item.year);
-    const stream = normalizeStream(item.streamingOn);
-    const imdb = esc(item.imdbRating);
-    const our = esc(item.ourScore);
-    const imdbId = esc(item.imdbID || item.imdbId);
-    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    
+    randCard.innerHTML = `<div class="p-4 text-center text-slate-400">Bezig met laden...</div>`;
     randModal.style.display = 'flex';
+    
+    let tmdbData = null;
+    if (item.imdbID) {
+      tmdbData = await getTmdbDetails(item.imdbID);
+    }
+    
+    if (tmdbData) {
+      randCard.innerHTML = tmdbHtmlFor(tmdbData);
+    } else {
+      const poster = item.poster || "https://placehold.co/200x300/e2e8f0/94a3b8?text=—";
+      randCard.innerHTML = `
+        <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
+          <div class="flex gap-4 items-start">
+            <img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-slate-900 m-0">${esc(item.title)}</h3>
+              <div class="mt-1 text-sm text-slate-700">${esc(item.type)} • ${esc(item.year || '—')} ${item.streamingOn ? '• ' + esc(normalizeStream(item.streamingOn)) : ''}</div>
+              <div class="mt-2 flex gap-3 text-sm">
+                <span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${esc(item.imdbRating || '—')}</span>
+                <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${esc(item.ourScore || '—')}</span>
+              </div>
+              ${item.imdbID ? `<div class="mt-2"><button data-imdbid="${esc(item.imdbID)}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDb pagina</button></div>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
   };
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
 
