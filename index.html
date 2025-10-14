@@ -565,6 +565,30 @@ function bindUI(){
   })();
   document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
+
+  // Lotto: kies willekeurig uit huidige lijst en toon popup (geen andere wijzigingen)
+  (function(){
+    const btnRand = document.getElementById('btn-random');
+    if (btnRand && !btnRand._bound) {
+      btnRand._bound = true;
+      btnRand.addEventListener('click', function(e){
+        e.preventDefault();
+        try{
+          const pool = (typeof app!=='undefined' && app.filtered) ? app.filtered() : [];
+          if (!pool || !pool.length) {
+            alert('Geen items in de huidige lijst.');
+            return;
+          }
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          if (typeof window.openRandomModal === 'function') {
+            window.openRandomModal(pick);
+          } else {
+            alert('Keuze: ' + (pick && pick.title ? pick.title : '—'));
+          }
+        }catch(_){ /* stil falen volgens protocol */ }
+      });
+    }
+  })();
 }
 
 async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
