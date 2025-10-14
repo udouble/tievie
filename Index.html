@@ -3,8 +3,6 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<style id="prehide">.hidden,[hidden],[aria-hidden="true"],#suggest,#imdbOverlay,#helpMenu,#addConfirmModal,[role="dialog"],[role="alertdialog"],[role="menu"],.modal,.overlay,.dropdown,.popover,.tooltip{display:none!important}</style>
-<script>(function(){function rm(){var s=document.getElementById("prehide");if(s&&s.parentNode){s.parentNode.removeChild(s);} }if(document.readyState==="complete"){rm();}else{window.addEventListener("load",function(){requestAnimationFrame(rm);},{once:true});}})();</script>
 <meta name="theme-color" content="#0ea5e9"/>
 <title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -355,8 +353,8 @@ function card(item, index){
           </select>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-slate-700">Onze score:</label>
+      <div class="grid grid-cols-2 gap-2 items-center">
+        <label class="text-sm text-slate-700" class="text-sm text-slate-700 col-span-2">Onze score:</label>
         <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input flex-1 p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
         <button data-imdbid="${item.imdbID||''}" class="btn-imdb px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
       </div>
@@ -731,59 +729,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 </script>
 
 
-<script>
-/* Score + IMDB exact zoals de 2 dropdowns erboven: 2 kolommen 1fr/1fr, links input, rechts knop */
-(function(){
-  function fixScoreRow(card){
-    if(!card) return;
-    const row = card.querySelector('.p-3.pt-2 .flex.items-center.gap-2');
-    if(!row || row.dataset.scoreGrid==='1') return;
-    const label = row.querySelector('label');
-    if(!label || !/Onze\s*score/i.test(label.textContent||'')) return;
-    const input = row.querySelector('.our-score-input');
-    const btn = row.querySelector('.btn-imdb');
-    if(!input || !btn) return;
 
-    // Container gelijk maken aan de 2-koloms rij erboven
-    row.classList.remove('flex','items-center','gap-2');
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-    row.style.gap = '0.5rem'; // gap-2
-
-    // Linkerkolom
-    const left = document.createElement('div');
-    left.style.display = 'flex';
-    left.style.flexDirection = 'column';
-    left.appendChild(label);
-    left.appendChild(input);
-    input.style.width = '100%'; // exact uitlijnen met 'Categorie'
-
-    // Rechterkolom
-    const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.flexDirection = 'column';
-    const ghost = document.createElement('label');
-    ghost.className = 'block font-medium text-slate-600 mb-0.5';
-    ghost.textContent = '\u00A0'; // zelfde labelhoogte voor perfecte uitlijning
-    right.appendChild(ghost);
-    btn.style.display = 'block';
-    btn.style.width = '100%';       // exact uitlijnen met 'Waar te zien'
-    right.appendChild(btn);
-
-    // Vervang inhoud
-    while(row.firstChild) row.removeChild(row.firstChild);
-    row.appendChild(left);
-    row.appendChild(right);
-
-    row.dataset.scoreGrid = '1';
-  }
-
-  function sweep(){ document.querySelectorAll('.glass[data-item-id]').forEach(fixScoreRow); }
-  const obs = new MutationObserver(sweep);
-  obs.observe(document.body, { childList:true, subtree:true });
-  sweep();
-})();
-</script>
 
 
 <script>
