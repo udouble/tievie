@@ -552,7 +552,10 @@ function bindUI(){
       try {
         if (!window.app || typeof app.filtered !== 'function') return;
         const list = app.filtered();
-        if (!list || list.length === 0) return;
+        if (!list || list.length === 0) {
+            alert('Geen items in de huidige lijst om uit te kiezen.');
+            return;
+        }
         const item = list[Math.floor(Math.random() * list.length)];
         if (window.openRandomModal) {
           openRandomModal(item);
