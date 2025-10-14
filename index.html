@@ -566,7 +566,7 @@ function bindUI(){
   document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
 
-  // Lotto: kies willekeurig uit huidige lijst en toon popup in IMDB-stijl (geen andere wijzigingen)
+  // Lotto: kies willekeurig uit huidige lijst en toon popup (geen andere wijzigingen)
   (function(){
     const btnRand = document.getElementById('btn-random');
     if (btnRand && !btnRand._bound) {
@@ -580,25 +580,11 @@ function bindUI(){
             return;
           }
           const pick = pool[Math.floor(Math.random() * pool.length)];
-          if (!pick) return;
-          // Maak popup in IMDB-stijl
-          const modal = document.createElement('div');
-          modal.className = 'modal imdb-modal';
-          modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
-          modal.innerHTML = `
-            <div class="modal-content" style="background:#111;color:#fff;border-radius:12px;max-width:420px;width:90%;padding:20px;box-shadow:0 0 20px #000;">
-              <h2 style="margin-top:0;">🎲 ${pick.title || 'Onbekend'}</h2>
-              <p><strong>Jaar:</strong> ${pick.year || '-'}</p>
-              <p><strong>IMDb:</strong> ${pick.imdb_rating || '-'}</p>
-              <p><strong>Duur:</strong> ${pick.runtime || '-'}</p>
-              <p><strong>Genre:</strong> ${pick.genres || '-'}</p>
-              <p><strong>Te zien bij:</strong> ${pick.streams || '-'}</p>
-              <div style="text-align:right;margin-top:20px;">
-                <button id="close-lotto" style="padding:8px 16px;border:none;border-radius:6px;background:#f5c518;color:#000;font-weight:bold;cursor:pointer;">Sluiten</button>
-              </div>
-            </div>`;
-          document.body.appendChild(modal);
-          document.getElementById('close-lotto').addEventListener('click', ()=> modal.remove());
+          if (typeof window.openRandomModal === 'function') {
+            window.openRandomModal(pick);
+          } else {
+            alert('Keuze: ' + (pick && pick.title ? pick.title : '—'));
+          }
         }catch(_){ /* stil falen volgens protocol */ }
       });
     }
