@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="theme-color" content="#4c7c8c"/>
+<meta name="theme-color" content="#00aaff"/>
 <title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -67,8 +67,11 @@ function attachResetGesture(){
   .glass{background:linear-gradient(135deg, rgba(235, 248, 255, 0.94), rgba(255, 245, 235, 0.90)) !important; box-shadow: 0 6px 20px rgba(0, 170, 255, 0.14);}
 
 /* Overrides: active category pill to orange, Lotto green, info-strip */
-#filterControls .filter-btn.bg-sky-500{background:#ff9800 !important;color:#fff !important}
-#filterControls #btn-random{background:#38a169 !important;color:#fff !important}
+#filterControls .filter-btn.bg-sky-500{background:#00aaff !important;color:#fff !important}
+#filterControls .filter-btn.bg-sky-500:hover{background:#00aaff !important}
+#filterControls .filter-btn:not(.bg-sky-500){background:#fff !important;color:#333 !important}
+#filterControls .filter-btn:not(.bg-sky-500):hover{background:#f0f4f9 !important}
+#filterControls #btn-random{background:#ff9800 !important;color:#fff !important}
 .info-strip{display:inline-block;background:rgba(255,255,255,.85);color:#ff9800;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px; border: 1px solid rgba(255, 152, 0, 0.5);}
 
 .imdb-score-input {
