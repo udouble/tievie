@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="theme-color" content="#0ea5e9"/>
+<meta name="theme-color" content="#4c7c8c"/>
 <title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -37,44 +37,44 @@ function attachResetGesture(){
 <link rel="manifest" href="./manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: dark; }
-  body{background:#0b1020;color:#e5e7eb}
-  .glass{background:rgba(255,255,255,.78);color:#0f172a;backdrop-filter:saturate(150%) blur(12px)}
-  .pill{border:1px solid rgba(15,23,42,.08)}
-  #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#03111a;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
+  :root { color-scheme: light; }
+  body{background:#f0f4f9;color:#1a202c}
+  .glass{background:rgba(255,255,255,.85);color:#1a202c;backdrop-filter:saturate(150%) blur(12px)}
+  .pill{border:1px solid rgba(255,255,255,.85)}
+  #status{position:fixed;right:12px;bottom:12px;background:#4c7c8c;color:#fff;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
   .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
-  .online {background:#22c55e;color:#052e16}
-  .offline {background:#ef4444;color:#7f1d1d}
-  ::placeholder{font-style:italic;color:#64748b}
-  #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
-  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
-  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
+  .online {background:#38a169;color:#fff}
+  .offline {background:#e53e3e;color:#fff}
+  ::placeholder{font-style:italic;color:#a0aec0}
+  #imdbOverlay{position:fixed;inset:0;background:rgba(240,244,249,.85);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#fff;border:1px solid rgba(160,174,192,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#f7fafc;color:#1a202c}
+  #imdbFrame{width:100%;height:100%;border:0;background:#fff}
   #suggest{position:fixed;display:none;z-index:100001}
-  #suggest .card{max-height:420px;overflow:auto}
+  #suggest .card{max-height:420px;overflow:auto;background:#fff;box-shadow:0 10px 20px rgba(0,0,0,.15)}
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
-  #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
-  #suggest .row:hover{background:rgba(2,6,23,.06)}
+  #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem;color:#1a202c}
+  #suggest .row:hover{background:#f0f4f9}
   body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji';}
   input[type="text"], input[type="search"], input[type="date"], select, .our-score-input, .category-select, .streaming-service-select {
     background:#ffffff !important;
-    color:#0f172a !important;
-    border:1px solid rgba(15,23,42,.12) !important;
+    color:#1a202c !important;
+    border:1px solid rgba(160,174,192, .5) !important;
     appearance:none; -webkit-appearance:none; -moz-appearance:none;
   }
-  input::placeholder{color:#64748b}
+  input::placeholder{color:#a0aec0}
   select{padding-right:2rem !important}
-  .glass{background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(240,246,255,.90)) !important; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.14);}
+  .glass{background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(240,246,255,.90)) !important; box-shadow: 0 6px 20px rgba(76, 124, 140, 0.14);}
 
 /* Overrides: active category pill to orange, Lotto green, info-strip */
-#filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
-#filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
-.info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+#filterControls .filter-btn.bg-sky-500{background:#ff9800 !important;color:#fff !important}
+#filterControls #btn-random{background:#38a169 !important;color:#fff !important}
+.info-strip{display:inline-block;background:rgba(255,255,255,.85);color:#ff9800;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px; border: 1px solid rgba(255, 152, 0, 0.5);}
 
 .imdb-score-input {
   background: transparent;
   border: none;
-  color: #fbbf24;
+  color: #ff9800;
   width: 45px;
   padding: 0;
   margin: 0;
@@ -83,7 +83,7 @@ function attachResetGesture(){
   text-align: center;
 }
 .imdb-score-input::placeholder {
-  color: rgba(251, 191, 36, 0.5);
+  color: rgba(255, 152, 0, 0.5);
   font-weight: normal;
 }
 
@@ -817,34 +817,34 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
-<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
-  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Dubbele titel</strong><button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(240,244,249,.85);backdrop-filter:blur(4px);z-index:100050">
+  <div style="width:min(520px,92vw);background:#fff;border:1px solid rgba(160,174,192,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#f7fafc;color:#1a202c">
+      <strong>Dubbele titel</strong><button id="dupClose" style="background:transparent;border:0;color:#1a202c;font-size:18px;line-height:1">✕</button>
     </div>
-    <div style="padding:16px 18px;color:#e5e7eb">
+    <div style="padding:16px 18px;color:#1a202c">
       <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
       <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten. Er wordt niets toegevoegd.</p>
     </div>
   </div>
 </div>
 
-<div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
-  <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Willekeurige keuze</strong><button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+<div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(240,244,249,.85);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(720px,94vw);background:#fff;border:1px solid rgba(160,174,192,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#f7fafc;color:#1a202c">
+      <strong>Willekeurige keuze</strong><button id="randClose" style="background:transparent;border:0;color:#1a202c;font-size:18px;line-height:1">✕</button>
     </div>
-    <div id="randCard" style="padding:16px 18px;color:#0f172a"></div>
+    <div id="randCard" style="padding:16px 18px;color:#1a202c"></div>
   </div>
 </div>
 
-<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
-  <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Toevoegen</strong><button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(240,244,249,.85);backdrop-filter:blur(4px);z-index:100052">
+  <div style="width:min(640px,94vw);background:#fff;border:1px solid rgba(160,174,192,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#f7fafc;color:#1a202c">
+      <strong>Toevoegen</strong><button id="addConfirmClose" style="background:transparent;border:0;color:#1a202c;font-size:18px;line-height:1">✕</button>
     </div>
-    <div style="padding:16px 18px;color:#e5e7eb">
-      <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
+    <div style="padding:16px 18px;color:#1a202c">
+      <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#1a202c">
         <div class="flex gap-4 items-start">
           <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
           <div class="flex-1">
@@ -862,12 +862,12 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   </div>
 </div>
 
-<div id="scoreModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
-  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Item bekeken</strong><button id="scoreModalClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+<div id="scoreModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(240,244,249,.85);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(520px,92vw);background:#fff;border:1px solid rgba(160,174,192,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#f7fafc;color:#1a202c">
+      <strong>Item bekeken</strong><button id="scoreModalClose" style="background:transparent;border:0;color:#1a202c;font-size:18px;line-height:1">✕</button>
     </div>
-    <div style="padding:16px 18px;color:#e5e7eb">
+    <div style="padding:16px 18px;color:#1a202c">
       <p id="scoreModalTitle" style="font-weight:600; margin: 0 0 12px 0;"></p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label class="block text-sm"><span class="block mb-1 opacity-80">Onze score</span><input id="scoreModalScore" type="text" class="w-full p-2 border-slate-300/60 rounded-md"></label>
@@ -881,12 +881,12 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   </div>
 </div>
 
-<div id="deleteConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100060">
-  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
-      <strong>Verwijderen</strong><button id="deleteConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+<div id="deleteConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(240,244,249,.85);backdrop-filter:blur(4px);z-index:100060">
+  <div style="width:min(520px,92vw);background:#fff;border:1px solid rgba(160,174,192,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#f7fafc;color:#1a202c">
+      <strong>Verwijderen</strong><button id="deleteConfirmClose" style="background:transparent;border:0;color:#1a202c;font-size:18px;line-height:1">✕</button>
     </div>
-    <div style="padding:16px 18px;color:#e5e7eb">
+    <div style="padding:16px 18px;color:#1a202c">
       <p id="deleteConfirmTitle" style="font-weight:600; margin: 0 0 12px 0;">Wil je deze titel echt verwijderen?</p>
       <div class="mt-4 flex gap-3">
         <button id="deleteConfirmBtn" class="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Verwijder</button>
@@ -917,7 +917,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdb = esc(item.imdbRating);
     const our = esc(item.ourScore);
     const imdbId = esc(item.imdbID || item.imdbId);
-    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#1a202c"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
     randModal.style.display = 'flex';
   };
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
@@ -977,7 +977,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
     const genres = (data.genres || []).map(g => g.name).join(', ');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(11, 16, 32, 1) 20%, rgba(11, 16, 32, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(0,0,0,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#fff;color:#1a202c;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(255,255,255, 1) 20%, rgba(255,255,255, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(160,174,192,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(255,255,255,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#4c7c8c;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
   }
 
   window.openImdbOverlay = async function(imdbID){
