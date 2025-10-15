@@ -113,7 +113,7 @@ function attachResetGesture(){
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
 /* Wijziging: Kaart achtergrond lichter */
-.glass-card{background:linear-gradient(135deg, rgba(28, 38, 60, 0.94), rgba(20, 28, 48, 0.90)) !important;}
+.glass-card{background:linear-gradient(135deg, rgba(28, 38, 60, 0.94), rgba(20, 28, 48, 0.90));}
 </style>
 </head>
 <body>
@@ -157,6 +157,7 @@ function attachResetGesture(){
         <option value="title_desc">Titel Z → A</option>
       </select>
       <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
+      <label for="streamBtn" class="text-sm text-slate-400">Streamingdienst</label>
       <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         Waar te zien?
       </button>
@@ -909,7 +910,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
       <strong>Verwijderen</strong><button id="deleteConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
-      <p id="deleteConfirmTitle" style="font-weight:600; margin: 0 0 12px 0;">Wil je "${item.title}" echt verwijderen?</p>
+      <p id="deleteConfirmTitle" style="font-weight:600; margin: 0 0 12px 0;">Wil je deze titel echt verwijderen?</p>
       <div class="mt-4 flex gap-3">
         <button id="deleteConfirmBtn" class="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Verwijder</button>
         <button id="deleteCancelBtn" class="px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20">Annuleren</button>
