@@ -95,64 +95,7 @@ function attachResetGesture(){
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
 
-
-/* === Brand theme (azure + orange gradient) — visual only, no layout changes === */
-:root{
-  --brand-azur:#0ea5e9;  /* azure */
-  --brand-azur-deep:#0284c7;
-  --brand-orange:#fb923c; /* orange */
-  --brand-orange-deep:#f97316;
-  --brand-bg1:#eff6ff;
-  --brand-bg2:#fff7ed;
-}
-html,body{font-family:"Plus Jakarta Sans","Inter",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";}
-body{
-  background:
-    radial-gradient(1200px 800px at 10% -10%, rgba(14,165,233,.25), transparent 55%),
-    radial-gradient(1200px 800px at 110% 10%, rgba(251,146,60,.18), transparent 55%),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-  color:#1a202c;
-}
-.glass{
-  background:rgba(255,255,255,.85);
-  color:#0b1220;
-  backdrop-filter:saturate(160%) blur(14px);
-  border:1px solid rgba(14,165,233,.18);
-  box-shadow:0 10px 30px rgba(2,6,23,.06);
-}
-.pill{border:1px solid rgba(14,165,233,.22)}
-#status{
-  background:linear-gradient(135deg, var(--brand-azur) 0%, var(--brand-orange) 100%);
-  color:white;
-  box-shadow:0 6px 22px rgba(2,6,23,.18);
-  border:none;
-}
-.badge{background:rgba(255,255,255,.22); color:#fff}
-
-/* Buttons and inputs — only visuals */
-button, .btn{border-radius:.6rem}
-button.primary, .btn-primary{
-  background:linear-gradient(135deg, var(--brand-azur) 0%, var(--brand-azur-deep) 100%);
-  color:#fff;border:0;
-}
-button.secondary, .btn-secondary{
-  background:linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-deep) 100%);
-  color:#111827;border:0;
-}
-
-/* Modal chrome (IDs used by the app; is non-breaking if absent) */
-#imdbBar{
-  background:linear-gradient(135deg, var(--brand-azur) 0%, var(--brand-orange) 100%) !important;
-  color:#fff !important;
-}
-#imdbPanel{border:1px solid rgba(14,165,233,.25) !important; box-shadow:0 18px 60px rgba(2,6,23,.22) !important}
-#dupModal > div, #pasteModal > div{
-  border:1px solid rgba(14,165,233,.25) !important;
-  box-shadow:0 18px 60px rgba(2,6,23,.18) !important;
-}
-
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="max-w-7xl mx-auto p-4 pb-28">
@@ -1037,35 +980,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
     const genres = (data.genres || []).map(g => g.name).join(', ');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#fff;color:#1a202c;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(255,255,255, 1) 20%, rgba(255,255,255, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(160,174,192,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(255,255,255,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#4c7c8c;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-</head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div>
-<script>
-// Non-invasive theming for dynamically-created nodes (colors only, no layout/behavior)
-(function(){
-  const gradient = 'linear-gradient(135deg, var(--brand-azur) 0%, var(--brand-orange) 100%)';
-  function paint(node){
-    try{
-      const bar = node.querySelector && node.querySelector('#imdbBar');
-      if(bar){ bar.style.background = gradient; bar.style.color = '#fff'; }
-      const panel = node.querySelector && node.querySelector('#imdbPanel');
-      if(panel){ panel.style.border = '1px solid rgba(14,165,233,.25)'; panel.style.boxShadow='0 18px 60px rgba(2,6,23,.22)'; }
-      const dup = document.getElementById('dupModal');
-      if(dup && dup.firstElementChild){ dup.firstElementChild.style.border='1px solid rgba(14,165,233,.25)'; }
-      const pst = document.getElementById('pasteModal');
-      if(pst && pst.firstElementChild){ pst.firstElementChild.style.border='1px solid rgba(14,165,233,.25)'; }
-    }catch(_e){/* no-op */}
-  }
-  const mo = new MutationObserver((muts)=>{
-    for(const m of muts){
-      for(const n of m.addedNodes){ paint(n); }
-    }
-  });
-  mo.observe(document.documentElement, {subtree:true, childList:true});
-  document.addEventListener('DOMContentLoaded', ()=>paint(document));
-})();
-</script>
-
-</body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#fff;color:#1a202c;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(255,255,255, 1) 20%, rgba(255,255,255, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(160,174,192,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(255,255,255,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#4c7c8c;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
   }
 
   window.openImdbOverlay = async function(imdbID){
@@ -1152,33 +1067,6 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   }
   el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
   el.addEventListener('change', tryOpen);
-})();
-</script>
-
-
-<script>
-// Non-invasive theming for dynamically-created nodes (colors only, no layout/behavior)
-(function(){
-  const gradient = 'linear-gradient(135deg, var(--brand-azur) 0%, var(--brand-orange) 100%)';
-  function paint(node){
-    try{
-      const bar = node.querySelector && node.querySelector('#imdbBar');
-      if(bar){ bar.style.background = gradient; bar.style.color = '#fff'; }
-      const panel = node.querySelector && node.querySelector('#imdbPanel');
-      if(panel){ panel.style.border = '1px solid rgba(14,165,233,.25)'; panel.style.boxShadow='0 18px 60px rgba(2,6,23,.22)'; }
-      const dup = document.getElementById('dupModal');
-      if(dup && dup.firstElementChild){ dup.firstElementChild.style.border='1px solid rgba(14,165,233,.25)'; }
-      const pst = document.getElementById('pasteModal');
-      if(pst && pst.firstElementChild){ pst.firstElementChild.style.border='1px solid rgba(14,165,233,.25)'; }
-    }catch(_e){/* no-op */}
-  }
-  const mo = new MutationObserver((muts)=>{
-    for(const m of muts){
-      for(const n of m.addedNodes){ paint(n); }
-    }
-  });
-  mo.observe(document.documentElement, {subtree:true, childList:true});
-  document.addEventListener('DOMContentLoaded', ()=>paint(document));
 })();
 </script>
 
