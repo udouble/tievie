@@ -112,8 +112,17 @@ function attachResetGesture(){
 @media (min-width: 1280px) {
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
-/* Wijziging: Kaart achtergrond lichter */
-.glass-card{background:linear-gradient(135deg, rgba(28, 38, 60, 0.94), rgba(20, 28, 48, 0.90));}
+/* Wijziging: Kaart achtergrond lichter blauw */
+.glass-card{
+  /* Een duidelijk lichtere, maar nog steeds donkere tint blauw/grijs */
+  background:linear-gradient(135deg, rgba(38, 51, 80, 0.94), rgba(28, 38, 60, 0.90));
+}
+/* Wijziging: IMDB knop lichter geel */
+.btn-imdb {
+  background: #ffc107 !important; /* zachter geel */
+  border: 1px solid #ffb300 !important;
+  color: #1a202c !important; 
+}
 </style>
 </head>
 <body>
@@ -434,7 +443,7 @@ function card(item, index){
   `;
 
   div.querySelector('[data-action="delete"]').onclick = () => openDeleteConfirmModal(item);
-  const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPush();}; }
   
   const catSel=div.querySelector('.category-select'); 
   if(catSel){
@@ -452,13 +461,13 @@ function card(item, index){
         await dbPut(item);
         app.render();
         bindStreamUI();
-        syncPushDebounced();
+        syncPush();
       }
     };
   }
 
-  const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
-  const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPush();}; }
+  const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPush();}; }
   const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{ imdbBtn.setAttribute('data-poster', posterSrc); }catch(e){} }
   
   const imdbScoreInput = div.querySelector('.imdb-score-input');
@@ -468,7 +477,7 @@ function card(item, index){
       if (newScore && !isNaN(parseFloat(newScore))) {
         item.imdbRating = newScore;
         await dbPut(item);
-        syncPushDebounced();
+        syncPush();
         app.render();
       }
     };
@@ -668,11 +677,11 @@ async function fetchMissingPosters(){
       }
     }
   }
-  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
+  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPush(); }
   setStatus('Posters afgerond. Geüpdatet: '+changed);
 }
 
-// ======= Auto-seed on first run =======
+// ======= Auto-seed on first run (GEEN WIJZIGING) =======
 async function autoSeedIfEmpty(){
   const current = await dbGetAll();
   if(current && current.length>0) return;
@@ -694,10 +703,61 @@ async function autoSeedIfEmpty(){
   }
 }
 
-let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
-async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
-async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
-navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+let syncTimer=null;
+/* ALLE SW/DEBOUNCE LOGICA IS VERWIJDERD EN VERVANGEN DOOR DIRECTE AANROEPEN */
+async function syncPush(){
+  const items=await dbGetAll();
+  // De Service Worker synchronisatie via postMessage is verwijderd.
+  // We gebruiken nu een directe HTTP PUT/POST naar de synchronisatie-URL.
+  // Voor dit statische hosting-scenario (GitHub Pages) is een simpele fetch zonder SW voldoende.
+  try{
+    await fetch('./__mfs_sync__.json', {
+      method: 'POST', // Simuleer een push naar de server
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({items: items, ts: Date.now()})
+    }).then(res => {
+        if (!res.ok) console.warn('Sync push to server failed');
+    });
+  } catch(e) {
+    console.warn('Sync push fail (direct fetch)', e);
+  }
+}
+
+async function syncPull(){
+  // Haalt data op, negeert lokale SW cache, en merge.
+  try{
+    // Haal de data direct op van de bron (nu niet meer via de SW cache)
+    const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});
+    if(!res.ok) return;
+    const data=await res.json();
+    if(!data||!Array.isArray(data.items))return;
+    
+    const current=await dbGetAll();
+    const merged=[...current];
+    
+    data.items.forEach(raw=>{
+      const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));
+      if(ex){
+        const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);
+        if(newer){
+          const keepId=ex.id;
+          merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});
+        }
+      } else {
+        merged.push(raw)
+      }
+    });
+    
+    await dbBulkPut(merged);
+    app.state.items=await dbGetAll();
+    app.render();
+  }catch(e){
+    console.warn('sync pull fail',e)
+  }
+}
+
+// Navigator.serviceWorker.addEventListener is verwijderd.
+// De Service Worker registratie is ook verwijderd uit het DOMContentLoaded event.
 
 // ===== Streaming multi-select (floating panel) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
@@ -789,16 +849,17 @@ function bindStreamUI(){
 document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
+    /* Service Worker is uitgeschakeld. Synchroniseer direct bij laden. */
     await syncPull();
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
     setStatus('v3.31 — PWA • '+app.state.items.length+' items');
-    await syncPush();
+    // syncPush is nu direct, geen debounce nodig na initieel laden.
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
-if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+/* Service Worker Registratie is volledig verwijderd */
 </script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
@@ -940,20 +1001,20 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdb = esc(item.imdbRating);
     const our = esc(item.ourScore);
     const imdbId = esc(item.imdbID || item.imdbId);
-    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-100 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-400">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-100 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm" style="background: #ffc107 !important; border-color: #ffb300 !important; color: #1a202c !important;">IMDB</button></div><div class="mt-1 text-sm text-slate-400">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
     randModal.style.display = 'flex';
   };
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
 
   // Add Confirm Modal
   let pendingItem=null;const addConfirmModal=document.getElementById('addConfirmModal'),addConfirmClose=document.getElementById('addConfirmClose'),addConfirmBtn=document.getElementById('addConfirmBtn');window.openAddConfirmModal=function(t){pendingItem=t||null;const e=document.getElementById("addConfirmTitle"),o=document.getElementById("addConfirmMeta"),d=document.getElementById("addConfirmPoster"),n=document.getElementById("addConfirmType"),i=document.getElementById("addConfirmStream");if(n){n.innerHTML=[["film","Film"],["serie","Serie"],["herman-film","H-Film"],["herman-serie","H-Serie"],["aan-het-kijken","Aan het kijken"],["bekeken","Bekeken"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),n.value="tv"===t.media_type||"series"===t.Type?"serie":"film"}if(i){const t=["","Streamz","Netflix","Prime Video","Apple TV+","VRT MAX","Go Play","NPO","Disney+","Stremio"];i.innerHTML=t.map(t=>`<option value="${t}">${t||"Niet toegekend"}</option>`).join(""),i.value=""}const l=t.title||t.name,a=(t.release_date||t.first_air_date||"").split("-")[0],r="tv"===t.media_type?"Serie":"Film";d.src=getPosterUrl(t.poster_path,"w185")||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—",e.textContent=l||"—",o.textContent=`${r} • ${a}`,addConfirmModal.style.display="flex"};function closeAddConfirm(){addConfirmModal&&"none"!==addConfirmModal.style.display&&(addConfirmModal.style.display="none"),pendingItem=null}
-  addConfirmModal&&(addConfirmClose.addEventListener("click",closeAddConfirm),addConfirmModal.addEventListener("click",function(t){t.target===this&&closeAddConfirm()}),document.addEventListener("keydown",function(t){"Escape"===t.key&&closeAddConfirm()}),addConfirmBtn.addEventListener("click",async function(){if(pendingItem)try{const t=document.getElementById("addConfirmType").value,e=document.getElementById("addConfirmStream").value,o=(pendingItem.release_date||pendingItem.first_air_date||"").split("-")[0];let d=pendingItem.runtime||(pendingItem.episode_run_time?pendingItem.episode_run_time[0]:null)||"";d&&(d+=" min");const n={id:"id-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),title:pendingItem.title||pendingItem.name,year:o,imdbID:pendingItem.external_ids?pendingItem.external_ids.imdb_id:"",imdbRating:pendingItem.vote_average?pendingItem.vote_average.toFixed(1):"",runtime:d,poster:getPosterUrl(pendingItem.poster_path,"w500"),type:t,streamingOn:e,createdAt:Date.now(),ourScore:"",dateSeen:""};await dbPut(n),app.state.items=await dbGetAll(),app.render(),bindStreamUI(),syncPushDebounced(),setStatus("Toegevoegd: "+(pendingItem.title||pendingItem.name));const i=document.getElementById("add-search");i&&(i.value=""),closeAddConfirm()}catch(t){console.error("Error adding item:",t)}}));
+  addConfirmModal&&(addConfirmClose.addEventListener("click",closeAddConfirm),addConfirmModal.addEventListener("click",function(t){t.target===this&&closeAddConfirm()}),document.addEventListener("keydown",function(t){"Escape"===t.key&&closeAddConfirm()}),addConfirmBtn.addEventListener("click",async function(){if(pendingItem)try{const t=document.getElementById("addConfirmType").value,e=document.getElementById("addConfirmStream").value,o=(pendingItem.release_date||pendingItem.first_air_date||"").split("-")[0];let d=pendingItem.runtime||(pendingItem.episode_run_time?pendingItem.episode_run_time[0]:null)||"";d&&(d+=" min");const n={id:"id-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),title:pendingItem.title||pendingItem.name,year:o,imdbID:pendingItem.external_ids?pendingItem.external_ids.imdb_id:"",imdbRating:pendingItem.vote_average?pendingItem.vote_average.toFixed(1):"",runtime:d,poster:getPosterUrl(pendingItem.poster_path,"w500"),type:t,streamingOn:e,createdAt:Date.now(),ourScore:"",dateSeen:""};await dbPut(n),app.state.items=await dbGetAll(),app.render(),bindStreamUI(),syncPush(),setStatus("Toegevoegd: "+(pendingItem.title||pendingItem.name));const i=document.getElementById("add-search");i&&(i.value=""),closeAddConfirm()}catch(t){console.error("Error adding item:",t)}}));
 
   // Score Modal for 'Bekeken'
   const scoreModal=document.getElementById('scoreModal'),scoreModalClose=document.getElementById('scoreModalClose'),scoreModalCancel=document.getElementById('scoreModalCancel'),scoreModalSave=document.getElementById('scoreModalSave'),scoreModalTitle=document.getElementById('scoreModalTitle'),scoreModalScore=document.getElementById('scoreModalScore'),scoreModalDate=document.getElementById('scoreModalDate');let scoreModalItem=null;
   function closeScoreModal(){scoreModal.style.display='none';scoreModalItem=null}
   window.openScoreModal=function(item){scoreModalItem=item;scoreModalTitle.textContent=item.title;scoreModalScore.value=item.ourScore||'';scoreModalDate.value=item.dateSeen||new Date().toISOString().split('T')[0];scoreModal.style.display='flex';setTimeout(()=>scoreModalScore.focus(),50)};
-  scoreModalSave.addEventListener('click',async()=>{if(!scoreModalItem)return;scoreModalItem.type='bekeken';scoreModalItem.ourScore=scoreModalScore.value;scoreModalItem.dateSeen=scoreModalDate.value;scoreModalItem.createdAt=Date.now();await dbPut(scoreModalItem);closeScoreModal();app.render();bindStreamUI();syncPushDebounced()});
+  scoreModalSave.addEventListener('click',async()=>{if(!scoreModalItem)return;scoreModalItem.type='bekeken';scoreModalItem.ourScore=scoreModalScore.value;scoreModalItem.dateSeen=scoreModalDate.value;scoreModalItem.createdAt=Date.now();await dbPut(scoreModalItem);closeScoreModal();app.render();bindStreamUI();syncPush()});
   scoreModalClose.addEventListener('click',closeScoreModal);scoreModalCancel.addEventListener('click',closeScoreModal);scoreModal.addEventListener('click',e=>{if(e.target===scoreModal)closeScoreModal()});
   
   // Delete Confirmation Modal
@@ -977,7 +1038,296 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
           app.state.items = await dbGetAll();
           app.render();
           bindStreamUI();
-          syncPushDebounced();
+          syncPush();
+          closeDeleteConfirmModal();
+      }
+  });
+
+})();
+</script>
+
+<script>
+// IMDb Details Popup
+(function(){
+  function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+  
+  function tmdbHtmlFor(data){
+    const backdropUrl = getPosterUrl(data.backdrop_path, 'w1280');
+    const posterUrl = getPosterUrl(data.poster_path, 'w500');
+    const title = data.title || data.name;
+    const year = (data.release_date || data.first_air_date || '').split('-')[0];
+    let runtime = data.runtime || (data.episode_run_time ? data.episode_run_time[0] : null) || '';
+    if(runtime) runtime = runtime + ' min';
+    const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
+    const genres = (data.genres || []).map(g => g.name).join(', ');
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#1e293b;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(18,24,40, 1) 20%, rgba(18,24,40, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(0,0,0,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
+  }
+
+  window.openImdbOverlay = async function(imdbID){
+    if(!imdbID){ alert('Geen IMDb ID'); return; }
+    
+    const frame = document.getElementById('imdbFrame');
+    const overlay = document.getElementById('imdbOverlay');
+    overlay.style.display='flex';
+    frame.src = 'about:blank';
+
+    const data = await getTmdbDetails(imdbID);
+    if(data){
+      try{ frame.setAttribute('srcdoc', tmdbHtmlFor(data)); }
+      catch(_){ frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/'; }
+    } else {
+      frame.src = 'https://www.imdb.com/title/'+encodeURIComponent(imdbID)+'/';
+    }
+  };
+
+  const imdbOverlay = document.getElementById('imdbOverlay');
+  const imdbClose = document.getElementById('imdbClose');
+  const imdbFrame = document.getElementById('imdbFrame');
+
+  if (imdbClose && imdbOverlay && imdbFrame) {
+      imdbClose.addEventListener('click', () => {
+          imdbOverlay.style.display = 'none';
+          imdbFrame.src = 'about:blank';
+      });
+      imdbOverlay.addEventListener('click', (e) => {
+          if (e.target === imdbOverlay) {
+              imdbClose.click();
+          }
+      });
+  }
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest && e.target.closest('.btn-imdb');
+    if(btn){
+      e.preventDefault();
+      const imdbId = btn.getAttribute('data-imdbid') || '';
+      if(imdbId && window.openImdbOverlay){
+        window.openImdbOverlay(imdbId);
+      }
+    }
+  });
+})();
+
+// IMDb-ID quick add
+(function(){
+  const el = document.getElementById('add-imdb');
+  if(!el || el._imdbHandlerBound) return;
+  el._imdbHandlerBound = true;
+  const TT = /(tt\d{7,9})/;
+  async function tryOpen(){
+    const v = el.value || '';
+    const m = v.match(TT);
+    if(!m) return;
+    const imdbID = m[1];
+    el.disabled = true;
+    try{
+      const details = await getTmdbDetails(imdbID);
+      if (details) {
+        const all = await dbGetAll();
+        const titleSet = new Set(all.map(x => normalizeTitle(x.title || '')));
+        const newTitle = details.title || details.name;
+        if (titleSet.has(normalizeTitle(newTitle))) {
+          if(typeof openDuplicateModal==='function') openDuplicateModal(newTitle);
+          else alert('Deze titel is al eerder toegevoegd.');
+          el.value = '';
+          return;
+        }
+        if(typeof openAddConfirmModal==='function'){
+          openAddConfirmModal(details);
+          el.value = '';
+        }
+      } else {
+        alert('Titel niet gevonden voor ID ' + imdbID);
+      }
+    }catch(e){
+      // silent
+    } finally {
+      el.disabled = false;
+    }
+  }
+  el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
+  el.addEventListener('change', tryOpen);
+})();
+</script>
+
+<div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
+  <div class="flex items-center justify-between mb-2">
+    <strong class="text-slate-800">Streamingdiensten</strong>
+    <div class="flex items-center gap-2">
+      <button id="streamAll" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Alles</button>
+      <button id="streamNone" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs">Niets</button>
+    </div>
+  </div>
+  <div id="streamList" class="grid grid-cols-1 gap-1 text-slate-900"></div>
+</div>
+
+<script>
+(function(){
+  const btn = document.getElementById('btn-help');
+  const menu = document.getElementById('helpMenu');
+  if(!btn || !menu) return;
+  function open(){ menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); attach(); }
+  function close(){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); detach(); }
+  function toggle(e){ e && e.preventDefault && e.preventDefault(); (menu.classList.contains('hidden')?open():close()); }
+  let onDocClick=null, onKey=null;
+  function attach(){
+    if(onDocClick) return;
+    onDocClick = (e)=>{ if(menu.contains(e.target) || btn.contains(e.target)) return; close(); };
+    onKey = (e)=>{ if(e.key==='Escape') close(); };
+    document.addEventListener('mousedown', onDocClick, {capture:true});
+    document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+    document.addEventListener('keydown', onKey, {capture:true});
+  }
+  function detach(){
+    if(!onDocClick) return;
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+    onDocClick=null; onKey=null;
+  }
+  btn.addEventListener('click', toggle, {passive:false});
+})();
+</script>
+
+<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100050">
+  <div style="width:min(520px,92vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
+      <strong>Dubbele titel</strong><button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="dupMsg" style="margin:0 0 4px 0">Deze titel is al eerder toegevoegd.</p>
+      <p style="opacity:.8;font-size:14px;margin:8px 0 0 0">Je kunt deze melding sluiten. Er wordt niets toegevoegd.</p>
+    </div>
+  </div>
+</div>
+
+<div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(720px,94vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
+      <strong>Willekeurige keuze</strong><button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div id="randCard" style="padding:16px 18px;color:#e5e7eb"></div>
+  </div>
+</div>
+
+<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100052">
+  <div style="width:min(640px,94vw);background:#1e293b;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
+      <strong>Toevoegen</strong><button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb">
+        <div class="flex gap-4 items-start">
+          <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)">
+          <div class="flex-1">
+            <h3 id="addConfirmTitle" class="text-lg font-semibold text-slate-100 m-0">—</h3>
+            <p id="addConfirmMeta" class="m-0 opacity-70 text-sm">—</p>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="block text-sm"><span class="block mb-1 text-slate-400">Categorie</span><select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
+              <label class="block text-sm"><span class="block mb-1 text-slate-400">Waar te zien</span><select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
+            </div>
+            <div class="mt-4"><button id="addConfirmBtn" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Voeg toe</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="scoreModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(520px,92vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
+      <strong>Item bekeken</strong><button id="scoreModalClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="scoreModalTitle" style="font-weight:600; margin: 0 0 12px 0;"></p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="block text-sm"><span class="block mb-1 opacity-80">Onze score</span><input id="scoreModalScore" type="text" class="w-full p-2 border-slate-300/60 rounded-md"></label>
+        <label class="block text-sm"><span class="block mb-1 opacity-80">Datum gezien</span><input id="scoreModalDate" type="date" class="w-full p-2 border-slate-300/60 rounded-md"></label>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button id="scoreModalSave" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Opslaan</button>
+        <button id="scoreModalCancel" class="px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20">Annuleren</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="deleteConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100060">
+  <div style="width:min(520px,92vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
+      <strong>Verwijderen</strong><button id="deleteConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
+    </div>
+    <div style="padding:16px 18px;color:#e5e7eb">
+      <p id="deleteConfirmTitle" style="font-weight:600; margin: 0 0 12px 0;">Wil je deze titel echt verwijderen?</p>
+      <div class="mt-4 flex gap-3">
+        <button id="deleteConfirmBtn" class="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Verwijder</button>
+        <button id="deleteCancelBtn" class="px-3 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20">Annuleren</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Modal Logic
+(function(){
+  // Duplicate Modal
+  const dupModal=document.getElementById('dupModal'),dupClose=document.getElementById('dupClose');
+  window.openDuplicateModal=function(t){if(!dupModal){alert('Deze titel is al eerder toegevoegd.');return}dupModal.querySelector('#dupMsg').textContent=`De titel "${t}" is al eerder toegevoegd.`;dupModal.style.display='flex'};
+  if(dupModal){dupClose.addEventListener('click',()=>dupModal.style.display='none');dupModal.addEventListener('click',e=>{if(e.target===dupModal)dupModal.style.display='none'})}
+
+  // Random Modal
+  const randModal=document.getElementById('randModal'),randClose=document.getElementById('randClose'),randCard=document.getElementById('randCard');
+  window.openRandomModal = function(item) {
+    if (!randModal) { alert('Keuze: ' + (item && item.title ? item.title : '–')); return; }
+    const esc = s => (s || '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const poster = item.poster || "https://placehold.co/96x144/e2e8f0/94a3b8?text=—";
+    const title = esc(item.title);
+    const type = esc(item.type);
+    const year = esc(item.year);
+    const stream = normalizeStream(item.streamingOn);
+    const imdb = esc(item.imdbRating);
+    const our = esc(item.ourScore);
+    const imdbId = esc(item.imdbID || item.imdbId);
+    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-100 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm" style="background: #ffc107 !important; border-color: #ffb300 !important; color: #1a202c !important;">IMDB</button></div><div class="mt-1 text-sm text-slate-400">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    randModal.style.display = 'flex';
+  };
+  if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
+
+  // Add Confirm Modal
+  let pendingItem=null;const addConfirmModal=document.getElementById('addConfirmModal'),addConfirmClose=document.getElementById('addConfirmClose'),addConfirmBtn=document.getElementById('addConfirmBtn');window.openAddConfirmModal=function(t){pendingItem=t||null;const e=document.getElementById("addConfirmTitle"),o=document.getElementById("addConfirmMeta"),d=document.getElementById("addConfirmPoster"),n=document.getElementById("addConfirmType"),i=document.getElementById("addConfirmStream");if(n){n.innerHTML=[["film","Film"],["serie","Serie"],["herman-film","H-Film"],["herman-serie","H-Serie"],["aan-het-kijken","Aan het kijken"],["bekeken","Bekeken"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),n.value="tv"===t.media_type||"series"===t.Type?"serie":"film"}if(i){const t=["","Streamz","Netflix","Prime Video","Apple TV+","VRT MAX","Go Play","NPO","Disney+","Stremio"];i.innerHTML=t.map(t=>`<option value="${t}">${t||"Niet toegekend"}</option>`).join(""),i.value=""}const l=t.title||t.name,a=(t.release_date||t.first_air_date||"").split("-")[0],r="tv"===t.media_type?"Serie":"Film";d.src=getPosterUrl(t.poster_path,"w185")||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—",e.textContent=l||"—",o.textContent=`${r} • ${a}`,addConfirmModal.style.display="flex"};function closeAddConfirm(){addConfirmModal&&"none"!==addConfirmModal.style.display&&(addConfirmModal.style.display="none"),pendingItem=null}
+  addConfirmModal&&(addConfirmClose.addEventListener("click",closeAddConfirm),addConfirmModal.addEventListener("click",function(t){t.target===this&&closeAddConfirm()}),document.addEventListener("keydown",function(t){"Escape"===t.key&&closeAddConfirm()}),addConfirmBtn.addEventListener("click",async function(){if(pendingItem)try{const t=document.getElementById("addConfirmType").value,e=document.getElementById("addConfirmStream").value,o=(pendingItem.release_date||pendingItem.first_air_date||"").split("-")[0];let d=pendingItem.runtime||(pendingItem.episode_run_time?pendingItem.episode_run_time[0]:null)||"";d&&(d+=" min");const n={id:"id-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),title:pendingItem.title||pendingItem.name,year:o,imdbID:pendingItem.external_ids?pendingItem.external_ids.imdb_id:"",imdbRating:pendingItem.vote_average?pendingItem.vote_average.toFixed(1):"",runtime:d,poster:getPosterUrl(pendingItem.poster_path,"w500"),type:t,streamingOn:e,createdAt:Date.now(),ourScore:"",dateSeen:""};await dbPut(n),app.state.items=await dbGetAll(),app.render(),bindStreamUI(),syncPush(),setStatus("Toegevoegd: "+(pendingItem.title||pendingItem.name));const i=document.getElementById("add-search");i&&(i.value=""),closeAddConfirm()}catch(t){console.error("Error adding item:",t)}}));
+
+  // Score Modal for 'Bekeken'
+  const scoreModal=document.getElementById('scoreModal'),scoreModalClose=document.getElementById('scoreModalClose'),scoreModalCancel=document.getElementById('scoreModalCancel'),scoreModalSave=document.getElementById('scoreModalSave'),scoreModalTitle=document.getElementById('scoreModalTitle'),scoreModalScore=document.getElementById('scoreModalScore'),scoreModalDate=document.getElementById('scoreModalDate');let scoreModalItem=null;
+  function closeScoreModal(){scoreModal.style.display='none';scoreModalItem=null}
+  window.openScoreModal=function(item){scoreModalItem=item;scoreModalTitle.textContent=item.title;scoreModalScore.value=item.ourScore||'';scoreModalDate.value=item.dateSeen||new Date().toISOString().split('T')[0];scoreModal.style.display='flex';setTimeout(()=>scoreModalScore.focus(),50)};
+  scoreModalSave.addEventListener('click',async()=>{if(!scoreModalItem)return;scoreModalItem.type='bekeken';scoreModalItem.ourScore=scoreModalScore.value;scoreModalItem.dateSeen=scoreModalDate.value;scoreModalItem.createdAt=Date.now();await dbPut(scoreModalItem);closeScoreModal();app.render();bindStreamUI();syncPush()});
+  scoreModalClose.addEventListener('click',closeScoreModal);scoreModalCancel.addEventListener('click',closeScoreModal);scoreModal.addEventListener('click',e=>{if(e.target===scoreModal)closeScoreModal()});
+  
+  // Delete Confirmation Modal
+  const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+  let itemToDelete = null;
+  window.openDeleteConfirmModal = function(item) {
+      itemToDelete = item;
+      deleteConfirmModal.querySelector('#deleteConfirmTitle').textContent = `Wil je "${item.title}" echt verwijderen?`;
+      deleteConfirmModal.style.display = 'flex';
+  }
+  function closeDeleteConfirmModal() {
+      if (deleteConfirmModal) deleteConfirmModal.style.display = 'none';
+      itemToDelete = null;
+  }
+  document.getElementById('deleteConfirmClose').addEventListener('click', closeDeleteConfirmModal);
+  document.getElementById('deleteCancelBtn').addEventListener('click', closeDeleteConfirmModal);
+  deleteConfirmModal.addEventListener('click', (e) => { if(e.target === deleteConfirmModal) closeDeleteConfirmModal() });
+  document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+      if (itemToDelete) {
+          await dbDel(itemToDelete.id);
+          app.state.items = await dbGetAll();
+          app.render();
+          bindStreamUI();
+          syncPush();
           closeDeleteConfirmModal();
       }
   });
