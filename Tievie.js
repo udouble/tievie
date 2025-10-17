@@ -22,10 +22,11 @@
     const sel = document.getElementById('filterStreaming');
     if(sel){ /* legacy select no-op: UI moved to multi-select */ }
   
-    // === IMDb overlay (ongewijzigd) ===
+    // === IMDb overlay (Achtergrond en kleuren aangepast) ===
     if(!document.getElementById('imdbOverlay')){
       const overlay = document.createElement('div');
       overlay.id='imdbOverlay';
+      // Pas de achtergrond en z-index aan om bij de donkere modus te passen
       Object.assign(overlay.style,{position:'fixed',left:0,top:0,right:0,bottom:0,display:'none',alignItems:'center',justifyContent:'center',background:'rgba(18,24,40,.85)',backdropFilter:'blur(4px)',zIndex:10002});
       overlay.innerHTML = `
       <div id="imdbPanel" style="width:min(840px,94vw);max-height:90vh;background:#121828;border:1px solid rgba(148,163,184,25);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,5);overflow:hidden">
