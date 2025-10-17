@@ -112,17 +112,8 @@ function attachResetGesture(){
 @media (min-width: 1280px) {
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
-/* Wijziging: Kaart achtergrond lichter blauw */
-.glass-card{
-  /* Een duidelijk lichtere, maar nog steeds donkere tint blauw/grijs */
-  background:linear-gradient(135deg, rgba(38, 51, 80, 0.94), rgba(28, 38, 60, 0.90));
-}
-/* Wijziging: IMDB knop lichter geel */
-.btn-imdb {
-  background: #ffc107 !important; /* zachter geel */
-  border: 1px solid #ffb300 !important;
-  color: #1a202c !important; 
-}
+/* Wijziging: Kaart achtergrond lichter */
+.glass-card{background:linear-gradient(135deg, rgba(28, 38, 60, 0.94), rgba(20, 28, 48, 0.90));}
 </style>
 </head>
 <body>
@@ -222,7 +213,7 @@ const DB_NAME='mfs-db',DB_VERSION=1,STORE='items';
 const OMDB_KEY='8a70a767';
 const TMDB_KEY = '75be79c893bcefbcc58f55adc8caca8e';
 
-// === Image & Data Helpers (GEEN WIJZIGING) ===
+// === Image & Data Helpers ===
 function getPosterUrl(path, size = 'w500') {
   if (!path) return null;
   return `https://image.tmdb.org/t/p/${size}${path}`;
@@ -271,7 +262,7 @@ async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{co
 
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
-// === Anti-duplicate helpers (GEEN WIJZIGING) ===
+// === Anti-duplicate helpers ===
 function normalizeTitle(t){
   return (t||'').toString().toLowerCase()
     .replace(/&/g,'and')
@@ -300,7 +291,7 @@ function mergeItems(base, inc){
   if(inc.imdbRating && !out.imdbRating) out.imdbRating=inc.imdbRating;
   if(inc.year && !out.year) out.year=inc.year;
   if(inc.runtime && !out.runtime) out.runtime=inc.runtime;
-  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(out.ourScore);
+  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(inc.ourScore);
   if((!out.streamingOn || String(out.streamingOn).trim()==='') && inc.streamingOn) out.streamingOn=inc.streamingOn;
   if(inc.dateSeen && (!out.dateSeen || inc.dateSeen>out.dateSeen)) out.dateSeen=inc.dateSeen;
   if((!out.title || out.title.length < (inc.title||'').length) && inc.title) out.title=inc.title;
@@ -443,7 +434,7 @@ function card(item, index){
   `;
 
   div.querySelector('[data-action="delete"]').onclick = () => openDeleteConfirmModal(item);
-  const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPush();}; }
+  const scoreInput=div.querySelector('.our-score-input'); if(scoreInput){ scoreInput.onchange=async(e)=>{item.ourScore=e.target.value; await dbPut(item); syncPushDebounced();}; }
   
   const catSel=div.querySelector('.category-select'); 
   if(catSel){
@@ -461,13 +452,13 @@ function card(item, index){
         await dbPut(item);
         app.render();
         bindStreamUI();
-        syncPush();
+        syncPushDebounced();
       }
     };
   }
 
-  const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPush();}; }
-  const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPush();}; }
+  const stSel=div.querySelector('.streaming-service-select'); if(stSel){ stSel.onchange=async(e)=>{item.streamingOn=e.target.value; await dbPut(item); syncPushDebounced();}; }
+  const ds=div.querySelector('.date-seen-input'); if(ds){ ds.onchange=async(e)=>{item.dateSeen=e.target.value; await dbPut(item); syncPushDebounced();}; }
   const imdbBtn=div.querySelector('.btn-imdb'); if(imdbBtn){ try{ imdbBtn.setAttribute('data-poster', posterSrc); }catch(e){} }
   
   const imdbScoreInput = div.querySelector('.imdb-score-input');
@@ -477,7 +468,7 @@ function card(item, index){
       if (newScore && !isNaN(parseFloat(newScore))) {
         item.imdbRating = newScore;
         await dbPut(item);
-        syncPush();
+        syncPushDebounced();
         app.render();
       }
     };
@@ -486,7 +477,7 @@ function card(item, index){
   return div;
 }
 
-// search suggest (GEEN WIJZIGING)
+// search suggest
 const suggestBox=document.getElementById('suggest'); const suggestList=document.getElementById('suggest-list'); const suggestEmpty=document.getElementById('suggest-empty');
 let suggestOpen=false, suggestTimer=null;
 document.getElementById('add-search').addEventListener('input', (e)=>{
@@ -570,7 +561,7 @@ function showSuggest(){
 }
 function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 
-// Other UI functions (GEEN WIJZIGING)
+// Other UI functions
 function bindUI(){
   const f=document.getElementById('file-import');
   document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
@@ -677,11 +668,11 @@ async function fetchMissingPosters(){
       }
     }
   }
-  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPush(); }
+  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
   setStatus('Posters afgerond. Geüpdatet: '+changed);
 }
 
-// ======= Auto-seed on first run (GEEN WIJZIGING) =======
+// ======= Auto-seed on first run =======
 async function autoSeedIfEmpty(){
   const current = await dbGetAll();
   if(current && current.length>0) return;
@@ -703,56 +694,12 @@ async function autoSeedIfEmpty(){
   }
 }
 
-/* Service Worker Sync-logic is verwijderd en vervangen door directe fetch/put */
-async function syncPush(){
-  const items=await dbGetAll();
-  try{
-    // Simuleer een push naar de server
-    await fetch('./__mfs_sync__.json', {
-      method: 'POST', 
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({items: items, ts: Date.now()})
-    }).then(res => {
-        if (!res.ok) console.warn('Sync push to server failed');
-    });
-  } catch(e) {
-    console.warn('Sync push fail (direct fetch)', e);
-  }
-}
+let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
+async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
+async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
+navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
-async function syncPull(){
-  // Haalt data op en merge met lokale database
-  try{
-    const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});
-    if(!res.ok) return;
-    const data=await res.json();
-    if(!data||!Array.isArray(data.items))return;
-    
-    const current=await dbGetAll();
-    const merged=[...current];
-    
-    data.items.forEach(raw=>{
-      const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));
-      if(ex){
-        const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);
-        if(newer){
-          const keepId=ex.id;
-          merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});
-        }
-      } else {
-        merged.push(raw)
-      }
-    });
-    
-    await dbBulkPut(merged);
-    app.state.items=await dbGetAll();
-    app.render();
-  }catch(e){
-    console.warn('sync pull fail',e)
-  }
-}
-
-// ===== Streaming multi-select (floating panel) (GEEN WIJZIGING) =====
+// ===== Streaming multi-select (floating panel) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
 app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
 function updateStreamBadge(){ /* no-op: teller verwijderd */ }
@@ -842,17 +789,16 @@ function bindStreamUI(){
 document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
-    /* Service Worker is uitgeschakeld. Synchroniseer direct bij laden. */
     await syncPull();
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
     setStatus('v3.31 — PWA • '+app.state.items.length+' items');
-    // syncPush is nu direct, geen debounce nodig na initieel laden.
+    await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
-/* Service Worker Registratie is volledig verwijderd */
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
 </script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
@@ -974,7 +920,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
 </div>
 
 <script>
-// Modal Logic (GEEN WIJZIGING)
+// Modal Logic
 (function(){
   // Duplicate Modal
   const dupModal=document.getElementById('dupModal'),dupClose=document.getElementById('dupClose');
@@ -994,20 +940,20 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
     const imdb = esc(item.imdbRating);
     const our = esc(item.ourScore);
     const imdbId = esc(item.imdbID || item.imdbId);
-    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-100 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm" style="background: #ffc107 !important; border-color: #ffb300 !important; color: #1a202c !important;">IMDB</button></div><div class="mt-1 text-sm text-slate-400">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-100 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-400">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
     randModal.style.display = 'flex';
   };
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
 
   // Add Confirm Modal
   let pendingItem=null;const addConfirmModal=document.getElementById('addConfirmModal'),addConfirmClose=document.getElementById('addConfirmClose'),addConfirmBtn=document.getElementById('addConfirmBtn');window.openAddConfirmModal=function(t){pendingItem=t||null;const e=document.getElementById("addConfirmTitle"),o=document.getElementById("addConfirmMeta"),d=document.getElementById("addConfirmPoster"),n=document.getElementById("addConfirmType"),i=document.getElementById("addConfirmStream");if(n){n.innerHTML=[["film","Film"],["serie","Serie"],["herman-film","H-Film"],["herman-serie","H-Serie"],["aan-het-kijken","Aan het kijken"],["bekeken","Bekeken"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),n.value="tv"===t.media_type||"series"===t.Type?"serie":"film"}if(i){const t=["","Streamz","Netflix","Prime Video","Apple TV+","VRT MAX","Go Play","NPO","Disney+","Stremio"];i.innerHTML=t.map(t=>`<option value="${t}">${t||"Niet toegekend"}</option>`).join(""),i.value=""}const l=t.title||t.name,a=(t.release_date||t.first_air_date||"").split("-")[0],r="tv"===t.media_type?"Serie":"Film";d.src=getPosterUrl(t.poster_path,"w185")||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—",e.textContent=l||"—",o.textContent=`${r} • ${a}`,addConfirmModal.style.display="flex"};function closeAddConfirm(){addConfirmModal&&"none"!==addConfirmModal.style.display&&(addConfirmModal.style.display="none"),pendingItem=null}
-  addConfirmModal&&(addConfirmClose.addEventListener("click",closeAddConfirm),addConfirmModal.addEventListener("click",function(t){t.target===this&&closeAddConfirm()}),document.addEventListener("keydown",function(t){"Escape"===t.key&&closeAddConfirm()}),addConfirmBtn.addEventListener("click",async function(){if(pendingItem)try{const t=document.getElementById("addConfirmType").value,e=document.getElementById("addConfirmStream").value,o=(pendingItem.release_date||pendingItem.first_air_date||"").split("-")[0];let d=pendingItem.runtime||(pendingItem.episode_run_time?pendingItem.episode_run_time[0]:null)||"";d&&(d+=" min");const n={id:"id-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),title:pendingItem.title||pendingItem.name,year:o,imdbID:pendingItem.external_ids?pendingItem.external_ids.imdb_id:"",imdbRating:pendingItem.vote_average?pendingItem.vote_average.toFixed(1):"",runtime:d,poster:getPosterUrl(pendingItem.poster_path,"w500"),type:t,streamingOn:e,createdAt:Date.now(),ourScore:"",dateSeen:""};await dbPut(n),app.state.items=await dbGetAll(),app.render(),bindStreamUI(),syncPush(),setStatus("Toegevoegd: "+(pendingItem.title||pendingItem.name));const i=document.getElementById("add-search");i&&(i.value=""),closeAddConfirm()}catch(t){console.error("Error adding item:",t)}}));
+  addConfirmModal&&(addConfirmClose.addEventListener("click",closeAddConfirm),addConfirmModal.addEventListener("click",function(t){t.target===this&&closeAddConfirm()}),document.addEventListener("keydown",function(t){"Escape"===t.key&&closeAddConfirm()}),addConfirmBtn.addEventListener("click",async function(){if(pendingItem)try{const t=document.getElementById("addConfirmType").value,e=document.getElementById("addConfirmStream").value,o=(pendingItem.release_date||pendingItem.first_air_date||"").split("-")[0];let d=pendingItem.runtime||(pendingItem.episode_run_time?pendingItem.episode_run_time[0]:null)||"";d&&(d+=" min");const n={id:"id-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),title:pendingItem.title||pendingItem.name,year:o,imdbID:pendingItem.external_ids?pendingItem.external_ids.imdb_id:"",imdbRating:pendingItem.vote_average?pendingItem.vote_average.toFixed(1):"",runtime:d,poster:getPosterUrl(pendingItem.poster_path,"w500"),type:t,streamingOn:e,createdAt:Date.now(),ourScore:"",dateSeen:""};await dbPut(n),app.state.items=await dbGetAll(),app.render(),bindStreamUI(),syncPushDebounced(),setStatus("Toegevoegd: "+(pendingItem.title||pendingItem.name));const i=document.getElementById("add-search");i&&(i.value=""),closeAddConfirm()}catch(t){console.error("Error adding item:",t)}}));
 
   // Score Modal for 'Bekeken'
   const scoreModal=document.getElementById('scoreModal'),scoreModalClose=document.getElementById('scoreModalClose'),scoreModalCancel=document.getElementById('scoreModalCancel'),scoreModalSave=document.getElementById('scoreModalSave'),scoreModalTitle=document.getElementById('scoreModalTitle'),scoreModalScore=document.getElementById('scoreModalScore'),scoreModalDate=document.getElementById('scoreModalDate');let scoreModalItem=null;
   function closeScoreModal(){scoreModal.style.display='none';scoreModalItem=null}
   window.openScoreModal=function(item){scoreModalItem=item;scoreModalTitle.textContent=item.title;scoreModalScore.value=item.ourScore||'';scoreModalDate.value=item.dateSeen||new Date().toISOString().split('T')[0];scoreModal.style.display='flex';setTimeout(()=>scoreModalScore.focus(),50)};
-  scoreModalSave.addEventListener('click',async()=>{if(!scoreModalItem)return;scoreModalItem.type='bekeken';scoreModalItem.ourScore=scoreModalScore.value;scoreModalItem.dateSeen=scoreModalDate.value;scoreModalItem.createdAt=Date.now();await dbPut(scoreModalItem);closeScoreModal();app.render();bindStreamUI();syncPush()});
+  scoreModalSave.addEventListener('click',async()=>{if(!scoreModalItem)return;scoreModalItem.type='bekeken';scoreModalItem.ourScore=scoreModalScore.value;scoreModalItem.dateSeen=scoreModalDate.value;scoreModalItem.createdAt=Date.now();await dbPut(scoreModalItem);closeScoreModal();app.render();bindStreamUI();syncPushDebounced()});
   scoreModalClose.addEventListener('click',closeScoreModal);scoreModalCancel.addEventListener('click',closeScoreModal);scoreModal.addEventListener('click',e=>{if(e.target===scoreModal)closeScoreModal()});
   
   // Delete Confirmation Modal
@@ -1031,7 +977,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
           app.state.items = await dbGetAll();
           app.render();
           bindStreamUI();
-          syncPush();
+          syncPushDebounced();
           closeDeleteConfirmModal();
       }
   });
@@ -1040,7 +986,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
 </script>
 
 <script>
-// IMDb Details Popup (GEEN WIJZIGING)
+// IMDb Details Popup
 (function(){
   function esc(s){ return String(s||'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
   
@@ -1102,7 +1048,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   });
 })();
 
-// IMDb-ID quick add (GEEN WIJZIGING)
+// IMDb-ID quick add
 (function(){
   const el = document.getElementById('add-imdb');
   if(!el || el._imdbHandlerBound) return;
