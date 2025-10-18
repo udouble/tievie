@@ -565,31 +565,6 @@ function bindUI(){
   })();
   document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
-
-  // Lotto: open de bestaande IMDb-overlay met de random keuze
-  (function(){
-    const btn = document.getElementById('btn-random');
-    if(btn && !btn._lotto){
-      btn._lotto = true;
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        try{
-          const pool = (typeof app!=='undefined' && app.filtered) ? app.filtered() : [];
-          if(!pool || !pool.length){ alert('Geen items in de huidige lijst.'); return; }
-          const pick = pool[Math.floor(Math.random()*pool.length)];
-          if(!pick) return;
-          const imdb = pick.imdbID || pick.imdbId || (pick.ids && (pick.ids.imdbID||pick.ids.imdbId));
-          if(imdb && typeof window.openImdbOverlay==='function'){
-            window.openImdbOverlay(imdb);
-          } else if(typeof window.openRandomModal==='function'){
-            window.openRandomModal(pick);
-          } else {
-            alert(pick.title||'—');
-          }
-        }catch(_){}
-      });
-    }
-  })();
 }
 
 async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
@@ -1065,6 +1040,41 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
   el.addEventListener('change', tryOpen);
 })();
+
+/* === One-time migration: reverse FILMS order (createdAt) ============== */
+;(function(){
+  const FLAG = 'MFS_FILMS_REVERSED_ONCE';
+  if (localStorage.getItem(FLAG)) return;
+
+  async function reverseFilmsOnce(){
+    try{
+      const all = await dbGetAll();
+      const films = all.filter(x => (x.type||'') === 'film');
+      if (films.length < 2) { localStorage.setItem(FLAG, '1'); return; }
+
+      const byCreatedDesc = films.slice().sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+      const reversed = byCreatedDesc.slice().reverse();
+
+      const base = Date.now();
+      reversed.forEach((it, idx)=>{ it.createdAt = base + idx; });
+
+      const idToItem = new Map(reversed.map(x=>[x.id, x]));
+      const merged = all.map(it => idToItem.has(it.id) ? idToItem.get(it.id) : it);
+
+      await dbBulkPut(merged);
+      localStorage.setItem(FLAG, '1');
+      if (typeof app!=='undefined' && app.render) {
+        const fresh = await dbGetAll();
+        app.state.items = fresh;
+        app.render();
+      }
+    }catch(e){
+      try{ localStorage.setItem(FLAG, '1'); }catch(_){}
+    }
+  }
+  document.addEventListener('DOMContentLoaded', reverseFilmsOnce);
+})();
+/* === End one-time migration =========================================== */
 </script>
 
 </body>
