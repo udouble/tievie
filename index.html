@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta name="theme-color" content="#0ea5e9"/>
+<meta name="theme-color" content="#121828"/>
 <title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -38,43 +38,64 @@ function attachResetGesture(){
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root { color-scheme: dark; }
-  body{background:#0b1020;color:#e5e7eb}
-  .glass{background:rgba(255,255,255,.78);color:#0f172a;backdrop-filter:saturate(150%) blur(12px)}
-  .pill{border:1px solid rgba(15,23,42,.08)}
-  #status{position:fixed;right:12px;bottom:12px;background:#0ea5e9;color:#03111a;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
+  body{background:#121828;color:#e5e7eb}
+  .glass{background:rgba(18,24,40,.85);color:#e5e7eb;backdrop-filter:saturate(150%) blur(12px)}
+  .pill{border:1px solid rgba(255,255,255,.25)}
+  #status{position:fixed;right:12px;bottom:12px;background:#00aaff;color:#fff;padding:.35rem .6rem;border-radius:.6rem;font-size:.8rem;z-index:9999}
   .badge {padding:.1rem .4rem;border-radius:.5rem;margin-left:.5rem;font-size:.7rem}
-  .online {background:#22c55e;color:#052e16}
-  .offline {background:#ef4444;color:#7f1d1d}
-  ::placeholder{font-style:italic;color:#64748b}
-  #imdbOverlay{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100000}
-  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#0b1020;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#111827;color:#e5e7eb}
-  #imdbFrame{width:100%;height:100%;border:0;background:#0b1020}
+  .online {background:#38a169;color:#fff}
+  .offline {background:#e53e3e;color:#fff}
+  ::placeholder{font-style:italic;color:#94a3b8}
+  #imdbOverlay{position:fixed;inset:0;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100000}
+  #imdbPanel{width:min(900px,96vw);height:min(80vh,800px);background:#121828;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+  #imdbBar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#1e293b;color:#e5e7eb}
+  #imdbFrame{width:100%;height:100%;border:0;background:#121828}
   #suggest{position:fixed;display:none;z-index:100001}
-  #suggest .card{max-height:420px;overflow:auto}
-  #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
-  #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
-  #suggest .row:hover{background:rgba(2,6,23,.06)}
+  #suggest .card{max-height:420px;overflow:auto;background:#1e293b;box-shadow:0 10px 20px rgba(0,0,0,.15);border:1px solid rgba(148,163,184,.25);}
+  #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem;color:#e5e7eb}
+  #suggest .row:hover{background:#334155}
   body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji';}
   input[type="text"], input[type="search"], input[type="date"], select, .our-score-input, .category-select, .streaming-service-select {
-    background:#ffffff !important;
-    color:#0f172a !important;
-    border:1px solid rgba(15,23,42,.12) !important;
+    background:#1e293b !important;
+    color:#e5e7eb !important;
+    border:1px solid rgba(148,163,184,.25) !important;
     appearance:none; -webkit-appearance:none; -moz-appearance:none;
   }
   input::placeholder{color:#64748b}
   select{padding-right:2rem !important}
-  .glass{background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(240,246,255,.90)) !important; box-shadow: 0 6px 20px rgba(2, 132, 199, 0.14);}
+  .glass{background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);}
+  .info-strip{display:inline-block;background:rgba(14,21,38,.85);color:#ff9800;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px; border: 1px solid rgba(255, 152, 0, 0.5);}
 
-/* Overrides: active category pill to orange, Lotto green, info-strip */
-#filterControls .filter-btn.bg-sky-500{background:#f59e0b !important;color:#111827 !important}
-#filterControls #btn-random{background:#10b981 !important;color:#062b1f !important}
-.info-strip{display:inline-block;background:rgba(3,7,18,.85);color:#fbbf24;padding:.2rem .5rem;border-radius:.5rem;font-weight:600;letter-spacing:.2px}
+/* Overrides */
+#filterControls .filter-btn.bg-sky-500{
+  background:linear-gradient(90deg, #00aaff 0%, #0077cc 100%) !important;
+  color:#fff !important;
+}
+#filterControls .filter-btn.bg-sky-500:hover{
+  background:linear-gradient(90deg, #0077cc 0%, #00aaff 100%) !important;
+}
+#filterControls .filter-btn:not(.bg-sky-500){
+  background:rgba(18,24,40,.8) !important;
+  color:#94a3b8 !important;
+  border:1px solid rgba(255,255,255,0.25);
+}
+#filterControls .filter-btn:not(.bg-sky-500):hover{
+  background:rgba(18,24,40,.6) !important;
+}
+#filterControls #btn-random{
+  background:linear-gradient(135deg, #f97316, #fbbf24) !important;
+  color:#1a202c !important;
+  font-weight:bold;
+  border:none;
+}
+#filterControls #btn-random:hover{
+  background:linear-gradient(135deg, #fbbf24, #f97316) !important;
+}
 
 .imdb-score-input {
   background: transparent;
   border: none;
-  color: #fbbf24;
+  color: #ff9800;
   width: 45px;
   padding: 0;
   margin: 0;
@@ -83,7 +104,7 @@ function attachResetGesture(){
   text-align: center;
 }
 .imdb-score-input::placeholder {
-  color: rgba(251, 191, 36, 0.5);
+  color: rgba(255, 152, 0, 0.5);
   font-weight: normal;
 }
 
@@ -91,7 +112,8 @@ function attachResetGesture(){
 @media (min-width: 1280px) {
   #list { display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
 }
-
+/* Wijziging: Kaart achtergrond lichter */
+.glass-card{background:linear-gradient(135deg, rgba(28, 38, 60, 0.94), rgba(20, 28, 48, 0.90));}
 </style>
 </head>
 <body>
@@ -123,7 +145,7 @@ function attachResetGesture(){
     </div>
 
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
-      <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
+      <label for="sortBy" class="text-sm text-slate-400">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         <option value="created_desc" selected>Nummer (recent → oud)</option>
         <option value="created_asc">Nummer (oud → recent)</option>
@@ -135,10 +157,11 @@ function attachResetGesture(){
         <option value="title_desc">Titel Z → A</option>
       </select>
       <div class="h-5 w-px bg-slate-200/70 mx-1"></div>
+      <label for="streamBtn" class="text-sm text-slate-400">Streamingdienst</label>
       <button id="streamBtn" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
         Waar te zien?
       </button>
-      <span id="countBadge" class="ml-auto text-sm text-slate-700"></span>
+      <span id="countBadge" class="ml-auto text-sm text-slate-400"></span>
     </div>
 
     
@@ -349,13 +372,13 @@ function streamingOptionsHTML(sel){
 
 function card(item, index){
   const div=document.createElement('div');
-  div.className='glass rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
+  div.className='glass-card rounded-xl flex flex-col overflow-hidden shadow text-slate-800';
   div.dataset.itemId=item.id;
   const posterSrc = item.poster || 'https://placehold.co/400x600/e2e8f0/94a3b8?text=Fout';
 
   const dateSeenHTML = item.type==='bekeken' ? `
     <div class="mt-2">
-      <label class="block text-xs font-medium text-slate-600 mb-0.5">Laatst gezien op</label>
+      <label class="block text-xs font-medium text-slate-400 mb-0.5">Laatst gezien op</label>
       <input type="date" data-id="${item.id}" value="${item.dateSeen||''}" class="date-seen-input w-full p-1.5 border border-slate-300/50 rounded-md">
     </div>` : '';
 
@@ -364,7 +387,7 @@ function card(item, index){
     : `IMDb: <input type="text" value="" placeholder="—" class="imdb-score-input" data-id="${item.id}">`;
 
   div.innerHTML = `
-    <h3 class="px-3 font-bold text-base leading-tight" style="margin-top: 6px; margin-bottom: 0.25rem;">${item.title||'—'}</h3>
+    <h3 class="px-3 font-bold text-base leading-tight" style="margin-top: 6px; margin-bottom: 0.25rem; color:#e5e7eb;">${item.title||'—'}</h3>
     <div class="px-3">
       <div class="relative">
         <div class="aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200/40">
@@ -375,7 +398,7 @@ function card(item, index){
     </div>
     <div class="px-3 pt-2 text-xs" style="display: flex; align-items: center; justify-content: space-between;">
       <span class="info-strip">${imdbScoreHTML}<br>${item.year||'N/B'} • ${item.runtime||'N/B'}</span>
-      <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/60 hover:bg-red-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full transition" style="flex-shrink: 0; margin-left: 8px;">
+      <button data-id="${item.id}" data-action="delete" title="Verwijderen" class="bg-white/10 hover:bg-red-500 hover:text-white text-gray-400 w-7 h-7 flex items-center justify-center rounded-full transition" style="flex-shrink: 0; margin-left: 8px;">
           <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -384,13 +407,13 @@ function card(item, index){
     <div class="p-3 pt-2 text-xs space-y-2">
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Categorie</label>
+          <label class="block font-medium text-slate-400 mb-0.5">Categorie</label>
           <select data-id="${item.id}" class="category-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${categoryOptionsHTML(item.type)}
           </select>
         </div>
         <div>
-          <label class="block font-medium text-slate-600 mb-0.5">Waar te zien</label>
+          <label class="block font-medium text-slate-400 mb-0.5">Waar te zien</label>
           <select data-id="${item.id}" class="streaming-service-select w-full p-1.5 border border-slate-300/50 rounded-md">
             ${streamingOptionsHTML(item.streamingOn)}
           </select>
@@ -398,11 +421,11 @@ function card(item, index){
       </div>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem;">
           <div>
-              <label class="block font-medium text-slate-600 mb-0.5">Onze score:</label>
+              <label class="block font-medium text-slate-400 mb-0.5">Onze score:</label>
               <input type="text" data-id="${item.id}" value="${item.ourScore||''}" class="our-score-input w-full p-1.5 border border-slate-300/50 rounded-md text-sm" placeholder="Nog geen score">
           </div>
           <div>
-              <label class="block font-medium text-slate-600 mb-0.5">&nbsp;</label>
+              <label class="block font-medium text-slate-400 mb-0.5">&nbsp;</label>
               <button data-imdbid="${item.imdbID||''}" class="btn-imdb w-full px-3 py-1.5 rounded-md bg-yellow-400 text-slate-900 border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button>
           </div>
       </div>
@@ -565,6 +588,31 @@ function bindUI(){
   })();
   document.getElementById('sortBy').onchange=e=>{app.state.sortBy=e.target.value;app.render()};
   document.getElementById('search').oninput=e=>{app.state.searchTerm=e.target.value.trim();app.render()};
+
+  // Lotto: open de bestaande IMDb-overlay met de random keuze
+  (function(){
+    const btn = document.getElementById('btn-random');
+    if(btn && !btn._lotto){
+      btn._lotto = true;
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        try{
+          const pool = (typeof app!=='undefined' && app.filtered) ? app.filtered() : [];
+          if(!pool || !pool.length){ alert('Geen items in de huidige lijst.'); return; }
+          const pick = pool[Math.floor(Math.random()*pool.length)];
+          if(!pick) return;
+          const imdb = pick.imdbID || pick.imdbId || (pick.ids && (pick.ids.imdbID||pick.ids.imdbId));
+          if(imdb && typeof window.openImdbOverlay==='function'){
+            window.openImdbOverlay(imdb);
+          } else if(typeof window.openRandomModal==='function'){
+            window.openRandomModal(pick);
+          } else {
+            alert(pick.title||'—');
+          }
+        }catch(_){}
+      });
+    }
+  })();
 }
 
 async function exportJson(){const data=JSON.stringify({items:app.state.items},null,2);const blob=new Blob([data],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mfs-backup.json';a.click();URL.revokeObjectURL(a.href)}
@@ -792,9 +840,9 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
 })();
 </script>
 
-<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100050">
-  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+<div id="dupModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100050">
+  <div style="width:min(520px,92vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
       <strong>Dubbele titel</strong><button id="dupClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
@@ -804,30 +852,30 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   </div>
 </div>
 
-<div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
-  <div style="width:min(720px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+<div id="randModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(720px,94vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
       <strong>Willekeurige keuze</strong><button id="randClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
-    <div id="randCard" style="padding:16px 18px;color:#0f172a"></div>
+    <div id="randCard" style="padding:16px 18px;color:#e5e7eb"></div>
   </div>
 </div>
 
-<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100052">
-  <div style="width:min(640px,94vw);background:#0b1020;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+<div id="addConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100052">
+  <div style="width:min(640px,94vw);background:#1e293b;border:1px solid rgba(148,163,184,.22);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
       <strong>Toevoegen</strong><button id="addConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
-      <div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a">
+      <div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb">
         <div class="flex gap-4 items-start">
-          <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)">
+          <img id="addConfirmPoster" src="" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)">
           <div class="flex-1">
-            <h3 id="addConfirmTitle" class="text-lg font-semibold text-slate-900 m-0">—</h3>
+            <h3 id="addConfirmTitle" class="text-lg font-semibold text-slate-100 m-0">—</h3>
             <p id="addConfirmMeta" class="m-0 opacity-70 text-sm">—</p>
             <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label class="block text-sm"><span class="block mb-1 text-slate-600">Categorie</span><select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
-              <label class="block text-sm"><span class="block mb-1 text-slate-600">Waar te zien</span><select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
+              <label class="block text-sm"><span class="block mb-1 text-slate-400">Categorie</span><select id="addConfirmType" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
+              <label class="block text-sm"><span class="block mb-1 text-slate-400">Waar te zien</span><select id="addConfirmStream" class="w-full p-2 border border-slate-300/60 rounded-md"></select></label>
             </div>
             <div class="mt-4"><button id="addConfirmBtn" class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Voeg toe</button></div>
           </div>
@@ -837,9 +885,9 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   </div>
 </div>
 
-<div id="scoreModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100055">
-  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+<div id="scoreModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100055">
+  <div style="width:min(520px,92vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
       <strong>Item bekeken</strong><button id="scoreModalClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
@@ -856,9 +904,9 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   </div>
 </div>
 
-<div id="deleteConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.55);backdrop-filter:blur(4px);z-index:100060">
-  <div style="width:min(520px,92vw);background:#0b1020;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#111827;color:#e5e7eb">
+<div id="deleteConfirmModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(18,24,40,.85);backdrop-filter:blur(4px);z-index:100060">
+  <div style="width:min(520px,92vw);background:#1e293b;border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.15);overflow:hidden;color:#e5e7eb">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:#334155;color:#e5e7eb">
       <strong>Verwijderen</strong><button id="deleteConfirmClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="padding:16px 18px;color:#e5e7eb">
@@ -892,7 +940,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdb = esc(item.imdbRating);
     const our = esc(item.ourScore);
     const imdbId = esc(item.imdbID || item.imdbId);
-    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
+    randCard.innerHTML = `<div class="glass" style="background:linear-gradient(135deg, rgba(20, 28, 48, 0.94), rgba(14, 21, 38, 0.90)); border-radius:12px; padding:12px; color:#e5e7eb"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(148,163,184,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-100 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-400">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
     randModal.style.display = 'flex';
   };
   if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
@@ -952,7 +1000,7 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     const imdbId = data.external_ids ? data.external_ids.imdb_id : '';
     const genres = (data.genres || []).map(g => g.name).join(', ');
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(11, 16, 32, 1) 20%, rgba(11, 16, 32, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(0,0,0,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:#1e293b;color:#e5e7eb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"; line-height:1.5; font-size: 15px;} .backdrop{ background-image: linear-gradient(to top, rgba(18,24,40, 1) 20%, rgba(18,24,40, 0.85) 60%), url(${backdropUrl}); background-size:cover; background-position: center 20%; min-height: 100vh;} .content{ display:flex; gap:24px; padding: 24px; } img{ width:200px; border-radius:12px; border:1px solid rgba(148,163,184,.25); flex-shrink:0; } h1, p, .meta, .genres { text-shadow: 0 2px 4px rgba(0,0,0,0.5); } h1{margin:0 0 4px 0;font-size:26px; line-height:1.2;} p{margin:0 0 16px 0; opacity: 0.9;} .meta{ font-size: 14px; opacity:0.9; margin-bottom: 12px; } .genres{ font-size: 14px; opacity:0.8; font-style: italic; margin-bottom: 16px; } a{color:#60a5fa;text-decoration:none} a:hover{text-decoration:underline} @media(max-width: 600px){ .content{flex-direction:column;} img{width: 150px;} h1{font-size:22px;} }</style></head><body><div class="backdrop"><div class="content"><img src="${posterUrl || 'https://placehold.co/200x300/e2e8f0/94a3b8?text=—'}" alt="poster"><div><h1>${esc(title)}</h1><div class="meta">${year} • ${runtime}</div><div class="genres">${genres}</div><p>${esc(data.overview||'Geen samenvatting beschikbaar.')}</p>${imdbId ? `<p><a target="_blank" rel="noopener" href="https://www.imdb.com/title/${esc(imdbId)}/">Open op IMDb</a></p>` : ''}</div></div></div></body></html>`;
   }
 
   window.openImdbOverlay = async function(imdbID){
@@ -1040,136 +1088,6 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
   el.addEventListener('change', tryOpen);
 })();
-
-/* === iCloud Auto-Sync (no UI changes) ===================================== */
-;(function(){
-  const HAS_FS = !!(window.showOpenFilePicker && window.FileSystemHandle);
-  const SYNC_DB = 'mfs-sync';
-  const SYNC_STORE = 'handles';
-  const SYNC_KEY = 'icloudHandle';
-  const TS_KEY = 'icloud.lastTs';
-
-  async function openSyncDB(){
-    return new Promise((ok,no)=>{
-      try{
-        const req = indexedDB.open(SYNC_DB, 1);
-        req.onupgradeneeded = ()=>{
-          const db = req.result;
-          if(!db.objectStoreNames.contains(SYNC_STORE)){
-            db.createObjectStore(SYNC_STORE);
-          }
-        };
-        req.onsuccess = ()=> ok(req.result);
-        req.onerror = ()=> no(req.error||new Error('sync db open fail'));
-      }catch(e){ no(e) }
-    });
-  }
-  async function saveHandle(handle){
-    const db = await openSyncDB();
-    return new Promise((ok,no)=>{
-      try{
-        const tx = db.transaction(SYNC_STORE,'readwrite').objectStore(SYNC_STORE).put(handle, SYNC_KEY);
-        tx.onsuccess=()=>ok();
-        tx.onerror=()=>no(tx.error);
-      }catch(e){ no(e) }
-    });
-  }
-  async function loadHandle(){
-    const db = await openSyncDB();
-    return new Promise((ok,no)=>{
-      try{
-        const tx = db.transaction(SYNC_STORE,'readonly').objectStore(SYNC_STORE).get(SYNC_KEY);
-        tx.onsuccess=()=>ok(tx.result||null);
-        tx.onerror=()=>no(tx.error);
-      }catch(e){ no(e) }
-    });
-  }
-
-  async function readRemoteJson(handle){
-    try{
-      const file = await handle.getFile();
-      const text = await file.text();
-      const data = JSON.parse(text||'{}');
-      const arr = Array.isArray(data) ? data : (data.items||[]);
-      const ts  = (typeof data.ts==='number') ? data.ts : file.lastModified || 0;
-      return {items: arr, ts};
-    }catch(e){ return {items:[], ts:0} }
-  }
-
-  async function writeRemoteJson(handle, items){
-    try{
-      const ts = Date.now();
-      const writable = await handle.createWritable();
-      await writable.write(new Blob([JSON.stringify({items, ts})], {type:'application/json'}));
-      await writable.close();
-      localStorage.setItem(TS_KEY, String(ts));
-    }catch(e){ /* silent */ }
-  }
-
-  let pushTimer=null;
-  async function pushToFileDebounced(){
-    clearTimeout(pushTimer);
-    pushTimer = setTimeout(async ()=>{
-      try{
-        const h = await loadHandle(); if(!h) return;
-        const all = await dbGetAll();
-        await writeRemoteJson(h, all);
-      }catch(e){}
-    }, 800);
-  }
-
-  async function pullFromFileIfNewer(){
-    try{
-      const h = await loadHandle(); if(!h) return;
-      const {items, ts} = await readRemoteJson(h);
-      const lastTs = parseInt(localStorage.getItem(TS_KEY)||'0',10);
-      if(ts>lastTs && items && items.length){
-        // Use existing importJson to preserve merge behavior
-        const blob = new Blob([JSON.stringify({items})], {type:'application/json'});
-        await importJson(new File([blob], 'icloud.json', {type:'application/json'}));
-        localStorage.setItem(TS_KEY, String(ts));
-      }
-    }catch(e){}
-  }
-
-  // Hook into existing debounced sync (if present) without changing UI
-  const _origSyncPushDebounced = (typeof syncPushDebounced==='function') ? syncPushDebounced : null;
-  window.syncPushDebounced = function(){
-    try{ if(_origSyncPushDebounced) _origSyncPushDebounced(); }catch(e){}
-    pushToFileDebounced();
-  };
-
-  // One-time setup: ask user to pick the iCloud file (no layout changes, just a confirm + picker)
-  async function ensureHandle(){
-    if(!HAS_FS) return; // not supported (older Safari)
-    const existing = await loadHandle();
-    if(existing) return;
-    try{
-      const yes = confirm('iCloud autosync instellen? Kies nu je mfs-backup.json in iCloud Drive.');
-      if(!yes) return;
-      const [fileHandle] = await showOpenFilePicker({
-        multiple:false,
-        types:[{description:'JSON', accept:{'application/json':['.json']}}]
-      });
-      if(!fileHandle) return;
-      // Optional: make sure it's writable (user may be asked once)
-      if(fileHandle.requestPermission){
-        try{ await fileHandle.requestPermission({mode:'readwrite'}); }catch(_){}
-      }
-      await saveHandle(fileHandle);
-      // Initial pull
-      await pullFromFileIfNewer();
-    }catch(e){ /* user cancelled */ }
-  }
-
-  // On load & on focus: pull latest, then future pushes are debounced
-  document.addEventListener('DOMContentLoaded', ()=>{
-    pullFromFileIfNewer();
-    ensureHandle();
-  });
-  window.addEventListener('focus', pullFromFileIfNewer);
-})();
-/* === End iCloud Auto-Sync ================================================ */
 </script>
 
 </body>
