@@ -125,7 +125,9 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <option value="created_desc" selected>Nummer (recent → oud)</option>
+        <option value="year_desc" selected>Jaartal (recent → oud)</option>
+        <option value="year_asc">Jaartal (oud → recent)</option>
+        <option value="created_desc">Nummer (recent → oud)</option>
         <option value="created_asc">Nummer (oud → recent)</option>
         <option value="imdb_desc">IMDb-score hoog → laag</option>
         <option value="imdb_asc">IMDb-score laag → hoog</option>
@@ -327,14 +329,17 @@ app.filtered=function(){
     });
   }
   const by=app.state.sortBy;
+  const yv = v=>{ const n=parseInt(String(v||'').replace(/[^0-9]/g,''),10); return isNaN(n)?-Infinity:n; };
   if(by==='imdb_desc'){ a.sort((x,y)=>(parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
   else if(by==='imdb_asc'){ a.sort((x,y)=>(parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
+  else if(by==='year_desc'){ a.sort((x,y)=> yv(y.year) - yv(x.year)); }
+  else if(by==='year_asc'){ a.sort((x,y)=> yv(x.year) - yv(y.year)); }
   else if(by==='score_desc'){ a.sort((x,y)=>(parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
   else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
+  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
 };
 
