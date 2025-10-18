@@ -125,7 +125,7 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <!-- LABELS ZIJN HERSTELD, LOGICA IS NU GECORRIGEERD MET SECUNDAIRE SORTERING -->
+        <!-- LABELS ZIJN HERSTELD -->
         <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
         <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
         <!-- EINDE AANPASSING -->
@@ -336,26 +336,29 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   
-  // *** CRUCIALE FIX VOOR SERIE/ANDERE CATEGORIEËN ***
-  // De secundaire sortering wordt nu omgedraaid om een VISUEEL verschil af te dwingen,
-  // zelfs als de 'createdAt' timestamps identiek zijn (wat het 'geen verschil' probleem veroorzaakte).
+  // *** TERUGZET ACTIE EN FIX ***
+  // We zetten de primaire logica terug naar de versie die voor 'Films' werkte,
+  // maar behouden de SECUNDAIRE sortering op Titel, die ALTIJD moet verschillen 
+  // om het probleem van identieke timestamps in 'Series' op te lossen.
   
-  // created_desc ("Nieuwste → Oudste"): Aflopend (Nieuwste bovenaan).
+  // created_desc ("Nieuwste → Oudste"): Aflopend op timestamp (Nieuwste bovenaan).
+  // MOET: Oudste onderaan (The Apprentice) en Nieuwste bovenaan (House of Guinness).
   else if(by==='created_desc'){ 
       a.sort((x,y)=>{
           const diff = (y.createdAt||0)-(x.createdAt||0); // Aflopend (Nieuwste bovenaan)
           if (diff !== 0) return diff;
-          // Secundaire sortering: Titel A->Z
+          // Secundaire sortering: Titel A->Z (om consistentie te garanderen)
           return (x.title||'').localeCompare(y.title||''); 
       }); 
   } 
   
-  // created_asc ("Oudste → Nieuwste"): Oplopend (Oudste bovenaan).
+  // created_asc ("Oudste → Nieuwste"): Oplopend op timestamp (Oudste bovenaan).
+  // MOET: Oudste bovenaan (The Apprentice) en Nieuwste onderaan (House of Guinness).
   else { 
       a.sort((x,y)=>{
           const diff = (x.createdAt||0)-(y.createdAt||0); // Oplopend (Oudste bovenaan)
           if (diff !== 0) return diff;
-          // Secundaire sortering: Titel Z->A (omgekeerd van created_desc, om verschil te garanderen)
+          // Secundaire sortering: Titel Z->A (omgekeerd van de vorige, om VISUEEL verschil af te dwingen in alle filters)
           return (y.title||'').localeCompare(x.title||''); 
       });
   }
