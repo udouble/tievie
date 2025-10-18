@@ -247,13 +247,15 @@ async function migrateCreatedOnce(){
   try{
     // Fix: Eenmalige correctie van de sortering van alle items.
     // De timestamp (createdAt) wordt omgedraaid zodat de oude items in de gewenste volgorde komen te staan.
-    const FLAG='mfs_mig_all_flip_v3'; // Nieuwe vlag om deze correctie eenmalig uit te voeren
+    // Dit is de V4-vlag die garandeert dat de fix op ALLE items wordt toegepast.
+    const FLAG='mfs_mig_all_flip_v4'; 
     if(localStorage.getItem(FLAG)) return;
     
     const items = await dbGetAll();
     if(!items || !items.length){ localStorage.setItem(FLAG,'done'); return; }
     
     // Verzamel alle geldige createdAt-tijden om de min/max range te bepalen
+    // Alle items, ongeacht type, worden nu meegenomen
     const times = items
       .map(i => Number(i.createdAt||0))
       .filter(v => Number.isFinite(v) && v > 0);
