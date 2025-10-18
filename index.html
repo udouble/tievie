@@ -237,6 +237,38 @@ async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{
 async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
+
+async function migrateCreatedOnce(){
+  try{
+    const FLAG='mfs_mig_created_flip_v1';
+    if(localStorage.getItem(FLAG)) return;
+    const items = await dbGetAll();
+    if(!items || !items.length){ localStorage.setItem(FLAG,'done'); return; }
+    const films = items.filter(i => (i.type==='Film' || i.category==='Film'));
+    if(!films.length){ localStorage.setItem(FLAG,'done'); return; }
+    const times = films.map(i => Number(i.createdAt||0)).filter(v => Number.isFinite(v));
+    if(!times.length){ localStorage.setItem(FLAG,'done'); return; }
+    const min = Math.min(...times), max = Math.max(...times);
+    const flippedFilms = films.map(it => {
+      const t = Number(it.createdAt||0);
+      return Number.isFinite(t) ? ({...it, createdAt: (min + max - t) }) : it;
+    });
+    // Merge flipped films back into all items
+    const updated = items.map(it => {
+      if(it.type==='Film' || it.category==='Film'){
+        const nf = flippedFilms.find(f => f.id===it.id);
+        return nf || it;
+      }
+      return it;
+    });
+    await dbBulkPut(updated);
+    localStorage.setItem(FLAG,'done');
+    try{ setStatus('Eenmalige volgorde-correctie (alleen Films) toegepast.'); }catch(_){}
+  }catch(e){
+    try{ console.warn('migrateCreatedOnce error', e); }catch(_){}
+  }
+}
+
 const app={state:{items:[],filter:'film',searchTerm:'',sortBy:'created_desc',filterStreaming:''}};
 
 // === Anti-duplicate helpers ===
@@ -743,6 +775,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   try{
     await syncPull();
     await autoSeedIfEmpty();
+    await migrateCreatedOnce();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
     setStatus('v3.31 — PWA • '+app.state.items.length+' items');
