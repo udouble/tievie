@@ -334,7 +334,7 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
+  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
   return a;
 };
 
