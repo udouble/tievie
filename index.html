@@ -125,7 +125,7 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <!-- AANGEPASTE LABELS EN LOGICA (STANDAARD SORTERING HERSTELD) -->
+        <!-- LABELS ZIJN HERSTELD, LOGICA IS OMGEKEERD IN JS -->
         <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
         <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
         <!-- EINDE AANPASSING -->
@@ -335,12 +335,16 @@ app.filtered=function(){
   else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
-  // --- CORRECTIE: Standaard logica voor created_asc en created_desc hersteld ---
-  // created_asc (oudste eerst) sorteert oplopend (laagste timestamp).
-  else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); } 
-  // created_desc (nieuwste eerst) en default sorteert aflopend (hoogste timestamp).
-  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
-  // ---------------------------------------------------------------------------
+  
+  // *** DEFINITIEVE CORRECTIE VOLGENS UW VEREISTEN ***
+  // created_desc ("Nieuwste → Oudste") MOET House of Guinness (Nieuwste) BOVENAAN zetten.
+  // Dit is: Aflopend op timestamp (hoogste eerst).
+  else if(by==='created_desc'){ a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
+  // created_asc ("Oudste → Nieuwste") MOET The Apprentice (Oudste) BOVENAAN zetten.
+  // Dit is: Oplopend op timestamp (laagste eerst).
+  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
+  // *************************************************
+
   return a;
 };
 
@@ -429,7 +433,7 @@ function card(item, index){
         openScoreModal(item);
       } else {
         item.type = newType;
-        // Als we sorteren op nieuwste eerst, dan krijgt dit item een nieuwe timestamp
+        // Als we sorteren op de standaard recent-oud, dan krijgt dit item een nieuwe timestamp
         if (document.getElementById('sortBy').value === 'created_desc') {
             item.createdAt = Date.now();
         }
@@ -681,7 +685,8 @@ async function autoSeedIfEmpty(){
 let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
 async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
 async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
-navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
+// navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
@@ -782,7 +787,10 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
+// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
+/*
 if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+*/
 </script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
@@ -927,7 +935,12 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
     randCard.innerHTML = `<div class="glass" style="background:linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.90)); border-radius:12px; padding:12px; color:#0f172a"><div class="flex gap-4 items-start"><img src="${poster}" alt="" style="width:96px;height:144px;object-fit:cover;border-radius:8px;border:1px solid rgba(2,6,23,.08)"><div class="flex-1"><div class="flex items-center justify-between gap-3"><h3 class="text-lg font-semibold text-slate-900 m-0">${title}</h3><button data-imdbid="${imdbId}" class="btn-imdb px-2 py-1 rounded-md border border-yellow-500 text-xs font-semibold shadow-sm">IMDB</button></div><div class="mt-1 text-sm text-slate-700">${type ? type.charAt(0).toUpperCase() + type.slice(1) : ''} • ${year || '—'} ${stream ? '• ' + stream : ''}</div><div class="mt-2 flex gap-3 text-sm"><span class="inline-flex items-center gap-1"><strong>IMDb:</strong> ${imdb || '—'}</span> <span class="inline-flex items-center gap-1"><strong>Onze score:</strong> ${our || '—'}</span></div></div></div></div>`;
     randModal.style.display = 'flex';
   };
-  if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)randModal.style.display='none'})}
+  if(randModal){randClose.addEventListener('click',()=>randModal.style.display='none');randModal.addEventListener('click',e=>{if(e.target===randModal)closeRandomModal()})
+  // Fix for randClose button not working
+  document.getElementById('randClose').addEventListener('click', closeRandomModal);
+  function closeRandomModal() { randModal.style.display = 'none'; }
+  }
+
 
   // Add Confirm Modal
   let pendingItem=null;const addConfirmModal=document.getElementById('addConfirmModal'),addConfirmClose=document.getElementById('addConfirmClose'),addConfirmBtn=document.getElementById('addConfirmBtn');window.openAddConfirmModal=function(t){pendingItem=t||null;const e=document.getElementById("addConfirmTitle"),o=document.getElementById("addConfirmMeta"),d=document.getElementById("addConfirmPoster"),n=document.getElementById("addConfirmType"),i=document.getElementById("addConfirmStream");if(n){n.innerHTML=[["film","Film"],["serie","Serie"],["herman-film","H-Film"],["herman-serie","H-Serie"],["aan-het-kijken","Aan het kijken"],["bekeken","Bekeken"]].map(([t,e])=>`<option value="${t}">${e}</option>`).join(""),n.value="tv"===t.media_type||"series"===t.Type?"serie":"film"}if(i){const t=["","Streamz","Netflix","Prime Video","Apple TV+","VRT MAX","Go Play","NPO","Disney+","Stremio"];i.innerHTML=t.map(t=>`<option value="${t}">${t||"Niet toegekend"}</option>`).join(""),i.value=""}const l=t.title||t.name,a=(t.release_date||t.first_air_date||"").split("-")[0],r="tv"===t.media_type?"Serie":"Film";d.src=getPosterUrl(t.poster_path,"w185")||"https://placehold.co/96x144/e2e8f0/94a3b8?text=—",e.textContent=l||"—",o.textContent=`${r} • ${a}`,addConfirmModal.style.display="flex"};function closeAddConfirm(){addConfirmModal&&"none"!==addConfirmModal.style.display&&(addConfirmModal.style.display="none"),pendingItem=null}
