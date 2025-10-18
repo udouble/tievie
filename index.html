@@ -125,8 +125,10 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <option value="created_desc" selected>Nummer (recent → oud)</option>
-        <option value="created_asc">Nummer (oud → recent)</option>
+        <!-- AANGEPASTE LABELS EN LOGICA (STANDAARD SORTERING HERSTELD) -->
+        <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
+        <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
+        <!-- EINDE AANPASSING -->
         <option value="imdb_desc">IMDb-score hoog → laag</option>
         <option value="imdb_asc">IMDb-score laag → hoog</option>
         <option value="score_desc">Onze score hoog → laag</option>
@@ -268,7 +270,7 @@ function mergeItems(base, inc){
   if(inc.imdbRating && !out.imdbRating) out.imdbRating=inc.imdbRating;
   if(inc.year && !out.year) out.year=inc.year;
   if(inc.runtime && !out.runtime) out.runtime=inc.runtime;
-  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(inc.ourScore);
+  if((out.ourScore==null || String(out.ourScore).trim()==='' || String(out.ourScore).toLowerCase()==='nan') && inc.ourScore!=null && String(inc.ourScore).trim()!=='') out.ourScore=String(out.ourScore);
   if((!out.streamingOn || String(out.streamingOn).trim()==='') && inc.streamingOn) out.streamingOn=inc.streamingOn;
   if(inc.dateSeen && (!out.dateSeen || inc.dateSeen>out.dateSeen)) out.dateSeen=inc.dateSeen;
   if((!out.title || out.title.length < (inc.title||'').length) && inc.title) out.title=inc.title;
@@ -333,8 +335,12 @@ app.filtered=function(){
   else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
-  else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
+  // --- CORRECTIE: Standaard logica voor created_asc en created_desc hersteld ---
+  // created_asc (oudste eerst) sorteert oplopend (laagste timestamp).
+  else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); } 
+  // created_desc (nieuwste eerst) en default sorteert aflopend (hoogste timestamp).
+  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
+  // ---------------------------------------------------------------------------
   return a;
 };
 
@@ -423,6 +429,7 @@ function card(item, index){
         openScoreModal(item);
       } else {
         item.type = newType;
+        // Als we sorteren op nieuwste eerst, dan krijgt dit item een nieuwe timestamp
         if (document.getElementById('sortBy').value === 'created_desc') {
             item.createdAt = Date.now();
         }
