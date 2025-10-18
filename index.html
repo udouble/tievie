@@ -247,15 +247,14 @@ async function migrateCreatedOnce(){
   try{
     // Fix: Eenmalige correctie van de sortering van alle items.
     // De timestamp (createdAt) wordt omgedraaid zodat de oude items in de gewenste volgorde komen te staan.
-    // Dit is de V4-vlag die garandeert dat de fix op ALLE items wordt toegepast.
-    const FLAG='mfs_mig_all_flip_v4'; 
+    // Nieuwe vlag V5 zorgt ervoor dat deze fix opnieuw wordt uitgevoerd als de vorige mislukte of teruggedraaid werd.
+    const FLAG='mfs_mig_all_flip_v5'; 
     if(localStorage.getItem(FLAG)) return;
     
     const items = await dbGetAll();
     if(!items || !items.length){ localStorage.setItem(FLAG,'done'); return; }
     
     // Verzamel alle geldige createdAt-tijden om de min/max range te bepalen
-    // Alle items, ongeacht type, worden nu meegenomen
     const times = items
       .map(i => Number(i.createdAt||0))
       .filter(v => Number.isFinite(v) && v > 0);
@@ -278,7 +277,7 @@ async function migrateCreatedOnce(){
     
     await dbBulkPut(updated);
     localStorage.setItem(FLAG,'done');
-    try{ setStatus('Eenmalige omdraaiing van sortering toegepast.'); }catch(_){}
+    try{ setStatus('Eenmalige omdraaiing van sortering toegepast (v5).'); }catch(_){}
   }catch(e){
     try{ console.warn('migrateCreatedOnce error', e); }catch(_){}
   }
@@ -309,6 +308,8 @@ function betterType(a,b){
 function mergeItems(base, inc){
   const out={...base};
   if(inc.type && inc.type!==base.type) out.type = betterType(base.type, inc.type);
+  // NIEUW TOEGEVOEGDE ITEMS (met hoge Date.now()) moeten hun hoge waarde behouden.
+  // We updaten createdAt enkel als het nieuwe item nieuwer is of bij het toevoegen.
   out.createdAt = Math.max(base.createdAt||0, inc.createdAt||0, Date.now());
   if(!out.imdbID && (inc.imdbID||inc.imdbId)) out.imdbID = inc.imdbID||inc.imdbId;
   if((!out.poster || out.poster==='N/A') && (inc.poster && inc.poster!=='N/A')) out.poster=inc.poster;
@@ -380,7 +381,9 @@ app.filtered=function(){
   else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
+  // created_desc: Nieuwste eerst (hoogste timestamp)
   else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
+  // created_desc: Oudste eerst (laagste timestamp)
   else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
   return a;
 };
@@ -471,6 +474,7 @@ function card(item, index){
       } else {
         item.type = newType;
         if (document.getElementById('sortBy').value === 'created_desc') {
+            // Nieuw toegevoegde items krijgen de hoogste timestamp
             item.createdAt = Date.now();
         }
         await dbPut(item);
