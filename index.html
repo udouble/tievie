@@ -125,7 +125,7 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <!-- LABELS ZIJN HERSTELD -->
+        <!-- LABELS ZIJN HERSTELD, LOGICA IS OMGEKEERD IN JS -->
         <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
         <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
         <!-- EINDE AANPASSING -->
@@ -336,31 +336,13 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   
-  // *** HERSTELDE LOGICA EN DEFINITIEVE FIX VOOR ALLE FILTERS ***
-  // De primaire logica is teruggezet naar de werkende versie voor 'Films'.
-  // De secundaire sortering is toegevoegd om consistentie in alle filters af te dwingen.
-  
-  // created_desc ("Nieuwste → Oudste"): Aflopend op timestamp (Nieuwste bovenaan).
-  // Visueel: Oudste onderaan (The Apprentice) en Nieuwste bovenaan (House of Guinness).
-  else if(by==='created_desc'){ 
-      a.sort((x,y)=>{
-          const diff = (y.createdAt||0)-(x.createdAt||0); // Aflopend
-          if (diff !== 0) return diff;
-          // Secundaire sortering: Titel A->Z (om verschil af te dwingen)
-          return (x.title||'').localeCompare(y.title||''); 
-      }); 
-  } 
-  
-  // created_asc ("Oudste → Nieuwste"): Oplopend op timestamp (Oudste bovenaan).
-  // Visueel: Oudste bovenaan (The Apprentice) en Nieuwste onderaan (House of Guinness).
-  else { 
-      a.sort((x,y)=>{
-          const diff = (x.createdAt||0)-(y.createdAt||0); // Oplopend
-          if (diff !== 0) return diff;
-          // Secundaire sortering: Titel Z->A (omgekeerd van de vorige, om VISUEEL verschil af te dwingen)
-          return (y.title||'').localeCompare(x.title||''); 
-      });
-  }
+  // *** DEFINITIEVE CORRECTIE VOLGENS UW VEREISTEN ***
+  // created_desc ("Nieuwste → Oudste") MOET House of Guinness (Nieuwste) BOVENAAN zetten.
+  // Dit is: Aflopend op timestamp (hoogste eerst).
+  else if(by==='created_desc'){ a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
+  // created_asc ("Oudste → Nieuwste") MOET The Apprentice (Oudste) BOVENAAN zetten.
+  // Dit is: Oplopend op timestamp (laagste eerst).
+  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
   // *************************************************
 
   return a;

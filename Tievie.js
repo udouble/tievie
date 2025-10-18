@@ -22,18 +22,17 @@
     const sel = document.getElementById('filterStreaming');
     if(sel){ /* legacy select no-op: UI moved to multi-select */ }
   
-    // === IMDb overlay (Achtergrond en kleuren aangepast) ===
+    // === IMDb overlay (ongewijzigd) ===
     if(!document.getElementById('imdbOverlay')){
       const overlay = document.createElement('div');
       overlay.id='imdbOverlay';
-      // Pas de achtergrond en z-index aan om bij de donkere modus te passen
-      Object.assign(overlay.style,{position:'fixed',left:0,top:0,right:0,bottom:0,display:'none',alignItems:'center',justifyContent:'center',background:'rgba(18,24,40,.85)',backdropFilter:'blur(4px)',zIndex:10002});
+      Object.assign(overlay.style,{position:'fixed',left:0,top:0,right:0,bottom:0,display:'none',alignItems:'center',justifyContent:'center',background:'rgba(2,6,23,55)',backdropFilter:'blur(3px)',zIndex:10002});
       overlay.innerHTML = `
-      <div id="imdbPanel" style="width:min(840px,94vw);max-height:90vh;background:#121828;border:1px solid rgba(148,163,184,25);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,5);overflow:hidden">
-        <div id="imdbBar" style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:#1e293b;color:#e5e7eb">
+      <div id="imdbPanel" style="width:min(840px,94vw);max-height:90vh;background:#0b1220;border:1px solid rgba(148,163,184,25);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,5);overflow:hidden">
+        <div id="imdbBar" style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:#111827;color:#e5e7eb">
           <strong>IMDb</strong><button id="imdbClose" style="background:transparent;border:0;color:#e5e7eb;font-size:18px">✕</button>
         </div>
-        <iframe id="imdbFrame" src="about:blank" style="border:0;width:100%;height:min(70vh,620px);background:#121828"></iframe>
+        <iframe id="imdbFrame" src="about:blank" style="border:0;width:100%;height:min(70vh,620px);background:#0b1220"></iframe>
       </div>`;
       document.body.appendChild(overlay);
       const frame = overlay.querySelector('#imdbFrame');
@@ -46,7 +45,7 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <style>
-  body{margin:0;background:#121828;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  body{margin:0;background:#0b1220;color:#e5e7eb;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
   .w{padding:16px;display:flex;gap:16px;align-items:flex-start}
   img{width:210px;height:310px;object-fit:cover;border-radius:12px;border:1px solid rgba(148,163,184,25)}
   h1{margin:.2rem 0 .25rem 0;font-size:22px}.m{opacity:.85;margin:.2rem 0 .6rem 0}
