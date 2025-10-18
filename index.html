@@ -336,25 +336,27 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   
-  // *** DEFINITIEVE GECORRIGEERDE CHRONOLOGISCHE SORTERING ***
-  // De logica is nu zo ingesteld dat beide richtingen altijd een verschil afdwingen,
-  // zelfs als de createdAt timestamps identiek zijn (via Titel A->Z als secundaire sortering).
+  // *** CRUCIALE FIX VOOR SERIE/ANDERE CATEGORIEËN ***
+  // De secundaire sortering wordt nu omgedraaid om een VISUEEL verschil af te dwingen,
+  // zelfs als de 'createdAt' timestamps identiek zijn (wat het 'geen verschil' probleem veroorzaakte).
   
-  // created_desc ("Nieuwste → Oudste"): Aflopend (Nieuwste bovenaan), met secundaire sortering op Titel A->Z.
+  // created_desc ("Nieuwste → Oudste"): Aflopend (Nieuwste bovenaan).
   else if(by==='created_desc'){ 
       a.sort((x,y)=>{
           const diff = (y.createdAt||0)-(x.createdAt||0); // Aflopend (Nieuwste bovenaan)
           if (diff !== 0) return diff;
-          return (x.title||'').localeCompare(y.title||''); // Secundair: Titel A->Z
+          // Secundaire sortering: Titel A->Z
+          return (x.title||'').localeCompare(y.title||''); 
       }); 
   } 
   
-  // created_asc ("Oudste → Nieuwste"): Oplopend (Oudste bovenaan), met secundaire sortering op Titel A->Z.
+  // created_asc ("Oudste → Nieuwste"): Oplopend (Oudste bovenaan).
   else { 
       a.sort((x,y)=>{
           const diff = (x.createdAt||0)-(y.createdAt||0); // Oplopend (Oudste bovenaan)
           if (diff !== 0) return diff;
-          return (x.title||'').localeCompare(y.title||''); // Secundair: Titel A->Z
+          // Secundaire sortering: Titel Z->A (omgekeerd van created_desc, om verschil te garanderen)
+          return (y.title||'').localeCompare(x.title||''); 
       });
   }
   // *************************************************
