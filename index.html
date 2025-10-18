@@ -240,30 +240,31 @@ async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{co
 
 async function migrateCreatedOnce(){
   try{
-    const FLAG='mfs_mig_created_flip_v1';
+    const FLAG='mfs_mig_films_reverse_v1';
     if(localStorage.getItem(FLAG)) return;
     const items = await dbGetAll();
     if(!items || !items.length){ localStorage.setItem(FLAG,'done'); return; }
     const films = items.filter(i => (i.type==='Film' || i.category==='Film'));
     if(!films.length){ localStorage.setItem(FLAG,'done'); return; }
-    const times = films.map(i => Number(i.createdAt||0)).filter(v => Number.isFinite(v));
-    if(!times.length){ localStorage.setItem(FLAG,'done'); return; }
-    const min = Math.min(...times), max = Math.max(...times);
-    const flippedFilms = films.map(it => {
-      const t = Number(it.createdAt||0);
-      return Number.isFinite(t) ? ({...it, createdAt: (min + max - t) }) : it;
-    });
-    // Merge flipped films back into all items
+    // Reverse order of films according to their current order of createdAt
+    const sorted = [...films].sort((a,b)=> (a.createdAt||0) - (b.createdAt||0));
+    const reversed = sorted.reverse();
+    // Map old createdAt values to reversed order to effectively flip list order
+    const newFilms = reversed.map((it,idx)=> ({
+      ...it,
+      createdAt: sorted[idx]?.createdAt || it.createdAt
+    }));
+    // Merge back into all items
     const updated = items.map(it => {
       if(it.type==='Film' || it.category==='Film'){
-        const nf = flippedFilms.find(f => f.id===it.id);
+        const nf = newFilms.find(f => f.id===it.id);
         return nf || it;
       }
       return it;
     });
     await dbBulkPut(updated);
     localStorage.setItem(FLAG,'done');
-    try{ setStatus('Eenmalige volgorde-correctie (alleen Films) toegepast.'); }catch(_){}
+    try{ setStatus('Eenmalige volledige omdraaiing (alleen Films) toegepast.'); }catch(_){}
   }catch(e){
     try{ console.warn('migrateCreatedOnce error', e); }catch(_){}
   }
