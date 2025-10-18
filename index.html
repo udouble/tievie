@@ -125,9 +125,7 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <option value="year_desc" selected>Jaartal (recent → oud)</option>
-        <option value="year_asc">Jaartal (oud → recent)</option>
-        <option value="created_desc">Nummer (recent → oud)</option>
+        <option value="created_desc" selected>Nummer (recent → oud)</option>
         <option value="created_asc">Nummer (oud → recent)</option>
         <option value="imdb_desc">IMDb-score hoog → laag</option>
         <option value="imdb_asc">IMDb-score laag → hoog</option>
@@ -329,11 +327,8 @@ app.filtered=function(){
     });
   }
   const by=app.state.sortBy;
-  const yv = v=>{ const n=parseInt(String(v||'').replace(/[^0-9]/g,''),10); return isNaN(n)?-Infinity:n; };
   if(by==='imdb_desc'){ a.sort((x,y)=>(parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
   else if(by==='imdb_asc'){ a.sort((x,y)=>(parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
-  else if(by==='year_desc'){ a.sort((x,y)=> yv(y.year) - yv(x.year)); }
-  else if(by==='year_asc'){ a.sort((x,y)=> yv(x.year) - yv(y.year)); }
   else if(by==='score_desc'){ a.sort((x,y)=>(parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
   else if(by==='score_asc'){ a.sort((x,y)=>(parseScore(x.ourScore)||-1)-(parseScore(y.ourScore)||-1)); }
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
@@ -1045,41 +1040,6 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   el.addEventListener('paste', ()=> setTimeout(tryOpen, 50));
   el.addEventListener('change', tryOpen);
 })();
-
-/* === One-time migration: reverse FILMS order (createdAt) ============== */
-;(function(){
-  const FLAG = 'MFS_FILMS_REVERSED_ONCE';
-  if (localStorage.getItem(FLAG)) return;
-
-  async function reverseFilmsOnce(){
-    try{
-      const all = await dbGetAll();
-      const films = all.filter(x => (x.type||'') === 'film');
-      if (films.length < 2) { localStorage.setItem(FLAG, '1'); return; }
-
-      const byCreatedDesc = films.slice().sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
-      const reversed = byCreatedDesc.slice().reverse();
-
-      const base = Date.now();
-      reversed.forEach((it, idx)=>{ it.createdAt = base + idx; });
-
-      const idToItem = new Map(reversed.map(x=>[x.id, x]));
-      const merged = all.map(it => idToItem.has(it.id) ? idToItem.get(it.id) : it);
-
-      await dbBulkPut(merged);
-      localStorage.setItem(FLAG, '1');
-      if (typeof app!=='undefined' && app.render) {
-        const fresh = await dbGetAll();
-        app.state.items = fresh;
-        app.render();
-      }
-    }catch(e){
-      try{ localStorage.setItem(FLAG, '1'); }catch(_){}
-    }
-  }
-  document.addEventListener('DOMContentLoaded', reverseFilmsOnce);
-})();
-/* === End one-time migration =========================================== */
 </script>
 
 </body>
