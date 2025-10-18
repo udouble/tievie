@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>Tievie v3.31 — PWA</title>
+<title>Tievie v3.31</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 // === Cache touch (click or long-press on version badge) ===
@@ -34,7 +34,7 @@ function attachResetGesture(){
   });
 }
 </script>
-<link rel="manifest" href="./manifest.json">
+<!-- PWA Manifest link removed as requested -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root { color-scheme: dark; }
@@ -125,7 +125,7 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <!-- LABELS ZIJN HERSTELD, LOGICA IS OMGEKEERD IN JS -->
+        <!-- LABELS ZIJN HERSTELD -->
         <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
         <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
         <!-- EINDE AANPASSING -->
@@ -184,7 +184,7 @@ function attachResetGesture(){
   </div>
 </div>
 
-<div id="status">v3.31 — PWA</div>
+<div id="status">v3.31</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
@@ -336,14 +336,27 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   
-  // *** DEFINITIEVE CORRECTIE VOLGENS UW VEREISTEN ***
-  // created_desc ("Nieuwste → Oudste") MOET House of Guinness (Nieuwste) BOVENAAN zetten.
-  // Dit is: Aflopend op timestamp (hoogste eerst).
-  else if(by==='created_desc'){ a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
-  // created_asc ("Oudste → Nieuwste") MOET The Apprentice (Oudste) BOVENAAN zetten.
-  // Dit is: Oplopend op timestamp (laagste eerst).
-  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  // *************************************************
+  // *** Definitieve Sorteer Logica ***
+  // created_desc ("Nieuwste → Oudste"): Aflopend op timestamp (hoogste eerst) met secundaire sortering Z->A.
+  else if(by==='created_desc'){ 
+      a.sort((x,y)=>{
+          const diff = (y.createdAt||0)-(x.createdAt||0); // AFLOPEND
+          if (diff !== 0) return diff;
+          // Secundaire sortering: Titel Z->A (om verschil te garanderen)
+          return (y.title||'').localeCompare(x.title||''); 
+      }); 
+  } 
+  
+  // created_asc ("Oudste → Nieuwste"): Oplopend op timestamp (laagste eerst) met secundaire sortering A->Z.
+  else { 
+      a.sort((x,y)=>{
+          const diff = (x.createdAt||0)-(y.createdAt||0); // OPLOPEND
+          if (diff !== 0) return diff;
+          // Secundaire sortering: Titel A->Z (om verschil te garanderen)
+          return (x.title||'').localeCompare(y.title||''); 
+      });
+  }
+  // **********************************
 
   return a;
 };
@@ -685,8 +698,6 @@ async function autoSeedIfEmpty(){
 let syncTimer=null;function syncPushDebounced(){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,800)}
 async function syncPush(){try{if(!('serviceWorker'in navigator))return;const reg=await navigator.serviceWorker.ready;const items=await dbGetAll();reg.active&&reg.active.postMessage({type:'MFS_SYNC_WRITE',payload:{items,ts:Date.now()}})}catch(e){console.warn('sync push fail',e)}}
 async function syncPull(){try{const res=await fetch('./__mfs_sync__.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data||!Array.isArray(data.items))return;const current=await dbGetAll();const merged=[...current];data.items.forEach(raw=>{const ex=merged.find(x=>(x.imdbID&&x.imdbID===raw.imdbID)||(normalizeTitle(x.title)===normalizeTitle(raw.title)&&String(x.year||'')===String(raw.year||'')));if(ex){const newer=(raw.updatedAt||raw.createdAt||0)>(ex.updatedAt||ex.createdAt||0);if(newer){const keepId=ex.id;merged.splice(merged.indexOf(ex),1,{...raw,id:keepId});}}else{merged.push(raw)}});await dbBulkPut(merged);app.state.items=await dbGetAll();app.render()}catch(e){console.warn('sync pull fail',e)}}
-// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
-// navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
 
 // ===== Streaming multi-select (floating panel) =====
 const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
@@ -782,15 +793,11 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
-    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    setStatus('v3.31 • '+app.state.items.length+' items');
     await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
-// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
-/*
-if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
-*/
 </script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
