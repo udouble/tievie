@@ -55,7 +55,7 @@ function attachResetGesture(){
   #suggest img{width:44px;height:66px;object-fit:cover;border-radius:.375rem}
   #suggest .row{display:flex;gap:.6rem;align-items:center;padding:.5rem .6rem;border-radius:.6rem}
   #suggest .row:hover{background:rgba(2,6,23,.06)}
-  body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji';}
+  body{font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';}
   input[type="text"], input[type="search"], input[type="date"], select, .our-score-input, .category-select, .streaming-service-select {
     background:#ffffff !important;
     color:#0f172a !important;
@@ -238,28 +238,45 @@ async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 
 
+/**
+ * Eenmalige migratie om de createdAt timestamps van alle bestaande items om te keren.
+ * Dit zorgt ervoor dat de sorteervolgorde (Recent -> oud) voor de bestaande data wordt geflipt
+ * terwijl nieuwe items (met Date.now()) nog steeds bovenaan de lijst komen te staan.
+ */
 async function migrateCreatedOnce(){
   try{
-    // New flag so this fix runs even if a previous attempt already set a flag
-    const FLAG='mfs_mig_films_flip_v2';
+    // Fix: Eenmalige correctie van de sortering van alle items.
+    // De timestamp (createdAt) wordt omgedraaid zodat de oude items in de gewenste volgorde komen te staan.
+    const FLAG='mfs_mig_all_flip_v3'; // Nieuwe vlag om deze correctie eenmalig uit te voeren
     if(localStorage.getItem(FLAG)) return;
+    
     const items = await dbGetAll();
     if(!items || !items.length){ localStorage.setItem(FLAG,'done'); return; }
-    const films = items.filter(i => (i && (i.type==='Film' || i.category==='Film')));
-    if(!films.length){ localStorage.setItem(FLAG,'done'); return; }
-    const times = films.map(i => Number(i.createdAt||0)).filter(v => Number.isFinite(v));
-    if(!times.length){ localStorage.setItem(FLAG,'done'); return; }
+    
+    // Verzamel alle geldige createdAt-tijden om de min/max range te bepalen
+    const times = items
+      .map(i => Number(i.createdAt||0))
+      .filter(v => Number.isFinite(v) && v > 0);
+      
+    // De correctie is alleen zinvol als er minimaal twee items zijn om een range te bepalen.
+    if(times.length < 2){ localStorage.setItem(FLAG,'done'); return; }
+    
     const min = Math.min(...times), max = Math.max(...times);
+    
+    // Voer de omkering uit: Oude tijd wordt nieuwe tijd (min + max - t),
+    // zodat de oorspronkelijk nieuwste items de laagste geflipte timestamp krijgen.
     const updated = items.map(it => {
-      if(it && (it.type==='Film' || it.category==='Film')){
-        const t = Number(it.createdAt||0);
-        return Number.isFinite(t) ? ({...it, createdAt: (min + max - t) }) : it;
+      const t = Number(it.createdAt||0);
+      // Alle items binnen de oorspronkelijke min/max range worden geflipt.
+      if(Number.isFinite(t) && t >= min && t <= max){
+        return ({...it, createdAt: (min + max - t) });
       }
       return it;
     });
+    
     await dbBulkPut(updated);
     localStorage.setItem(FLAG,'done');
-    try{ setStatus('Eenmalige omdraaiing toegepast (alleen Films).'); }catch(_){}
+    try{ setStatus('Eenmalige omdraaiing van sortering toegepast.'); }catch(_){}
   }catch(e){
     try{ console.warn('migrateCreatedOnce error', e); }catch(_){}
   }
@@ -771,6 +788,7 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   try{
     await syncPull();
     await autoSeedIfEmpty();
+    // De eenmalige correctie wordt hier uitgevoerd
     await migrateCreatedOnce();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
@@ -779,7 +797,18 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
 
-if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
+// Fix voor Service Worker registratie om TypeError te voorkomen bij onjuiste paden.
+if('serviceWorker'in navigator){window.addEventListener('load',()=>{
+    // Bepaalt de basis-URL van de app (e.g. '/' of '/subpad')
+    const base = (location.pathname.replace(/index\.html?$/,'') || '/').replace(/\/$/, '');
+    const swPath = base + '/sw.js?v=3.31';
+
+    navigator.serviceWorker.register(swPath).then(()=>{
+        navigator.serviceWorker.ready.then(reg=>{
+            if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})
+        })
+    }).catch(e => console.warn('SW registratie fout:', e));
+})}
 </script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
