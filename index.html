@@ -125,10 +125,8 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
-        <!-- LABELS ZIJN HERSTELD, LOGICA IS OMGEKEERD IN JS -->
         <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
         <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
-        <!-- EINDE AANPASSING -->
         <option value="imdb_desc">IMDb-score hoog → laag</option>
         <option value="imdb_asc">IMDb-score laag → hoog</option>
         <option value="score_desc">Onze score hoog → laag</option>
@@ -339,10 +337,10 @@ app.filtered=function(){
   // *** DEFINITIEVE CORRECTIE VOLGENS UW VEREISTEN ***
   // created_desc ("Nieuwste → Oudste") MOET House of Guinness (Nieuwste) BOVENAAN zetten.
   // Dit is: Aflopend op timestamp (hoogste eerst).
-  else if(by==='created_desc'){ a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
+  else if(by==='created_desc'){ a.sort((x,y)=>(parseInt(y.createdAt, 10)||0)-(parseInt(x.createdAt, 10)||0)); } 
   // created_asc ("Oudste → Nieuwste") MOET The Apprentice (Oudste) BOVENAAN zetten.
   // Dit is: Oplopend op timestamp (laagste eerst).
-  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
+  else { a.sort((x,y)=>(parseInt(x.createdAt, 10)||0)-(parseInt(y.createdAt, 10)||0)); }
   // *************************************************
 
   return a;
@@ -618,7 +616,7 @@ async function importJson(file){
         id: raw.id || undefined,
         title: raw.title || '',
         type: raw.type || 'film',
-        createdAt: raw.createdAt || Date.now(),
+        createdAt: parseInt(raw.createdAt, 10) || Date.now(), // <-- CORRIGEERD
         imdbRating: raw.imdbRating || '',
         year: raw.year || '',
         runtime: raw.runtime || '',
@@ -677,7 +675,7 @@ async function autoSeedIfEmpty(){
   }
   if(merged.length){
     const now=Date.now();
-    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:raw.createdAt||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:parseInt(raw.createdAt, 10)||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''})); // <-- OOK HIER PARSE INT TOEGEVOEGD
     await dbBulkPut(prepped);
   }
 }
