@@ -355,7 +355,8 @@ app.filtered=function(){
           if (tsY !== tsX) {
               return tsY - tsX; // Nieuwste bovenaan
           }
-          return (x.title||'').localeCompare(y.title||''); // Stabiliteit
+          // GEWIJZIGDE FALLBACK: Omgekeerd alfabetisch (Z -> A) als timestamps gelijk zijn
+          return (y.title||'').localeCompare(x.title||''); 
       }); 
   } 
   // created_asc ("Oudste → Nieuwste")
@@ -366,7 +367,8 @@ app.filtered=function(){
           if (tsX !== tsY) {
               return tsX - tsY; // Oudste bovenaan
           }
-          return (x.title||'').localeCompare(y.title||''); // Stabiliteit
+          // GEWIJZIGDE FALLBACK: Omgekeerd alfabetisch (Z -> A) als timestamps gelijk zijn
+          return (y.title||'').localeCompare(x.title||'');
       });
   }
   // Einde Fix 1
@@ -644,7 +646,7 @@ async function importJson(file){
         id: raw.id || undefined,
         title: raw.title || '',
         type: raw.type || 'film',
-        createdAt: parseInt(raw.createdAt, 10) || Date.now(), // Fix 3: Parse Int bij import
+        createdAt: parseInt(raw.createdAt, 10) || Date.now(),
         imdbRating: raw.imdbRating || '',
         year: raw.year || '',
         runtime: raw.runtime || '',
@@ -703,7 +705,7 @@ async function autoSeedIfEmpty(){
   }
   if(merged.length){
     const now=Date.now();
-    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:parseInt(raw.createdAt, 10)||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''})); // Fix 3: Parse Int bij seed
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:parseInt(raw.createdAt, 10)||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
     await dbBulkPut(prepped);
   }
 }
