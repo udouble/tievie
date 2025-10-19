@@ -638,21 +638,7 @@ async function importJson(file){
     }
     for(const [,val] of byKey) upserts.push(val);
     await dbBulkPut(upserts);
-    \1
-// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
-try{
-  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
-  if(isStandalone){
-    app.state.items = (app.state.items||[]).map(it => {
-      const n = Number(it.createdAt);
-      return {...it, createdAt: Number.isFinite(n)? n : 0};
-    });
-    // Enforce intended default sort
-    app.state.sortBy = 'created_desc';
-    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
-  }
-}catch(_){ /* no-op */ }
-app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
+    app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
   }catch(e){console.error(e); setStatus('Import JSON error');}
 }
 
@@ -670,21 +656,7 @@ async function fetchMissingPosters(){
       }
     }
   }
-  if(changed){ \1
-// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
-try{
-  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
-  if(isStandalone){
-    app.state.items = (app.state.items||[]).map(it => {
-      const n = Number(it.createdAt);
-      return {...it, createdAt: Number.isFinite(n)? n : 0};
-    });
-    // Enforce intended default sort
-    app.state.sortBy = 'created_desc';
-    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
-  }
-}catch(_){ /* no-op */ }
-app.render(); bindStreamUI(); syncPushDebounced(); }
+  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
   setStatus('Posters afgerond. Geüpdatet: '+changed);
 }
 
@@ -808,22 +780,9 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   try{
     await syncPull();
     await autoSeedIfEmpty();
-    \1
-// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
-try{
-  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
-  if(isStandalone){
-    app.state.items = (app.state.items||[]).map(it => {
-      const n = Number(it.createdAt);
-      return {...it, createdAt: Number.isFinite(n)? n : 0};
-    });
-    // Enforce intended default sort
-    app.state.sortBy = 'created_desc';
-    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
-  }
-}catch(_){ /* no-op */ }
-app.render(); bindStreamUI();
-    setStatus('v3.31-pwa-fix — PWA • '+app.state.items.length+' items');
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
     await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
@@ -1012,21 +971,8 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
       if (itemToDelete) {
           await dbDel(itemToDelete.id);
-          \1
-// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
-try{
-  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
-  if(isStandalone){
-    app.state.items = (app.state.items||[]).map(it => {
-      const n = Number(it.createdAt);
-      return {...it, createdAt: Number.isFinite(n)? n : 0};
-    });
-    // Enforce intended default sort
-    app.state.sortBy = 'created_desc';
-    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
-  }
-}catch(_){ /* no-op */ }
-app.render();
+          app.state.items = await dbGetAll();
+          app.render();
           bindStreamUI();
           syncPushDebounced();
           closeDeleteConfirmModal();
