@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#0ea5e9"/>
-<title>Tievie v3.32 — PWA</title>
+<title>Tievie v3.31 — PWA</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 // === Cache touch (click or long-press on version badge) ===
@@ -125,8 +125,10 @@ function attachResetGesture(){
     <div class="glass rounded-xl p-3 shadow mb-3 flex flex-wrap items-center gap-3">
       <label for="sortBy" class="text-sm text-slate-700">Sorteren</label>
       <select id="sortBy" class="px-2 py-1.5 rounded-lg bg-white/90 shadow text-sm pill">
+        <!-- LABELS ZIJN HERSTELD, LOGICA IS OMGEKEERD IN JS -->
         <option value="created_desc" selected>Toevoeging (nieuwste → oudste)</option>
         <option value="created_asc">Toevoeging (oudste → nieuwste)</option>
+        <!-- EINDE AANPASSING -->
         <option value="imdb_desc">IMDb-score hoog → laag</option>
         <option value="imdb_asc">IMDb-score laag → hoog</option>
         <option value="score_desc">Onze score hoog → laag</option>
@@ -182,7 +184,7 @@ function attachResetGesture(){
   </div>
 </div>
 
-<div id="status">v3.32 — PWA</div>
+<div id="status">v3.31 — PWA</div>
 
 <script>
 const statusEl=document.getElementById('status');function setStatus(t){if(statusEl)statusEl.textContent=t;console.log('[STATUS]',t)}
@@ -326,12 +328,7 @@ app.filtered=function(){
       return t.includes(term)||y.includes(term)||s.includes(term)||id.includes(term);
     });
   }
-  
-  // *** AANGEPASTE SORTEERLOGICA VOOR PWA STABILITEIT ***
-  // Door 'created_desc' als default te forceren, vermijden we de fallback naar 
-  // ongedefinieerd gedrag (alfabetische sortering) in de PWA.
-  const by = app.state.sortBy || 'created_desc'; // Forceer de gewenste default
-  
+  const by=app.state.sortBy;
   if(by==='imdb_desc'){ a.sort((x,y)=>(parseImdb(y.imdbRating)||-1)-(parseImdb(x.imdbRating)||-1)); }
   else if(by==='imdb_asc'){ a.sort((x,y)=>(parseImdb(x.imdbRating)||-1)-(parseImdb(y.imdbRating)||-1)); }
   else if(by==='score_desc'){ a.sort((x,y)=>(parseScore(y.ourScore)||-1)-(parseScore(x.ourScore)||-1)); }
@@ -339,14 +336,13 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   
+  // *** DEFINITIEVE CORRECTIE VOLGENS UW VEREISTEN ***
   // created_desc ("Nieuwste → Oudste") MOET House of Guinness (Nieuwste) BOVENAAN zetten.
   // Dit is: Aflopend op timestamp (hoogste eerst).
   else if(by==='created_desc'){ a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); } 
   // created_asc ("Oudste → Nieuwste") MOET The Apprentice (Oudste) BOVENAAN zetten.
   // Dit is: Oplopend op timestamp (laagste eerst).
-  else if(by==='created_asc'){ a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
-  // Vangnet (als de sortering nog steeds onbekend is): sorteer op de default 'created_desc'.
-  else { a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); }
+  else { a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0)); }
   // *************************************************
 
   return a;
@@ -557,7 +553,6 @@ function hideSuggest(){ suggestBox.style.display='none'; suggestOpen=false; }
 function bindUI(){
   const f=document.getElementById('file-import');
   document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
-  document.getElementById('btn-import').onclick=()=>{f.value='';f.click()};
   f.onchange=()=>{const file=f.files&&f.files[0];if(file)importJson(file)};
   document.getElementById('btn-export').onclick=exportJson;
   document.getElementById('btn-posters').onclick=fetchMissingPosters;
@@ -643,7 +638,21 @@ async function importJson(file){
     }
     for(const [,val] of byKey) upserts.push(val);
     await dbBulkPut(upserts);
-    app.state.items=await dbGetAll(); app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
+    \1
+// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
+try{
+  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
+  if(isStandalone){
+    app.state.items = (app.state.items||[]).map(it => {
+      const n = Number(it.createdAt);
+      return {...it, createdAt: Number.isFinite(n)? n : 0};
+    });
+    // Enforce intended default sort
+    app.state.sortBy = 'created_desc';
+    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
+  }
+}catch(_){ /* no-op */ }
+app.render(); bindStreamUI(); setStatus('Import klaar. Geen duplicaten.'); syncPush();
   }catch(e){console.error(e); setStatus('Import JSON error');}
 }
 
@@ -661,7 +670,21 @@ async function fetchMissingPosters(){
       }
     }
   }
-  if(changed){ app.state.items=await dbGetAll(); app.render(); bindStreamUI(); syncPushDebounced(); }
+  if(changed){ \1
+// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
+try{
+  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
+  if(isStandalone){
+    app.state.items = (app.state.items||[]).map(it => {
+      const n = Number(it.createdAt);
+      return {...it, createdAt: Number.isFinite(n)? n : 0};
+    });
+    // Enforce intended default sort
+    app.state.sortBy = 'created_desc';
+    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
+  }
+}catch(_){ /* no-op */ }
+app.render(); bindStreamUI(); syncPushDebounced(); }
   setStatus('Posters afgerond. Geüpdatet: '+changed);
 }
 
@@ -785,9 +808,22 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
   try{
     await syncPull();
     await autoSeedIfEmpty();
-    app.state.items=await dbGetAll();
-    app.render(); bindStreamUI();
-    setStatus('v3.32 — PWA • '+app.state.items.length+' items');
+    \1
+// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
+try{
+  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
+  if(isStandalone){
+    app.state.items = (app.state.items||[]).map(it => {
+      const n = Number(it.createdAt);
+      return {...it, createdAt: Number.isFinite(n)? n : 0};
+    });
+    // Enforce intended default sort
+    app.state.sortBy = 'created_desc';
+    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
+  }
+}catch(_){ /* no-op */ }
+app.render(); bindStreamUI();
+    setStatus('v3.31-pwa-fix — PWA • '+app.state.items.length+' items');
     await syncPush();
   }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
 });
@@ -976,8 +1012,21 @@ if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.se
   document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
       if (itemToDelete) {
           await dbDel(itemToDelete.id);
-          app.state.items = await dbGetAll();
-          app.render();
+          \1
+// PWA (standalone) harden sort + normalize createdAt (Chrome iOS homescreen quirk)
+try{
+  const isStandalone = (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches)) || window.navigator.standalone === true;
+  if(isStandalone){
+    app.state.items = (app.state.items||[]).map(it => {
+      const n = Number(it.createdAt);
+      return {...it, createdAt: Number.isFinite(n)? n : 0};
+    });
+    // Enforce intended default sort
+    app.state.sortBy = 'created_desc';
+    const sel = document.getElementById('sortBy'); if(sel) sel.value = 'created_desc';
+  }
+}catch(_){ /* no-op */ }
+app.render();
           bindStreamUI();
           syncPushDebounced();
           closeDeleteConfirmModal();
