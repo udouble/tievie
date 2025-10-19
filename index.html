@@ -232,7 +232,20 @@ window.addEventListener('online',()=>{IS_ONLINE=true;setNetBadge()});window.addE
 
 function openDB(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE)){const s=db.createObjectStore(STORE,{keyPath:'id'});s.createIndex('createdAt','createdAt');s.createIndex('type','type')}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 function tx(db,mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
-async function dbGetAll(){const db=await openDB();return new Promise((ok,no)=>{const q=tx(db).getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>no(q.error)})}
+// Aangepaste dbGetAll met parse:
+async function dbGetAll(){
+    const db=await openDB();
+    return new Promise((ok,no)=>{
+        const q=tx(db).getAll();
+        q.onsuccess=()=>ok(
+            (q.result||[]).map(item => ({
+                ...item,
+                createdAt: parseInt(item.createdAt, 10) || item.createdAt // Zorg ervoor dat het een nummer is, of laat de originele (non-timestamp) waarde staan
+            }))
+        );
+        q.onerror=()=>no(q.error)
+    })
+}
 async function dbPut(item){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').put(item);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
 async function dbBulkPut(arr){const db=await openDB();return new Promise((ok,no)=>{const t=db.transaction(STORE,'readwrite');const s=t.objectStore(STORE);arr.forEach(it=>s.put(it));t.oncomplete=()=>ok();t.onerror=()=>no(t.error)})}
 async function dbDel(id){const db=await openDB();return new Promise((ok,no)=>{const p=tx(db,'readwrite').delete(id);p.onsuccess=()=>ok();p.onerror=()=>no(p.error)})}
@@ -616,7 +629,7 @@ async function importJson(file){
         id: raw.id || undefined,
         title: raw.title || '',
         type: raw.type || 'film',
-        createdAt: parseInt(raw.createdAt, 10) || Date.now(), // <-- CORRIGEERD
+        createdAt: parseInt(raw.createdAt, 10) || Date.now(),
         imdbRating: raw.imdbRating || '',
         year: raw.year || '',
         runtime: raw.runtime || '',
@@ -675,7 +688,7 @@ async function autoSeedIfEmpty(){
   }
   if(merged.length){
     const now=Date.now();
-    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:parseInt(raw.createdAt, 10)||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''})); // <-- OOK HIER PARSE INT TOEGEVOEGD
+    const prepped = merged.map(raw=>({id:raw.id||('id-'+now+'-'+Math.random().toString(36).slice(2,7)),title:raw.title||'Onbekend',type:raw.type||'film',createdAt:parseInt(raw.createdAt, 10)||now,imdbRating:raw.imdbRating||'',year:raw.year||'',runtime:raw.runtime||'',poster:raw.poster||'',streamingOn:raw.streamingOn||'',ourScore:(raw.ourScore==null || String(raw.ourScore).toLowerCase()==='nan')?'':String(raw.ourScore),dateSeen:raw.dateSeen||'',imdbID:raw.imdbID||raw.imdbId||''}));
     await dbBulkPut(prepped);
   }
 }
