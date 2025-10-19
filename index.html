@@ -355,7 +355,7 @@ app.filtered=function(){
           if (tsY !== tsX) {
               return tsY - tsX; // Nieuwste bovenaan
           }
-          // GEWIJZIGDE FALLBACK: Omgekeerd alfabetisch (Z -> A) als timestamps gelijk zijn
+          // Fallback: Nieuwste -> Oudste: Titel Z -> A
           return (y.title||'').localeCompare(x.title||''); 
       }); 
   } 
@@ -367,8 +367,8 @@ app.filtered=function(){
           if (tsX !== tsY) {
               return tsX - tsY; // Oudste bovenaan
           }
-          // GEWIJZIGDE FALLBACK: Omgekeerd alfabetisch (Z -> A) als timestamps gelijk zijn
-          return (y.title||'').localeCompare(x.title||'');
+          // Fallback: Oudste -> Nieuwste: Titel A -> Z (standaard alfabetisch)
+          return (x.title||'').localeCompare(y.title||''); 
       });
   }
   // Einde Fix 1
