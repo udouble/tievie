@@ -347,7 +347,7 @@ app.filtered=function(){
   else if(by==='title_asc'){ a.sort((x,y)=>(x.title||'').localeCompare(y.title||'')); }
   else if(by==='title_desc'){ a.sort((x,y)=>(y.title||'').localeCompare(x.title||'')); }
   
-  // Fix 1: Force numeric comparison with stability fallback
+  // Fix 1: Force numeric comparison with dynamic fallback
   else if(by==='created_desc'){ 
       a.sort((x,y)=>{
           const tsY = parseInt(y.createdAt, 10) || 0;
@@ -367,7 +367,7 @@ app.filtered=function(){
           if (tsX !== tsY) {
               return tsX - tsY; // Oudste bovenaan
           }
-          // Fallback: Oudste -> Nieuwste: Titel A -> Z (standaard alfabetisch)
+          // Fallback: Oudste -> Nieuwste: Titel A -> Z
           return (x.title||'').localeCompare(y.title||''); 
       });
   }
@@ -806,7 +806,9 @@ function bindStreamUI(){
 document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
   bindUI();
   try{
-    await syncPull();
+    // Fix 3: Schakel syncPull uit, omdat deze de Service Worker Cache gebruikt 
+    // en de sortering verstoort in de PWA-modus.
+    // await syncPull(); 
     await autoSeedIfEmpty();
     app.state.items=await dbGetAll();
     app.render(); bindStreamUI();
@@ -816,9 +818,419 @@ document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture();
 });
 
 // OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
-/*
-if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js?v=3.31').then(()=>{navigator.serviceWorker.ready.then(reg=>{if(reg.active)reg.active.postMessage({type:'MFS_SYNC_PING'})})})})}
-*/
+// navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+
+// ===== Streaming multi-select (floating panel) =====
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
+
+function buildStreamMenu(){
+  const list = document.getElementById('streamList');
+  if(!list) return;
+  list.innerHTML = '';
+  STREAM_SERVICES.forEach(s=>{
+    const id = 'stream-cb-'+(s==='__UNKNOWN__'?'unknown':s.replace(/\W+/g,'').toLowerCase());
+    const label = s==='__UNKNOWN__' ? 'Onbekend' : s;
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" id="${id}" value="${s}" class="w-4 h-4"> <span>${label}</span>`;
+    const cb = row.querySelector('input');
+    cb.checked = app.state.streamSet.has(s);
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
+      app.render(); bindStreamUI();
+      updateStreamBadge();
+    });
+    list.appendChild(row);
+  });
+}
+
+function positionStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  const btn = document.getElementById('streamBtn');
+  if(!menu || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const top = r.bottom + 6 + window.scrollY;
+  const left = Math.min(r.left + window.scrollX, window.scrollX + (document.documentElement.clientWidth - menu.offsetWidth - 12));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function openStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  buildStreamMenu();
+  menu.style.display = 'block';
+  positionStreamMenu();
+  const onDocClick = (e)=>{
+    const btn = document.getElementById('streamBtn');
+    if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeStreamMenu();
+  };
+  const onKey = (e)=>{ if(e.key==='Escape'){ closeStreamMenu(); } };
+  document.addEventListener('mousedown', onDocClick, {capture:true});
+  document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+  document.addEventListener('keydown', onKey, {capture:true});
+  menu._cleanup = ()=>{
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+  };
+}
+
+function closeStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  menu.style.display = 'none';
+  if(typeof menu._cleanup==='function'){ try{ menu._cleanup(); }catch(e){} }
+}
+
+function bindStreamUI(){
+  const btn = document.getElementById('streamBtn');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const menu = document.getElementById('streamMenu');
+    if(menu && menu.style.display==='block'){ closeStreamMenu(); } else { openStreamMenu(); }
+  });
+  const allBtn = document.getElementById('streamAll');
+  const noneBtn = document.getElementById('streamNone');
+  if(allBtn) allBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set(STREAM_SERVICES);
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set();
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  updateStreamBadge();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
+  bindUI();
+  try{
+    // Fix 3: Schakel syncPull uit, omdat deze de Service Worker Cache gebruikt 
+    // en de sortering verstoort in de PWA-modus.
+    // await syncPull(); 
+    await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    await syncPush();
+  }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
+});
+
+// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
+// navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+
+// ===== Streaming multi-select (floating panel) =====
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
+
+function buildStreamMenu(){
+  const list = document.getElementById('streamList');
+  if(!list) return;
+  list.innerHTML = '';
+  STREAM_SERVICES.forEach(s=>{
+    const id = 'stream-cb-'+(s==='__UNKNOWN__'?'unknown':s.replace(/\W+/g,'').toLowerCase());
+    const label = s==='__UNKNOWN__' ? 'Onbekend' : s;
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" id="${id}" value="${s}" class="w-4 h-4"> <span>${label}</span>`;
+    const cb = row.querySelector('input');
+    cb.checked = app.state.streamSet.has(s);
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
+      app.render(); bindStreamUI();
+      updateStreamBadge();
+    });
+    list.appendChild(row);
+  });
+}
+
+function positionStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  const btn = document.getElementById('streamBtn');
+  if(!menu || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const top = r.bottom + 6 + window.scrollY;
+  const left = Math.min(r.left + window.scrollX, window.scrollX + (document.documentElement.clientWidth - menu.offsetWidth - 12));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function openStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  buildStreamMenu();
+  menu.style.display = 'block';
+  positionStreamMenu();
+  const onDocClick = (e)=>{
+    const btn = document.getElementById('streamBtn');
+    if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeStreamMenu();
+  };
+  const onKey = (e)=>{ if(e.key==='Escape'){ closeStreamMenu(); } };
+  document.addEventListener('mousedown', onDocClick, {capture:true});
+  document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+  document.addEventListener('keydown', onKey, {capture:true});
+  menu._cleanup = ()=>{
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+  };
+}
+
+function closeStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  menu.style.display = 'none';
+  if(typeof menu._cleanup==='function'){ try{ menu._cleanup(); }catch(e){} }
+}
+
+function bindStreamUI(){
+  const btn = document.getElementById('streamBtn');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const menu = document.getElementById('streamMenu');
+    if(menu && menu.style.display==='block'){ closeStreamMenu(); } else { openStreamMenu(); }
+  });
+  const allBtn = document.getElementById('streamAll');
+  const noneBtn = document.getElementById('streamNone');
+  if(allBtn) allBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set(STREAM_SERVICES);
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set();
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  updateStreamBadge();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
+  bindUI();
+  try{
+    // Fix 3: Schakel syncPull uit, omdat deze de Service Worker Cache gebruikt 
+    // en de sortering verstoort in de PWA-modus.
+    // await syncPull(); 
+    await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    await syncPush();
+  }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
+});
+
+// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
+// navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+
+// ===== Streaming multi-select (floating panel) =====
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
+
+function buildStreamMenu(){
+  const list = document.getElementById('streamList');
+  if(!list) return;
+  list.innerHTML = '';
+  STREAM_SERVICES.forEach(s=>{
+    const id = 'stream-cb-'+(s==='__UNKNOWN__'?'unknown':s.replace(/\W+/g,'').toLowerCase());
+    const label = s==='__UNKNOWN__' ? 'Onbekend' : s;
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" id="${id}" value="${s}" class="w-4 h-4"> <span>${label}</span>`;
+    const cb = row.querySelector('input');
+    cb.checked = app.state.streamSet.has(s);
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
+      app.render(); bindStreamUI();
+      updateStreamBadge();
+    });
+    list.appendChild(row);
+  });
+}
+
+function positionStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  const btn = document.getElementById('streamBtn');
+  if(!menu || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const top = r.bottom + 6 + window.scrollY;
+  const left = Math.min(r.left + window.scrollX, window.scrollX + (document.documentElement.clientWidth - menu.offsetWidth - 12));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function openStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  buildStreamMenu();
+  menu.style.display = 'block';
+  positionStreamMenu();
+  const onDocClick = (e)=>{
+    const btn = document.getElementById('streamBtn');
+    if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeStreamMenu();
+  };
+  const onKey = (e)=>{ if(e.key==='Escape'){ closeStreamMenu(); } };
+  document.addEventListener('mousedown', onDocClick, {capture:true});
+  document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+  document.addEventListener('keydown', onKey, {capture:true});
+  menu._cleanup = ()=>{
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+  };
+}
+
+function closeStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  menu.style.display = 'none';
+  if(typeof menu._cleanup==='function'){ try{ menu._cleanup(); }catch(e){} }
+}
+
+function bindStreamUI(){
+  const btn = document.getElementById('streamBtn');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const menu = document.getElementById('streamMenu');
+    if(menu && menu.style.display==='block'){ closeStreamMenu(); } else { openStreamMenu(); }
+  });
+  const allBtn = document.getElementById('streamAll');
+  const noneBtn = document.getElementById('streamNone');
+  if(allBtn) allBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set(STREAM_SERVICES);
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set();
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  updateStreamBadge();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
+  bindUI();
+  try{
+    // Fix 3: Schakel syncPull uit, omdat deze de Service Worker Cache gebruikt 
+    // en de sortering verstoort in de PWA-modus.
+    // await syncPull(); 
+    await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    await syncPush();
+  }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
+});
+// OUDE SERVICE WORKER REGISTRATIE VERWIJDERD:
+// navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',ev=>{const msg=ev.data||{};if(msg.type==='MFS_SYNC_PING'){syncPush()}});
+
+// ===== Streaming multi-select (floating panel) =====
+const STREAM_SERVICES = ['Streamz','Netflix','Prime Video','Apple TV+','VRT MAX','Go Play','NPO','Disney+','Stremio','__UNKNOWN__'];
+app.state.streamSet = app.state.streamSet instanceof Set ? app.state.streamSet : new Set();
+function updateStreamBadge(){ /* no-op: teller verwijderd */ }
+
+function buildStreamMenu(){
+  const list = document.getElementById('streamList');
+  if(!list) return;
+  list.innerHTML = '';
+  STREAM_SERVICES.forEach(s=>{
+    const id = 'stream-cb-'+(s==='__UNKNOWN__'?'unknown':s.replace(/\W+/g,'').toLowerCase());
+    const label = s==='__UNKNOWN__' ? 'Onbekend' : s;
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-100 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" id="${id}" value="${s}" class="w-4 h-4"> <span>${label}</span>`;
+    const cb = row.querySelector('input');
+    cb.checked = app.state.streamSet.has(s);
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) app.state.streamSet.add(s); else app.state.streamSet.delete(s);
+      app.render(); bindStreamUI();
+      updateStreamBadge();
+    });
+    list.appendChild(row);
+  });
+}
+
+function positionStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  const btn = document.getElementById('streamBtn');
+  if(!menu || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const top = r.bottom + 6 + window.scrollY;
+  const left = Math.min(r.left + window.scrollX, window.scrollX + (document.documentElement.clientWidth - menu.offsetWidth - 12));
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function openStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  buildStreamMenu();
+  menu.style.display = 'block';
+  positionStreamMenu();
+  const onDocClick = (e)=>{
+    const btn = document.getElementById('streamBtn');
+    if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeStreamMenu();
+  };
+  const onKey = (e)=>{ if(e.key==='Escape'){ closeStreamMenu(); } };
+  document.addEventListener('mousedown', onDocClick, {capture:true});
+  document.addEventListener('touchstart', onDocClick, {capture:true, passive:true});
+  document.addEventListener('keydown', onKey, {capture:true});
+  menu._cleanup = ()=>{
+    document.removeEventListener('mousedown', onDocClick, {capture:true});
+    document.removeEventListener('touchstart', onDocClick, {capture:true});
+    document.removeEventListener('keydown', onKey, {capture:true});
+  };
+}
+
+function closeStreamMenu(){
+  const menu = document.getElementById('streamMenu');
+  if(!menu) return;
+  menu.style.display = 'none';
+  if(typeof menu._cleanup==='function'){ try{ menu._cleanup(); }catch(e){} }
+}
+
+function bindStreamUI(){
+  const btn = document.getElementById('streamBtn');
+  if(!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const menu = document.getElementById('streamMenu');
+    if(menu && menu.style.display==='block'){ closeStreamMenu(); } else { openStreamMenu(); }
+  });
+  const allBtn = document.getElementById('streamAll');
+  const noneBtn = document.getElementById('streamNone');
+  if(allBtn) allBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set(STREAM_SERVICES);
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{
+    app.state.streamSet = new Set();
+    app.render(); bindStreamUI(); updateStreamBadge(); buildStreamMenu();
+  });
+  updateStreamBadge();
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{ attachResetGesture(); 
+  bindUI();
+  try{
+    // Fix 3: Schakel syncPull uit, omdat deze de Service Worker Cache gebruikt 
+    // en de sortering verstoort in de PWA-modus.
+    // await syncPull(); 
+    await autoSeedIfEmpty();
+    app.state.items=await dbGetAll();
+    app.render(); bindStreamUI();
+    setStatus('v3.31 — PWA • '+app.state.items.length+' items');
+    await syncPush();
+  }catch(e){console.error(e);setStatus('Kon lokale data niet laden.');}
+});
 </script>
 
 <div id="streamMenu" class="glass rounded-xl shadow-2xl border border-slate-200 p-3" style="position:fixed;display:none;z-index:100010;max-height:60vh;overflow:auto;min-width:220px;background:rgba(255,255,255,.98) !important;">
